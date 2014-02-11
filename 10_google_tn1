@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+#> сбор из hl (sid==187537-google)
+#> какие поля из hl понадобятся:
+
+job_history_log "$1" "sz,uid,second,pz,bt,exposureprice,winprice,typenum=$2,sid=187537,statusnum=0" -fn -cut="sid,statusnum,typenum" -true="sz,uid" |
+sort -T. -t\* -n -k1,1 -k2,2 -k3,3
+

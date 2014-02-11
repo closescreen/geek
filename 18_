@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#> из total(tn3) ----> uids.gz (сочетания на sz: uids)
+#>! сделать сортровку по куке!
+(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+job=${1:?Job!} # google
+
+find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" |
+only --without="uids.gz" |
+washing -res="s|total\.gz|uids.gz|" -v_flag='zcat %s |awk -F* -v"OFS=*" "{print \$2,\$1}" | uniq | sort -T. -S333M -t\* -n -k1,1 -k2,2 ' -comp=gzip -timelog="$0.time.log"
+
+
+)#>>"$0.log" 2>&1

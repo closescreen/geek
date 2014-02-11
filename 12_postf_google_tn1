@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+
+#> tn1 
+
+#> SZ
+#> CNT clicks
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#> IN
+#> 0   1     2   3  4      5            6    
+#> sz uid second pz bt exposureprice winprice
+
+cut -d* -f1 | summator -la=0 -fu=cnt
+
+#>>OUT: sz, cnt_clicks

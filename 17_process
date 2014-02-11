@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#> total.gz (tn3) ---> urls.gz
+
+#>IN: sz uid second pz bt exposureprice ref sestart isview
+#>     1  2     3    4  5      6         7      8     9
+
+# ВСЕ ПЕРЕДЕЛАТЬ ПО ДОМЕНУ
+
+# sorting by UID,SECOND:
+cut -d* -f2,3,7,8,9 | sort -T. -S333M -t\* -n -k1,1 -k2,2 |
+lae -lb="uid sec " 
+
+
+cut -d* -f1,2,7,8,9 | lae -lb="sz uid ref sestart isview" '
+my %urls;
+
+_{
+
+flush() if prevSz and Sz!=prevSz;
+
+$urls{ &Ref }{ Uid."*".Sestart } = Ref if Isview;
+
+} -prev=>"sz=0";
+
+flush();
+
+sub flush{
+ for my $url ( sort keys %urls ){
+    my $sessions_cnt = keys %{ $urls{ $url } }; #count of sessions where URL was.
+    my $sessions_ends = grep {$_ eq $url} values %{ $urls{ $url } }; # count of sessiont where URL was LAST url.
+    
+    #>> OUT: Url, Sessions, Sessions_Ends
+
+    p0 $url, $sessions_cnt, $sessions_ends;
+ } 
+}
+
+'

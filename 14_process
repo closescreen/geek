@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+
+#> bids (tn3)
+
+#  1  2      3   4  5       6        7      8     9
+# sz uid second pz bt exposureprice ref session isview
+
+awk -F* -v"OFS=*" '
+BEGIN{
+ prevSz=0;
+ prevUid=0;
+ prevSession=0;
+ sessions=0;
+ views=0;
+ allbids=0;
+ posibids=0;
+}
+
+{
+ # sz break:
+ if ( prevSz>0 && $1!=prevSz ){ flush() }
+
+ if ( ( $8!=prevSession) || ( $2!=prevUid) || ( $1!=prevSz) ){ sessions++ }  
+ 
+ if ( $9 ){ views++ }
+ 
+ allbids++;
+
+ if ( $6>0 ){ posibids++ } #<---for ExposurePrice>0
+
+ prevSz=$1; 
+ prevUid=$2;
+ prevSession=$8;
+}
+
+function flush(){
+
+ print prevSz, sessions, views, allbids, posibids;
+ 
+ #>> OUT: sz, sessions_cnt, views_cnt, all_bids, positive_bids
+ 
+ sessions=0;
+ views=0;
+ allbids=0;
+ posibids=0;
+}
+
+END{
+ flush();
+} 
+'

@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#> tn0
+
+#> CNT exp
+#> SUM winprice
+#> AVG (exppr/winpr)
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+# IN:
+#  0       1          2     
+# sz exposureprice winprice
+
+summator -la=2 -fu="cnt,+sum,sum"
+
+#>> OUT: 
+#>> pz cnt_exp sum_exposureprice sum_winprice 
