@@ -1,8 +1,9 @@
 #!/usr/bin/env bash
-#> из total(tn3) делаем pzbt (сочетания на sz: pz+bt)
+#> total.gz (tn3) ----(./16_process)----> pzbt.gz
+
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 

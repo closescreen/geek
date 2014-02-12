@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> здесь будем из total(tn3) делать bids(tn3)
+#> total(tn3) ----(./14_process)---> bids(tn3)
 (
 set -u
 set -x

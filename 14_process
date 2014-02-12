@@ -1,51 +1,28 @@
 #!/usr/bin/env bash
+#> Making table "bids" (tn3).
 
-#> bids (tn3)
+#> in:
+#>  1   2     3   4  5       6        7   8   9     10      11
+#> uid second sz pz  bt exposureprice ad dom path sestart isview
 
-#  1  2      3   4  5       6        7      8     9
-# sz uid second pz bt exposureprice ref session isview
+#>? можно cut'ом отделить нужные  поля и сравнить производительность
 
-awk -F* -v"OFS=*" '
-BEGIN{
- prevSz=0;
- prevUid=0;
- prevSession=0;
- sessions=0;
- views=0;
- allbids=0;
- posibids=0;
+lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
+my ( %bids, %positive_bids, %dom );
+_{
+ $bids{ &Sz }{ &Ad }++;
+ $positive_bids{ &Sz }{ &Ad }++ if Exposureprice>0;
+ $dom{ &Sz } ||= &Dom;
+};
+
+for my $sz ( keys %bids ){
+    for my $ad ( keys %{$bids{$sz}} ){
+	p0 $sz, $ad, $bids{ $sz }{ $ad }, $positive_bids{ $sz }{ $ad }, $dom{ $sz };
+    }
 }
 
-{
- # sz break:
- if ( prevSz>0 && $1!=prevSz ){ flush() }
+' | sort -T. -t\* -S 333M -n -k1,1 -k2,2
 
- if ( ( $8!=prevSession) || ( $2!=prevUid) || ( $1!=prevSz) ){ sessions++ }  
- 
- if ( $9 ){ views++ }
- 
- allbids++;
+#>> OUT: sz, ad, bids, positive_bids, domain.
 
- if ( $6>0 ){ posibids++ } #<---for ExposurePrice>0
-
- prevSz=$1; 
- prevUid=$2;
- prevSession=$8;
-}
-
-function flush(){
-
- print prevSz, sessions, views, allbids, posibids;
- 
- #>> OUT: sz, sessions_cnt, views_cnt, all_bids, positive_bids
- 
- sessions=0;
- views=0;
- allbids=0;
- posibids=0;
-}
-
-END{
- flush();
-} 
-'
+#>? можно заменить sort на перловый sort и замерить производительность и память

@@ -4,5 +4,5 @@
 
 job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=187537,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" -ll |
 lae -M=Dom '_{ @F[ REF, REF_F ] = Dom::split_ref( Ref ); p @F }' |
-sort -T. -t\* -n -k1,1 -k2,2 -k3,3
+sort -T. -t\* -n -k1,1 -k2,2
 
