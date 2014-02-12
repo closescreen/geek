@@ -48,5 +48,11 @@ sub ref2dom{
 
 # $url||="";
 
+sub split_ref{
+ # Split http://ya.ru/video to domain(ya.ru) and path(/video)
+ $_[0]=~m|^\'?(?:.+?\://)?(?:www\.)?([^/\']+)([^\']+?)?\'?$|;
+ return ($1,$2); 
+}
+
 1;
 

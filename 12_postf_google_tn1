@@ -11,9 +11,11 @@ set -o pipefail
 set +x
 
 #> IN
-#> 0   1     2   3  4      5            6    
-#> sz uid second pz bt exposureprice winprice
+#>  1   2  
+#> sz  ad
 
-cut -d* -f1 | summator -la=0 -fu=cnt
+summator -la=0 -fu=+cnt
 
-#>>OUT: sz, cnt_clicks
+#>>OUT: 
+#>>  1  2      3
+#>> sz ad  cnt_clicks

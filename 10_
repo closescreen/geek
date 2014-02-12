@@ -16,7 +16,7 @@ chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 2
 hours -t=2014-01-30T04 -n=24 |
 files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" |
 only --without="total.gz" |
-washing -time=10.time.log -v_flag="$jobscript %f $typenum" -comp=gzip
+washing -time=10.time.log -v_flag="$jobscript %f" -comp=gzip
 
 
 )>>"$0.log" 2>&1
