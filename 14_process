@@ -11,13 +11,14 @@ lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
 my ( %bids, %positive_bids, %dom );
 _{
  $bids{ &Sz }{ &Ad }++;
- $positive_bids{ &Sz }{ &Ad }++ if Exposureprice>0;
+# $positive_bids{ &Sz }{ &Ad }++ if Exposureprice>0;
  $dom{ &Sz } ||= &Dom;
 };
 
 for my $sz ( keys %bids ){
     for my $ad ( keys %{$bids{$sz}} ){
-	p0 $sz, $ad, $bids{ $sz }{ $ad }, $positive_bids{ $sz }{ $ad }, $dom{ $sz };
+	#p0 $sz, $ad, $bids{ $sz }{ $ad }, $positive_bids{ $sz }{ $ad }, $dom{ $sz };
+	p0 $sz, $ad, $bids{ $sz }{ $ad }, $dom{ $sz };
     }
 }
 
