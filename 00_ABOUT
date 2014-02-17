@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+#> "Подготовка данных для кластеризации сайтзон для байесовского биддера"
+
+export PATH=$PATH:/home/d.belyaev/grep/bike
+cd `dirname $0`
+doc -sele=2 -gfm * | viatmp Readme-user.md
