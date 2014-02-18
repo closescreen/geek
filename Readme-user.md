@@ -243,13 +243,14 @@
 **Объединение сумм из отдельных: bids.gz, tn0/.../total.gz, tn1/.../total.gz, sessions.gz** 
 
 	OUT: 
-	 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, $dom_sessions, $dom_views 
+	 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, Dom, $dom_sessions, $dom_views 
 	 ,где sz, ad - группировка 
 	  exposures - показов 
 	  clicks - кликов 
 	  bids - бидов всего (кол-во бидов при exposureprice>0 можно получить вычтя из bids те биды где поле ad=0) 
 	  exppr - сумма exposureprice 
 	  winpr - сумма winprice 
+	  dom - домен, в который входит эта сайтзона (один домен - несколько сайтзон) 
 	  dom_sessions - количество сессий на домене 
 	  dom_views - засчитанных посещений страниц кукой на домене (равно сумме длин сессий, где длина - количество просмотров неуникальных страниц) 
 
@@ -261,6 +262,29 @@
 	 OUT: 
 	   Sz, exposures, clicks, bids, exppr, winpr, dom_sessions, dom_views 
 	   (аналогично table29 только суммы не по sz+ad а по sz). 
+
+30_process:
+-----------
+
+**из сумм по sz, ad ---> суммы по sz** 
+
+	 Добавляется колонка: количество бидов при ad!=0, равное кол-ву бидов где была положительная ставка 
+	 сессии по домену суммировать нельзя, а нужно оставить одно (первое значение) 
+	 in: 
+	 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, dom,  $dom_sessions, $dom_views 
+	 OUT: 
+	  Sz, exposures, clicks, bids, positive_bids, exppr, winpr, Dom, Dom_sessions, Dom_views 
+	  ,где 
+	    sz - сайтзона (группировка) 
+	    exposures - показов 
+	    clicks - кликов 
+	    bids - бидов всех 
+	    positive_bids - бидов при положительной ставке 
+	    exppr - exposureprice (ставка) 
+	    winpr - winprice 
+	    Dom - домен, которому принадлежит сайтзона 
+	    Dom_sessions - сессий на домене 
+	    Dom_views - просмотров на домене (сумма длин сессий) 
 
 Dom.pm:
 -----------

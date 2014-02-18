@@ -8,8 +8,8 @@ cd `dirname $0`
 
 job=${1:?Job!}
 
-find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/table29.gz" |
-washing -res="s|table29\.gz|table30.gz|" -v_flag="zcat %s | summator -la=8 -fu=sum,sum,sum,sum,sum,sum,sum" -comp=gzip
+find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/table29.gz" | sort -r |
+washing -res="s|table29\.gz|table30.gz|" -v_flag="zcat %s | ./30_process" -comp=gzip
 
 #>> OUT:
 #>>   Sz, exposures, clicks, bids, exppr, winpr, dom_sessions, dom_views
