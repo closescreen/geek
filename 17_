@@ -9,7 +9,7 @@ cd `dirname $0`
 
 job=${1:?Job!} # google
 
-find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" |
+find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort -r |
 only --without="urls.gz" |
 washing -res="s|total\.gz|urls.gz|" -v_flag='zcat %s | ./17_process' -comp=gzip -timelog="$0.time.log"
 

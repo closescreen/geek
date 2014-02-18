@@ -10,7 +10,7 @@ cd `dirname $0`
 
 job=${1:?Job!} # google
 
-find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" |
+find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort -r |
 only --without="uidsz.gz" |
 washing -res="s|total\.gz|uidsz.gz|" -v_flag='zcat %s |awk -F* -v"OFS=*" "{print \$1,\$3}" | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ' -comp=gzip -timelog="$0.time.log"
 
