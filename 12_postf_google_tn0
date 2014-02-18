@@ -1,21 +1,22 @@
 #!/usr/bin/env bash
-#> tn0
-
-#> CNT exp
-#> SUM winprice
-#> AVG (exppr/winpr)
+#> Обработка смерженного (часы в сутки) потока для google, tn0.
 
 set -u
 set -e
 set -o pipefail
 set +x
 
-# IN:
-#  1   2        3          4           
-# sz  ad  exposureprice winprice
+#> IN:
+#>  1   2        3          4           
+#> sz  ad  exposureprice winprice
 
 summator -la=2 -fu="cnt,+sum,sum"
 
 #>> OUT: 
 #>>  1   2     3            4                 5
 #>> sz  ad  cnt_exp  sum_exposureprice  sum_winprice 
+#>>, где 
+#>>    sz,ad - группировка
+#>>    cnt_exp - количество показов
+#>>    sum_exposureprice - сумма exposureprice
+#>>    sum_winprice - сумма winprice

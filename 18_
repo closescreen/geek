@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-#> из total(tn3) ----> uids.gz (сочетания на sz: uids)
-#>! сделать сортровку по куке!
+#> из total(tn3) ----> uidsz.gz ( Куки на сайтзонах. Сочетания uid+sz )
+#>? Возможно потом придется переделать на "куки на sz+ad" , а из него уже делать куки на sz.(?)
+
 (
 set -u
 set +x
@@ -10,8 +11,11 @@ cd `dirname $0`
 job=${1:?Job!} # google
 
 find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" |
-only --without="uids.gz" |
-washing -res="s|total\.gz|uids.gz|" -v_flag='zcat %s |awk -F* -v"OFS=*" "{print \$1,$\3}" | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ' -comp=gzip -timelog="$0.time.log"
+only --without="uidsz.gz" |
+washing -res="s|total\.gz|uidsz.gz|" -v_flag='zcat %s |awk -F* -v"OFS=*" "{print \$1,\$3}" | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ' -comp=gzip -timelog="$0.time.log"
 
+#>>OUT:
+#>> uid, sz. (уникальные комбинации)
+#>> сортировка по uid и sz.
 
 )>>"$0.log" 2>&1

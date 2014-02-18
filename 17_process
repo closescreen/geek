@@ -1,10 +1,11 @@
 #!/usr/bin/env bash
-#> total.gz (tn3) ---> urls.gz
+#> urls.
 
-#>  1   2     3   4  5       6        7   8   9     10      11
-#> uid second sz pz  bt exposureprice ad dom path sestart isview
+#>>IN:
+#>>  1   2     3   4  5       6        7   8   9     10      11
+#>> uid second sz pz  bt exposureprice ad dom path sestart isview
 
-# sorting by UID,SECOND:
+#>> sorted by UID,SECOND:
 
 awk -F* '$11' |
 lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
@@ -38,3 +39,9 @@ for my $ref ( keys %sessions_count ){
 }
 
 ' | sort -T. -S 333M -t\* -k1,1 -k2,2
+
+#>>OUT:
+#>> dom, ref, sessions_count, sessions_ends
+#>>  ,где
+#>>   sessions_count - количество сессий, где dom+url участвовал
+#>>   sessions_ends - количество сессий, где он был последним.

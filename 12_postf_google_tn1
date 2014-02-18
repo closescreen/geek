@@ -1,9 +1,6 @@
 #!/usr/bin/env bash
 
-#> tn1 
-
-#> SZ
-#> CNT clicks
+#> Обработчик смерженного (часы в сутки) потока для google tn1. 
 
 set -u
 set -e
@@ -19,3 +16,7 @@ summator -la=0 -fu=+cnt
 #>>OUT: 
 #>>  1  2      3
 #>> sz ad  cnt_clicks
+
+#>> ,где
+#>>   sz,ad - группировка
+#>>   cnt_clicks - количество кликов в группе

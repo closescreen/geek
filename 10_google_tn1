@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
-#> сбор из hl typenum==1 , sid==187537 (google)
-#> какие поля из hl понадобятся:
+#> сбор из hl typenum==1 (клики) , sid==187537 (google)
+
+#>> отбрасываются нулевые sz, uid.
+#>> поля: sz,ad
+#>> сортировка: по sz,ad
 
 job_history_log "$1" "sz,ad,uid,typenum=1,sid=187537,statusnum=0" -fn -cut="sid,statusnum,typenum,uid" -true="sz,uid" |
-sort -T. -t\* -n -k1,1 -k2,2 -k3,3
-
+sort -T. -t\* -n -k1,1 -k2,2

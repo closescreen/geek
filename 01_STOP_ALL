@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#>
+#> Остановка всех скриптов.
+#> Создается файл 01_STOP_ALL.stop, который перед запуском 01_START_ALL нужно удалить.
 (
 set -u
 set -x
@@ -7,7 +8,9 @@ set -o pipefail
 cd `dirname $0`
 export PATH=$PATH:/home/d.belyaev/grep/bike
 
-ff=`find . -name "*.pids"`
+echo "Stopped by $USER at $(date)" >> 01_STOP_ALL.stop
+
+ff=`find ../pids -name "*.pids"`
 for f in $ff; do fork -pf=$f -kila -d; done
 
 )#>>"$0.log" 2>&1

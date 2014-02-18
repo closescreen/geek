@@ -6,12 +6,12 @@
 01_START_ALL:
 -----------
 
-**** 
+**Запуск всех скриптов.** 
 
 01_STOP_ALL:
 -----------
 
-**** 
+**Остановка всех скриптов.** 
 
 10_:
 -----------
@@ -24,8 +24,9 @@
 **сбор из hl typenum==0 (показы) , sid==187537 (google)** 
 
 	 отбрасываются нулевые sz,uid 
-	 поля: sz,ad,exposureprice,winprice 
-	 сортировка по sz, ad. 
+	 OUT: 
+	  sz,ad,exposureprice,winprice 
+	  сортировка по sz, ad. 
 
 10_google_tn1:
 -----------
@@ -45,6 +46,32 @@
 	 поля: uid, second, sz, pz, bt, exposureprice, ad, ref 
 	 "ref" сплитится на два поля: "dom" и "path" 
 	 сортировка: uid, second. 
+
+10_net-sixty_tn0:
+-----------
+
+**сбор из hl typenum==0 (показы) , network==60** 
+
+	 отбрасываются нулевые sz,uid 
+	 OUT: 
+	  Sz, Ad, Exposureprice, (Winprice||(Secondprice/100_000)) 
+	  сортировка по sz, ad. 
+
+10_net-sixty_tn1:
+-----------
+
+**сбор из hl typenum==1 (клики) , network=60** 
+
+	 отбрасываются нулевые sz, uid. 
+	 OUT: sz, ad 
+	 сортировка: по sz,ad 
+
+10_net-sixty_tn3:
+-----------
+
+**сбор из hl typenum==3 (bids), network=60** 
+
+	 НЕ ПРИДУМАЛИ КАК ДЕЛАТЬ, ОТЛОЖЕНО 
 
 11_:
 -----------
@@ -99,6 +126,32 @@
 	 ,где 
 	   sestart - секунды начала сессии 
 	   isview - просмотр засчитан (1/0) 
+
+12_postf_net-sixty_tn0:
+-----------
+
+**Обработка смерженного (часы в сутки) потока для google, tn0.** 
+
+	 OUT: 
+	  1   2     3            4                 5 
+	 sz  ad  cnt_exp  sum_exposureprice  sum_winprice 
+	, где 
+	    sz,ad - группировка 
+	    cnt_exp - количество показов 
+	    sum_exposureprice - сумма exposureprice 
+	    sum_winprice - сумма winprice 
+
+12_postf_net-sixty_tn1:
+-----------
+
+**Обработчик смерженного (часы в сутки) потока для google tn1.** 
+
+	OUT: 
+	  1  2      3 
+	 sz ad  cnt_clicks 
+	 ,где 
+	   sz,ad - группировка 
+	   cnt_clicks - количество кликов в группе 
 
 14_:
 -----------

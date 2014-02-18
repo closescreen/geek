@@ -1,9 +1,9 @@
 #!/usr/bin/env bash
 #> Making table "bids" (tn3).
 
-#> in:
-#>  1   2     3   4  5       6        7   8   9     10      11
-#> uid second sz pz  bt exposureprice ad dom path sestart isview
+#>> in (from tn3 total.gz):
+#>>  1   2     3   4  5       6        7   8   9     10      11
+#>> uid second sz pz  bt exposureprice ad dom path sestart isview
 
 #>? можно cut'ом отделить нужные  поля и сравнить производительность
 
@@ -24,6 +24,14 @@ for my $sz ( keys %bids ){
 
 ' | sort -T. -t\* -S 333M -n -k1,1 -k2,2
 
-#>> OUT: sz, ad, bids, positive_bids, domain.
+#>> OUT: sz, ad, bids, domain.
+#>> ,где
+#>>   sz, ad - группировка
+#>>   bids - количество бидов по группе. 
+#>>     Прим. 
+#>>      Поле "количество бидов при exposureprice>0" (posibids) отсутствует, потому что
+#>>      оно равно значению поля bids, за исключением случаев, когда ad=0. В этом случае оно равно 0.
+#>>   domain - домен (как внешний ключ для объединения с данными, сгруппированными по доменам )
+
 
 #>? можно заменить sort на перловый sort и замерить производительность и память

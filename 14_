@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-#> total(tn3) ----(./14_process)---> bids(tn3)
+#> total(tn3) ----( см ./14_process)---> bids(tn3)
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 
@@ -12,4 +12,4 @@ find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/
 only --without="bids.gz" |
 washing -res="s|total\.gz|bids.gz|" -v_flag="zcat %s | ./14_process" -comp=gzip -timelog="$0.time.log"
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
-#>
+#> Запуск всех скриптов.
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
 export PATH=$PATH:/home/d.belyaev/grep/bike
 
@@ -12,17 +14,17 @@ jobs="google"
 typenums="0 1 3"
 for job in $jobs;do
     for typenum in $typenums; do
-	fork -pf="10.$job.t${typenum}.pids" -n=2 -kill "nice ./10_ $job $typenum" # from hl
-	[[ "$typenum" -eq 3 ]] && fork -pf="11.$job.t${typenum}.pids" -single "nice ./11_ $job $typenum" # (for tn3 only) removing useless files
-	fork -pf="12.$job.t${typenum}.pids" -single "nice ./12_ $job $typenum" # merge hours to day
-	fork -pf="14.$job.pids" -n=1 -kill "nice ./14_ $job" # bids
-	fork -pf="15.$job.pids" -n=1 -kill "nice ./15_ $job" # sessions
-	fork -pf="16.$job.pids" -n=1 -kill "nice ./16_ $job" # pzbt
-	fork -pf="17.$job.pids" -n=1 -kill "nice ./17_ $job" # urls 
-	fork -pf="18.$job.pids" -n=1 -kill "nice ./18_ $job" # uidsz
-	fork -pf="29.$job.pids" -n=1 -kill "nice ./29_ $job" # table_29 (by sz, ad)
-	fork -pf="30.$job.pids" -n=1 -kill "nice ./30_ $job" # table_30 (by sz)
+	fork -pf="../pids/10.$job.t${typenum}.pids" -n=2 -kill "nice ./10_ $job $typenum" # from hl
+	[[ "$typenum" -eq 3 ]] && fork -pf="../pids/11.$job.t${typenum}.pids" -single "nice ./11_ $job $typenum" # (for tn3 only) removing useless files
+	fork -pf="../pids/12.$job.t${typenum}.pids" -single "nice ./12_ $job $typenum" # merge hours to day
+	fork -pf="../pids/14.$job.pids" -n=1 -kill "nice ./14_ $job" # bids
+	fork -pf="../pids/15.$job.pids" -n=1 -kill "nice ./15_ $job" # sessions
+	fork -pf="../pids/16.$job.pids" -n=1 -kill "nice ./16_ $job" # pzbt
+	fork -pf="../pids/17.$job.pids" -n=1 -kill "nice ./17_ $job" # urls 
+	fork -pf="../pids/18.$job.pids" -n=1 -kill "nice ./18_ $job" # uidsz
+	fork -pf="../pids/29.$job.pids" -n=1 -kill "nice ./29_ $job" # table_29 (by sz, ad)
+	fork -pf="../pids/30.$job.pids" -n=1 -kill "nice ./30_ $job" # table_30 (by sz)
     done
 done
 
-)>>"$0.log" 2>&1
+)#>>"$0.log" 2>&1
