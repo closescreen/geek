@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+#> Объединение смерженных за {deep} дней uidsz с gender predicted_add (группы 11(м) и 12(ж))
+set -u
+set -x
+set -o pipefail
+
+#>> Дается имя текущего uidsz.gz
+srcfile=${1:?File!} # ../REESULT/.../uidsz.gz
+#>> Дается job (напр. google)
+job=${2:?Job!} # google
+#>> Задается глубина дней, за сколько мержить uidsz
+deep=${3:?Deep!} # в днях (30), за сколько дней нужны uidsz.gz
+#>> Указывается основная папка файлов трейтов. 
+traitsdir=${4:?Traitsdir!} # папка с трейтами
+
+replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$traitsdir'/gender/RESULT/predicted_add.$1|'
+
+## по имени текущего uidsz получает имя соответствующего predict_add файла из трейтов по gender
+#predictedfile=`echo "$srcfile" | perl -lape"$replacement"`
+#chk "$predictedfile" "file predicted" "-s" "exists" nop || exit 2
+
+#>> по имени текущего uidsz получает текущий день
+day=`fn2days "$srcfile"`
+
+#>> по текущему дню получает имя соответствующего predict_add файла из трейтов по gender
+predictedfile="$traitsdir'/gender/RESULT/predicted_add.$day"
+chk "$predictedfile" "file predicted" "-s" "exists" nop || exit 2
+
+#>> по текущему дню и {deep}, вычисляет за какие дни мержить
+nextday=`hours -d="$day" -n=2days -last -day`
+#>> deep дней, включая day: 
+days=`hours -d="$nextday" -n=-"$deep"days -days`
+#>> по дням вычисляет соответствующие файлы uidsz.gz:
+ff=`files "../RESULT/10/%F/$job/3/uidsz.gz" "$days"`
+#>> должны все присутствовать и быть >20b:
+exists_files=`echo "$ff" | only -all -s | only -sizegt=20`
+chk "$exists_files" "For files deep=$deep days, not found $? nonempty files." "$_" "found all files" nop || exit 3
+
+#>> мержит все uidsz, уникалит и подает на вход скриту
+mergef -ff="$exists_files" -m -k=1,1n -k=2,2n -stdout |
+uniq |
+lae -lb="uid sz" '
+open PREDICT, shift or die "cant open predict file!";
+my $predict_line="";
+my $predict_uid=-1;
+my $predict_gr=-1;
+
+_{
+ #>> на входе отуникаленные uid sz, отсортированный по uid
+ while ( $predict_uid < Uid ){
+    if ( !defined( $predict_line = <PREDICT>) ){
+	die $! if $!;
+	last;
+    }
+    chomp($predict_line);
+    ($predict_uid, $predict_gr) = split /\*/, $predict_line;
+ }
+ #>> OUT:
+ #>>  uid sz predicted_group
+ if ( $predict_uid == Uid ){
+    p0 Uid, Sz, $predict_gr
+ }else{
+    p0 Uid, Sz, 0;
+ }
+};
+' "$predictedfile" # не gzip'нутый
+
