@@ -14,4 +14,4 @@ only --without="pzbt.gz" |
 washing -res="s|total\.gz|pzbt.gz|" -v_flag='zcat %s | ./16_process' -comp=gzip -timelog="$0.time.log"
 
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

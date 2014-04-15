@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-#> urls + groups = urls_group
-#> Проходит по файлу urls30days (смерженные урлы за 30 дней), глядя в группы от Димы,
-#>  для каждого урла печатает dom*path*RV, где RV = group * 10 + subgroup
+#> urls30days + groups = urls_group
+#>> Проходит по файлу urls30days (смерженные урлы за 30 дней), глядя в группы от Димы,
+#>>  для каждого урла печатает dom*path*RV, где RV = $groups_group * 10 + $subgroup_number + ( Sessions < 50 ? 100 : 0 )
 set -u
 set +x
 set -o pipefail
@@ -74,7 +74,7 @@ _{
     }
  }
 
- if (!defined $subgroup_number){warn "!defined ".Dumper(&Dom, Sess_ends, Sessions, $f43, $groups_group, \@groups_subgroups)}        
+ if (!defined $subgroup_number){warn "!defined ".Dumper(&Dom, Sess_ends, Sessions, $f43, $groups_group, \@groups_subgroups)}
 
  $rv = $groups_group * 10 + $subgroup_number + ( Sessions < 50 ? 100 : 0 );
  if (!$rv){ warn "UNKNOWN: ".Dumper(Dom, $groups_group, \@groups_subgroups, $f43) }
@@ -85,3 +85,10 @@ _{
 
 ' "$groups_fn" "$quant_fn"
 
+#>> out:
+#>>
+#>> | field |
+#>> | ----- |
+#>> | dom   |
+#>> | path  |
+#>> | RV    |

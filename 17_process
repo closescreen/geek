@@ -42,6 +42,8 @@ for my $ref ( keys %sessions_count ){
 
 #>>OUT:
 #>> dom, ref, sessions_count, sessions_ends
-#>>  ,где
-#>>   sessions_count - количество сессий, где dom+url участвовал
-#>>   sessions_ends - количество сессий, где он был последним.
+#>>  
+#>> | field          | description |
+#>> | -------------- | ----------- |
+#>> | sessions_count | количество сессий, где dom+url участвовал |
+#>> | sessions_ends  | количество сессий, где он был последним.  |

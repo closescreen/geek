@@ -21,3 +21,9 @@ for my $dom ( keys %views ){
 '
 
 #>> OUT: dom, sessions_count, views_count
+#>> 
+#>> | field          | description |
+#>> | -------------- | ----------- |
+#>> | dom            |
+#>> | sessions_count |
+#>> | views_count    |

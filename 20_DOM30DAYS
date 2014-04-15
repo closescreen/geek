@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> urls30days.gz -----(cut)---------->dom30days.gz
+#> urls30days.gz -----( удаляет поле path )----------> dom30days.gz
 (
 set -u
 set +x

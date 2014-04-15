@@ -3,9 +3,13 @@
 set -u
 set +x
 set -o pipefail
+#>: параметр (имя вх файла):
+src_file=${1:?Src file!} # f.e...../urls.gz
 
-src_file=${1:?Src file!} # ..../urls.gz
+#>: параметр (job):
 job=${2:?Job!} # f.e. google
+
+#>: параметр (days):
 N=${3:?N Days!} # f.e. 30. За сколько дней суммировать
 
 day=`fn2days $src_file`
@@ -40,3 +44,14 @@ function flush(){
  sess_ends=0;
 }
 '
+
+#>> out
+#>>
+#>> | field     |
+#>> | --------- |
+#>> | dom       |
+#>> | path      |
+#>> | sessions  |
+#>> | sess_ends |
+
+
