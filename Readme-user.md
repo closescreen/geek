@@ -331,6 +331,7 @@ job=${1:?Job!} # google
 	 
 	 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, Dom, $dom_sessions, $dom_views 
 	 | field | description | 
+	 | ----- | ----------- | 
 	 | sz | 
 	 | ad | 
 	 | exposures | показов | 
