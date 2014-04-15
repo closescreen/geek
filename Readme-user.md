@@ -156,16 +156,15 @@ sz  ad
 	 | ----- | ----------- | 
 	 | uid   | 
 	 | sec   | 
-
-| sz    | 
-| pz    | 
-| bt    | 
-| exposure_price | 
-| ad      | 
-| domain  | 
-| path    | 
-| sestart | секунды начала сессии   | 
-| isview  | просмотр засчитан (1/0) | 
+	 | sz    | 
+	 | pz    | 
+	 | bt    | 
+	 | exposure_price | 
+	 | ad      | 
+	 | domain  | 
+	 | path    | 
+	 | sestart | секунды начала сессии   | 
+	 | isview  | просмотр засчитан (1/0) | 
 
 13_REMOVE:
 -----------
