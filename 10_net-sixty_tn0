@@ -1,0 +1,13 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==0 (показы) , network==60 
+
+#>> отбрасываются нулевые sz,uid
+
+
+job_history_log "$1" "sz,ad,exposureprice,winprice,secondprice,uid,typenum=0,network=60,statusnum=0" -fn -cut="network,statusnum,typenum,uid" -true="sz,uid" -ll |
+lae '_{ p Sz, Ad, Exposureprice, (Winprice||(Secondprice/100_000)) }' |
+sort -T. -t\* -n -k1,1 -k2,2
+
+#>> OUT: 
+#>>  Sz, Ad, Exposureprice, (Winprice||(Secondprice/100_000))
+#>>  сортировка по sz, ad.
