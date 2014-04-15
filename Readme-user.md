@@ -197,13 +197,16 @@ job=${1:?Job!} # google
 	  1   2     3   4  5       6        7   8   9     10      11 
 	 uid second sz pz  bt exposureprice ad dom path sestart isview 
 	 OUT: sz, ad, bids, domain. 
-	 ,где 
-	   sz, ad - группировка 
-	   bids - количество бидов по группе. 
+	 
+	 | field  | description | 
+	 | ------ | ----------- | 
+	 | sz     | 
+	 | ad     | 
+	 | bids   | количество бидов | 
+	 | domain | домен (как внешний ключ для объединения с данными, сгруппированными по доменам ) | 
 	     Прим. 
 	      Поле "количество бидов при exposureprice>0" (posibids) отсутствует, потому что 
 	      оно равно значению поля bids, за исключением случаев, когда ad=0. В этом случае оно равно 0. 
-	   domain - домен (как внешний ключ для объединения с данными, сгруппированными по доменам ) 
 
 15_process:
 -----------
@@ -214,6 +217,12 @@ job=${1:?Job!} # google
 	  1   2     3   4  5       6        7   8   9     10      11 
 	 uid second sz pz  bt exposureprice ad dom path sestart isview 
 	 OUT: dom, sessions_count, views_count 
+	 
+	 | field          | description | 
+	 | -------------- | ----------- | 
+	 | dom            | 
+	 | sessions_count | 
+	 | views_count    | 
 
 15_SESSIONS:
 -----------
@@ -228,6 +237,14 @@ job=${1:?JOB!}
 **Сочетания pz+bt по sz.** 
  1   2     3   4  5       6        7   8   9     10      11 
 uid second sz pz  bt exposureprice ad dom path sestart isview 
+
+	 out 
+	 
+	 | field | 
+	 | ----- | 
+	 | sz    | 
+	 | pz    | 
+	 | bt    | 
 
 16_PZBT:
 -----------
@@ -250,9 +267,11 @@ sessions_end counter for last url must be incremented:
 
 	OUT: 
 	 dom, ref, sessions_count, sessions_ends 
-	  ,где 
-	   sessions_count - количество сессий, где dom+url участвовал 
-	   sessions_ends - количество сессий, где он был последним. 
+	 
+	 | field          | description | 
+	 | -------------- | ----------- | 
+	 | sessions_count | количество сессий, где dom+url участвовал | 
+	 | sessions_ends  | количество сессий, где он был последним.  | 
 
 17_URLS:
 -----------
@@ -276,6 +295,21 @@ job=${1:?Job!} # google
 -----------
 
 **Суммы счетчиков за N дней по файлам urls.gz** 
+параметр (имя вх файла): 
+src_file=${1:?Src file!} # f.e...../urls.gz 
+параметр (job): 
+job=${2:?Job!} # f.e. google 
+параметр (days): 
+N=${3:?N Days!} # f.e. 30. За сколько дней суммировать 
+
+	 out 
+	 
+	 | field     | 
+	 | --------- | 
+	 | dom       | 
+	 | path      | 
+	 | sessions  | 
+	 | sess_ends | 
 
 19_URLS30DAYS:
 -----------
@@ -285,7 +319,7 @@ job=${1:?Job!} # google
 20_DOM30DAYS:
 -----------
 
-**urls30days.gz -----(cut)---------->dom30days.gz** 
+**urls30days.gz -----( удаляет поле path )----------> dom30days.gz** 
 
 21_DOMGR:
 -----------
