@@ -17,6 +17,8 @@ summator -la=0 -fu=+cnt
 #>>  1  2      3
 #>> sz ad  cnt_clicks
 
-#>> ,где
-#>>   sz,ad - группировка
-#>>   cnt_clicks - количество кликов в группе
+#>> | field | description |
+#>> | ----- | ----------- |
+#>> | sz    |
+#>> | ad    |
+#>> | cnt_clicks | количество кликов  |

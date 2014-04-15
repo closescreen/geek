@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#> doms30days.gz -----( ...crawler job via ssh ...)---->dom_gr.gz , quant.gz
+#> Запускать 1 поток!
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+job=${1:?Job!}
+N=30
+server="crawler.adriver.x"
+remote_project="/work/share/d.belyaev/1460_1421"
+remote_script="1.sh"
+
+find ../RESULT/10/ -name "doms${N}days.gz" | sort -r | only -younger=31days |
+words -first -comm="<--ОТЛАДКА" |
+washing \
+    -res="s|doms${N}days\.gz|dom_gr.txt|" \
+    -w="flag --check --file=\"%f.FLAG\" -rm" \
+    -r="( ! flag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
+    -do="set -o pipefail; mkdir -p %d && flag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $remote_script\""
+
+#washing -d -res="s|doms${N}days\.gz|dom_gr.gz|" -v_flag="./21_process %s %f $server $remote_project $remote_script" -compr=gzip -time=$0.time.log 
+
+)>>"$0.log" 2>&1
+
+
+#ssh "${USER}@${server}" "find $remote_project/RESULT -regextype posix-extended -regex \".*dom_gr.*\"" | viatmp 21.remote.list
+
+#-wait="[[ -n \"$(grep %f.TMP 21.remote.list)\" ]]" \
+#-ready="[[ -n \"$(grep %f 21.remote.list)\" ]]" \
+#-do="ssh ${USER}@${server} \"mkdir -p \$(dirname %f)\" && scp -r %s ${USER}@${server}:%f && ssh ${USER}@${server} \"$remote_project/bin/1.sh %f\""

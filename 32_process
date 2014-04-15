@@ -1,8 +1,17 @@
 #!/usr/bin/env bash
-#> Объединение смерженных за {deep} дней uidsz с gender predicted_add (группы 11(м) и 12(ж))
+#> Объединение смерженных за {deep} дней uidsz с gender, age, ctr_&_inactive 
+#>> gender: 
+#>>  11 - 2.54 муж
+#>>  12 - 2.55 жен
+#>> age:
+#>>  1 - 2.56 young (12-24)
+#>>  2 - 2.57 adult (25-44)
+#>>  3 - 2.60 old (45+) 
+#>> ctr: 1(most active)..10 groups + 11=inactive      
 set -u
 set -x
 set -o pipefail
+set -e
 
 #>> Дается имя текущего uidsz.gz
 srcfile=${1:?File!} # ../REESULT/.../uidsz.gz
@@ -11,20 +20,24 @@ job=${2:?Job!} # google
 #>> Задается глубина дней, за сколько мержить uidsz
 deep=${3:?Deep!} # в днях (30), за сколько дней нужны uidsz.gz
 #>> Указывается основная папка файлов трейтов. 
-traitsdir=${4:?Traitsdir!} # папка с трейтами
-
-replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$traitsdir'/gender/RESULT/predicted_add.$1|'
-
-## по имени текущего uidsz получает имя соответствующего predict_add файла из трейтов по gender
-#predictedfile=`echo "$srcfile" | perl -lape"$replacement"`
-#chk "$predictedfile" "file predicted" "-s" "exists" nop || exit 2
+gender_tmpl=${4:?gender_tmpl!} # шаблон имени gender
+age_tmpl=${5:?age_tmpl!} # шаблон age
+ctr10_tmpl=${6:?ctr10_tmpl!} # шаблон ctr10
 
 #>> по имени текущего uidsz получает текущий день
 day=`fn2days "$srcfile"`
 
-#>> по текущему дню получает имя соответствующего predict_add файла из трейтов по gender
-predictedfile="$traitsdir'/gender/RESULT/predicted_add.$day"
-chk "$predictedfile" "file predicted" "-s" "exists" nop || exit 2
+#>> по текущему дню получает имя соответствующего predict_add файла из трейтов по gender и проверяет его существование:
+gender_file=`files "$gender_tmpl" "$day"`
+chk "$gender_file" "gender file" "-s" "exists" nop || exit 2
+
+#>> тоже для age:
+age_file=`files "$age_tmpl" "$day"`
+chk "$age_file" "age file" "-s" "exists" nop || exit 2
+
+#>> тоже для ctr-групп:
+ctr10_file=`files "$ctr10_tmpl" "$day"`
+
 
 #>> по текущему дню и {deep}, вычисляет за какие дни мержить
 nextday=`hours -d="$day" -n=2days -last -day`
@@ -40,28 +53,42 @@ chk "$exists_files" "For files deep=$deep days, not found $? nonempty files." "$
 mergef -ff="$exists_files" -m -k=1,1n -k=2,2n -stdout |
 uniq |
 lae -lb="uid sz" '
-open PREDICT, shift or die "cant open predict file!";
-my $predict_line="";
-my $predict_uid=-1;
-my $predict_gr=-1;
+open GENDER, shift or die "cant open GENDER file!";
+open AGE, shift or die "cant open AGE file!";
+my $gender_line="";
+my $gender_uid=-1;
+my $gender_gr=-1;
+
+my $age_line="";
+my $age_uid=-1;
+my $age_gr=-1;
 
 _{
  #>> на входе отуникаленные uid sz, отсортированный по uid
- while ( $predict_uid < Uid ){
-    if ( !defined( $predict_line = <PREDICT>) ){
+ 
+ while ( $gender_uid < Uid ){
+    if ( !defined( $gender_line = <GENDER>) ){
 	die $! if $!;
 	last;
     }
-    chomp($predict_line);
-    ($predict_uid, $predict_gr) = split /\*/, $predict_line;
+    chomp($gender_line);
+    ($gender_uid, $gender_gr) = split /\*/, $gender_line;
  }
+ 
+ while ( $age_uid < Uid ){
+    if ( !defined( $age_line = <AGE>) ){
+	die $! if $!;
+	last;
+    }
+    chomp($age_line);
+    ($age_uid, $age_gr) = split /\*/, $age_line;
+ } 
+
+
+
  #>> OUT:
- #>>  uid sz predicted_group
- if ( $predict_uid == Uid ){
-    p0 Uid, Sz, $predict_gr
- }else{
-    p0 Uid, Sz, 0;
- }
+ #>>  uid sz gendered_group age_group
+ p0 Uid, Sz, ($gender_uid == Uid ? $gender_gr : 0), ($age_uid == Uid ? $age_gr : 0);
 };
-' "$predictedfile" # не gzip'нутый
+' "$gender_file" <(zcat $age_file) # gender_file не gzip'нутый, age - gzip-нутый
 

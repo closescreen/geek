@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+#> uidsz.gz (за {deep} дней ) + gender predicted_add ---------( ./32_process )-------> gender.gz
+#>> Для каждого tn3 uidsz.gz: мержит за несколько (deep) дней такие же uidsz, включая текущий и объеденяет с gender predicted_add
+#>> см ./32_process
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+#>? Здесь мешает неопределенность, на каких серверах будут файлы с трейтами.Нужен способ указывать это гибко.
+#>? Мешает не всегда имеющийся полный набор файлов с трейтами, ( нужно чтоб работало и без одного или нет? )
+
+deep=3 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
+job=${1:?Job!}
+traits_dir="/usr/local/rle/var/grep/d.belyaev/Traits"
+
+
+
+gender_dir="$traits_dir/gender/RESULT"
+gender_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$gender_dir'/predicted_add.$1|'
+gender_tmpl="$gender_dir/predicted_add.%F" # шаблон полного имени файла predicted_add
+
+
+age_dir="$traits_dir/age/RESULT"
+age_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$age_dir'/$1/predict_gr.gz|'
+age_tmpl="$age_dir/%F/predict_gr.gz"
+
+ctr10_dir="/usr/local/rle/var/grep/k.fedorenko/1126"
+ctr10_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$ctr10_dir'/traits$1.gz|'
+ctr10_tmpl="$ctr10_dir/traits%F.gz"
+
+# возьмем uidsz.gz:
+ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/uidsz.gz" | sort -r | only -without="traitgroups.gz"`
+
+#> только те, для которых есть прошлые данные на глубину $deep:
+ff=`echo "$ff" | only '[[ $( fn2days %f | hours -n=-'$deep'days -days | files "../RESULT/10/%F/'$job'/3/uidsz.gz" | only -s -all ) ]]' -comm="For deep $deep"`
+# -- проверку глубины в 32_process можно удалить
+
+exit
+# только те, для которых есть predicted_add из gender:
+ff=`echo "$ff" | only -having=$gender_replacement`
+# только те для которых есть predict_gr.gz из age:
+ff=`echo "$ff" | only -having=$age_replacement`
+# только те, для которых есть k.fedorenlo ctr10:
+ff=`echo "$ff" | only -having=$ctr10_replacement`
+
+ff=`echo $ff | words -first` # DEBUG, закомментировать потом
+chk "$ff" "files"
+
+exit
+
+echo "$ff" | washing -res="s|uidsz\.gz|traitgroups.gz|" -v_flag="./32_process %s $job $deep $gender_tmpl $age_tmpl $ctr10_tmpl" \
+ -d -comp=gzip -time=$0.time.log
+
+)#>>"$0.log" 2>&1

@@ -1,0 +1,87 @@
+#!/usr/bin/env bash
+#> urls + groups = urls_group
+#> Проходит по файлу urls30days (смерженные урлы за 30 дней), глядя в группы от Димы,
+#>  для каждого урла печатает dom*path*RV, где RV = group * 10 + subgroup
+set -u
+set +x
+set -o pipefail
+
+groups_fn=${1:? groups_fn !} 
+job=${2:?Job!} # f.e. google
+N=${3:?N!}
+
+day=`fn2days "$groups_fn"`
+urls_fn="../RESULT/10/$day/$job/3/urls${N}days.gz"
+chk "$urls_fn" "File with urls sum for $day $job $N days" "-s" "exists and filled" nop || exit 2
+
+quant_fn="../RESULT/10/$day/$job/3/quant.txt"
+chk "$quant_fn" "File with quants for $day $job" "-s" "exists and filled" nop || exit 2
+
+# quant_fn
+# group * subgroup1 * subgroup2 ...
+# 4 * 30.85 * 54.71 * 74.31 * 86.38
+
+# groups_fn:
+# dom * group
+
+# urls_fn:
+# dom * path * sessions * sess_ends
+
+zcat "$urls_fn" | lae -lb="dom path sessions sess_ends" '
+my ($groups_fn, $quant_fn)=@ARGV;
+
+my %groups;
+open GROUPS, "cat $groups_fn |" or die "$groups_fn: $!";
+while ( my $l = <GROUPS>){
+    chomp $l;
+    my ( $groups_dom, $groups_group ) = split /\*/, $l;
+    $groups{ $groups_dom } = $groups_group;
+}
+
+my %quant;
+for my $line ( cat $quant_fn ){
+    # group * subgroup1 * subgroup2 ...
+    # 4 * 30.85 * 54.71 * 74.31 * 86.38
+    my ( $group, @subgroups ) = split /\*/, $line;
+    $quant{ $group } = [ "-", @subgroups ]; # skip index 0
+}
+#warn Dumper \%quant;
+
+# идем по urls:
+my ( $groups_group, @groups_subgroups );
+
+_{
+ if ( Dom ne prevDom ){
+    $groups_group = $groups{ &Dom }||0;
+    @groups_subgroups = @{ $quant{ $groups_group }||[] };
+ }
+
+ my $rv=0; 
+ my $f43 = Sess_ends / Sessions * 100;
+
+ my $subgroup_number;
+ if ( !$groups_group or !@groups_subgroups ){
+    #> если в quant нет такой группы, то подгруппа=0
+    $subgroup_number=0;
+ }elsif( $f43 > $groups_subgroups[-1] ){
+    $subgroup_number= $#groups_subgroups + 1; # выше верхней границы в подгруппах
+ }else{
+    for my $sg ( 1..$#groups_subgroups ){
+	if ( $f43 <= $groups_subgroups[ $sg ] ){
+    	    $subgroup_number = $sg;
+    	    last;
+	}
+    }
+ }
+
+ if (!defined $subgroup_number){warn "!defined ".Dumper(&Dom, Sess_ends, Sessions, $f43, $groups_group, \@groups_subgroups)}        
+
+ $rv = $groups_group * 10 + $subgroup_number + ( Sessions < 50 ? 100 : 0 );
+ if (!$rv){ warn "UNKNOWN: ".Dumper(Dom, $groups_group, \@groups_subgroups, $f43) }
+ p Dom, Path, $rv;
+  
+} -prev=>"dom";
+
+
+' "$groups_fn" "$quant_fn"
+

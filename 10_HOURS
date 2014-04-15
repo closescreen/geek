@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#> Сбор часовых данных из hl за период 30 дней.
+#> history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz
+#> Сбор часовых данных из hl.
 #> Параметры: $job и $typenum.
 
 (
@@ -11,14 +12,17 @@ cd `dirname $0`
 job=${1:?JOB!} # google | net-forty-three, ...
 typenum=${2:?TYPENUM!} # 0|1|3
 
-#>: Каждой комбинации $job и $typenum соответствует свой скрипт сбора.  
-jobscript="./10_${job}_tn$typenum"
+#>: Каждой комбинации $job и $typenum соответствует свой скрипт сбора.
+jobscript="./10_${job}_tn${typenum}"
 chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 2
 
 #> Если присутствует total.gz то часовые данные не собираются.
 #> Часы группируются в папки по суткам с 04.00 до 04.00.
 
-hours -t=2014-02-14T04 -n=-30days -r |
+#>: период, за который собрать данные (если их еще нет)
+period="30days" 
+
+hours -t=yesterdayT04 -n=-"$period" -r |
 files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" |
 only --without="total.gz" |
 washing -time=10.time.log -v_flag="$jobscript %f" -comp=gzip

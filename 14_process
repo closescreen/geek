@@ -5,19 +5,15 @@
 #>>  1   2     3   4  5       6        7   8   9     10      11
 #>> uid second sz pz  bt exposureprice ad dom path sestart isview
 
-#>? можно cut'ом отделить нужные  поля и сравнить производительность
-
 lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
 my ( %bids, %positive_bids, %dom );
 _{
  $bids{ &Sz }{ &Ad }++;
-# $positive_bids{ &Sz }{ &Ad }++ if Exposureprice>0;
  $dom{ &Sz } ||= &Dom;
 };
 
 for my $sz ( keys %bids ){
     for my $ad ( keys %{$bids{$sz}} ){
-	#p0 $sz, $ad, $bids{ $sz }{ $ad }, $positive_bids{ $sz }{ $ad }, $dom{ $sz };
 	p0 $sz, $ad, $bids{ $sz }{ $ad }, $dom{ $sz };
     }
 }
@@ -34,4 +30,3 @@ for my $sz ( keys %bids ){
 #>>   domain - домен (как внешний ключ для объединения с данными, сгруппированными по доменам )
 
 
-#>? можно заменить sort на перловый sort и замерить производительность и память

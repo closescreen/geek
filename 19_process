@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#> Суммы счетчиков за N дней по файлам urls.gz
+set -u
+set +x
+set -o pipefail
+
+src_file=${1:?Src file!} # ..../urls.gz
+job=${2:?Job!} # f.e. google
+N=${3:?N Days!} # f.e. 30. За сколько дней суммировать
+
+day=`fn2days $src_file`
+
+ff=$( hours -t="${day}T00" -shift=1day -n=-"$N"days -days -comm="<---$N days with $day included." | files "../RESULT/10/%F/$job/3/urls.gz" )
+ff=$( echo "$ff" | only -all -s | only -all -sizegt=20 )
+chk "$ff" "Files for $N days back from $day. (Not found $? files)" || exit 2
+
+echo "$ff" |
+LANG=POSIX mergef -m -k=1,1 -k=2,2 -stdout -comm="<---ursl.gz merged for $N days" |
+awk -F* -v"OFS=*" '
+BEGIN{
+ prevDom="";
+ prevPath="";
+}
+
+{
+ if (prevDom!="" && ($1!=prevDom || $2!=prevPath)){ flush() };
+ sessions+=$3;
+ sess_ends+=$4;
+ prevDom=$1;
+ prevPath=$2;
+}
+
+END{ 
+ flush();
+}
+
+function flush(){
+ print prevDom, prevPath, sessions, sess_ends;
+ sessions=0;
+ sess_ends=0;
+}
+'

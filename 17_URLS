@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> total.gz (tn3) ----(./16_process)----> urls.gz
+#> total.gz (tn3) ----(./17_process)----> urls.gz
 
 (
 set -u
@@ -7,6 +7,7 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
+#>:параметр:
 job=${1:?Job!} # google
 
 find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort -r |

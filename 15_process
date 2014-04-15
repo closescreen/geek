@@ -5,13 +5,11 @@
 #>>  1   2     3   4  5       6        7   8   9     10      11
 #>> uid second sz pz  bt exposureprice ad dom path sestart isview
 
-#>? можно cut'ом отделить нужные  поля и сравнить производительность
-
 lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
 my ( %sessions, %views );
 _{
   return if not Isview;
-  
+
   $sessions{ &Dom }{ join("*", &Uid, &Sestart) }||=1;
   $views{ &Dom }++;
 };

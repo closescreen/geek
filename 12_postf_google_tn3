@@ -46,12 +46,22 @@ _{
     if ( $ref ){
 	$last_view{ $ref } = Second
     }
- 
 
- #>> OUT: uid second sz pz bt exposureprice ad dom path sestart isview
- #>> ,где 
- #>>   sestart - секунды начала сессии
- #>>   isview - просмотр засчитан (1/0)
+ #>> OUT:
+ #>>
+ #>> | field | description |
+ #>> | ----- | ----------- |
+ #>> | uid   |
+ #>> | sec   |
+ #>> | sz    |
+ #>> | pz    |
+ #>> | bt    |
+ #>> | exposure_price |
+ #>> | ad      |
+ #>> | domain  |
+ #>> | path    |
+ #>> | sestart | секунды начала сессии   |
+ #>> | isview  | просмотр засчитан (1/0) |
 
  p @F;
 

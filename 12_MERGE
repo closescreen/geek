@@ -1,22 +1,27 @@
 #!/usr/bin/env bash
-#> Мержит часы (YYYY-MM-HH.gz) в сутки (total.gz), пропуская полученный поток через скрипт ./12_postf_${job}_tn ${typenum.}
-#>> См. скрипт './12_postf_'$job'_tn'$typenum.
+#> Часы (YYYY-MM-HH.gz) ---------( через $posfilter )-----> $job/$tn/total.gz (в сутки)
 (
 set -u
 set +x
 set -o pipefail
 cd `dirname $0`
 
+#>:параметр:
 job=${1:? Job! }
+#>:параметр:
+
 typenum=${2:? Typenum! }
+#>:Имя скрипта $postfilter зависит от $job и $typenum:
 postfilter="./12_postf_${job}_tn${typenum}"
 chk "$postfilter" "postfilter script" "-x" "exists and executable" noprint || exit 2
 
-#> не обрабатываются часовые данные, где уже есть total.gz
+
+#> не обрабатываются часовые данные, где рядом уже есть total.gz
 #> не обрабатываются часовые данные с размером меньше или равно 20 байт
 find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
 only --without="total.gz" |
 only -sizegt=20 |
-mergef -allow-empty -least=24 -m -k=1,1n -k=2,2n -k=3,3n -postfilter="$postfilter %totaldir/domains.txt" -reverse
+mergef -allow-empty -least=24 -m -k=1,1n -k=2,2n -k=3,3n -postfilter="$postfilter" -reverse
+
 
 )>>"$0.log" 2>&1

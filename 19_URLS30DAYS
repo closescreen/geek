@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#> urls.gz -----(19_process)---------->urls30days.gz
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+N=30 # days. За сколько дней суммировать файлы.
+job=${1:?Job!}
+
+find ../RESULT/10 -wholename "*/$job/3/urls.gz" | sort -r | 
+only '[[ $(fn2days %f | hours -n=-30days -days | files "../RESULT/10/%F/'$job'/3/urls.gz" | only -s -all  ) ]]' |
+words --first -comm="ОТЛАДКА" |
+washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="./19_process %s $job $N" -comp=gzip -timelog=$0.time.log
+
+#find ../RESULT/10/ -wholename "*/$job/3/urls.gz" | sort -r | only -without="urls${N}days.gz" |
+
+)>>"$0.log" 2>&1

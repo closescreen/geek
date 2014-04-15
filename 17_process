@@ -38,7 +38,7 @@ for my $ref ( keys %sessions_count ){
     p0 $ref, $sessions_count{ $ref }, $sessions_ends{ $ref };
 }
 
-' | sort -T. -S 333M -t\* -k1,1 -k2,2
+' | LANG=POSIX sort -T. -S 333M -t\* -k1,1 -k2,2
 
 #>>OUT:
 #>> dom, ref, sessions_count, sessions_ends
