@@ -99,12 +99,12 @@ all_older="45days"
 12_MERGE:
 -----------
 
-**Часы (YYYY-MM-HH.gz) ---------( через posfilter )-----> total.gz (в сутки)** 
+**Часы (YYYY-MM-HH.gz) ---------( через $posfilter )-----> $job/$tn/total.gz (в сутки)** 
 параметр: 
 job=${1:? Job! } 
 параметр: 
-typenum=${2:? Typenum! } 
-скрипт postfilter зависит от $job и $typenum: 
+ 
+Имя скрипта $postfilter зависит от $job и $typenum: 
 postfilter="./12_postf_${job}_tn${typenum}" 
 не обрабатываются часовые данные, где рядом уже есть total.gz 
 не обрабатываются часовые данные с размером меньше или равно 20 байт 
@@ -123,8 +123,8 @@ sz  ad  exposureprice winprice
 	 
 	 | field | description | 
 	 | ----- | ----------- | 
-	 | sz    | группирующее | 
-	 | ad    | группирующее | 
+	 | sz    | 
+	 | ad    | 
 	 | cnt_exp | количество показов | 
 	 | sum_exposureprice | сумма exposureprice | 
 	 | sum_winprice | сумма winprice | 
@@ -314,7 +314,7 @@ job=${1:?Job!} # google
 29_JOIN:
 -----------
 
-**$job/3/total + bids.gz + pzbt.gz + sessions.gz + uidsz.gz + urls.gz ------( 29_process )------> table29.gz** 
+**$job/3/total + bids.gz + sessions.gz ------( 29_process )------> table29.gz** 
 Объединение нескольких таблиц(файлов) в одну с группировкой по sz,ad. 
 
 	 Печатаем по прежнему суммы, которые можно агрегировать за любой период. 
@@ -328,16 +328,19 @@ job=${1:?Job!} # google
 Печатаем по-прежнему только суммы, которые можно агрегировать за период. 
 
 	OUT: 
+	 
 	 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, Dom, $dom_sessions, $dom_views 
-	 ,где sz, ad - группировка 
-	  exposures - показов 
-	  clicks - кликов 
-	  bids - бидов всего (кол-во бидов при exposureprice>0 можно получить вычтя из bids те биды где поле ad=0) 
-	  exppr - сумма exposureprice 
-	  winpr - сумма winprice 
-	  dom - домен, в который входит эта сайтзона (один домен - несколько сайтзон) 
-	  dom_sessions - количество сессий на домене 
-	  dom_views - засчитанных посещений страниц кукой на домене (равно сумме длин сессий, где длина - количество просмотров неуникальных страниц) 
+	 | field | description | 
+	 | sz | 
+	 | ad | 
+	 | exposures | показов | 
+	 | clicks | кликов | 
+	 | bids   | бидов всего (кол-во бидов при exposureprice>0 можно получить вычтя из bids те биды где поле ad=0) | 
+	 | exppr  | сумма exposureprice | 
+	 | winpr  | сумма winprice | 
+	 | dom | домен, в который входит эта сайтзона (один домен - несколько сайтзон) | 
+	 | dom_sessions | количество сессий на домене | 
+	 | dom_views | засчитанных посещений страниц кукой на домене (равно сумме длин сессий, где длина - количество просмотров неуникальных страниц) | 
 
 30_process:
 -----------
