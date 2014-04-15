@@ -120,11 +120,14 @@ sz  ad  exposureprice winprice
 	 OUT: 
 	  1   2     3            4                 5 
 	 sz  ad  cnt_exp  sum_exposureprice  sum_winprice 
-	, где 
-	    sz,ad - группировка 
-	    cnt_exp - количество показов 
-	    sum_exposureprice - сумма exposureprice 
-	    sum_winprice - сумма winprice 
+	 
+	 | field | description | 
+	 | ----- | ----------- | 
+	 | sz    | группирующее | 
+	 | ad    | группирующее | 
+	 | cnt_exp | количество показов | 
+	 | sum_exposureprice | сумма exposureprice | 
+	 | sum_winprice | сумма winprice | 
 
 12_postf_google_tn1:
 -----------
@@ -137,9 +140,11 @@ sz  ad
 	OUT: 
 	  1  2      3 
 	 sz ad  cnt_clicks 
-	 ,где 
-	   sz,ad - группировка 
-	   cnt_clicks - количество кликов в группе 
+	 | field | description | 
+	 | ----- | ----------- | 
+	 | sz    | 
+	 | ad    | 
+	 | cnt_clicks | количество кликов  | 
 
 12_postf_google_tn3:
 -----------
