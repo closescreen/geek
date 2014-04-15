@@ -156,7 +156,7 @@ sz  ad
 | cell 1   | cell 2   | 
 | cell 3   | cell 4   | 
 OUT: 
-| field1 | description | 
+| field | description | 
 | ----- | ----------- | 
 | uid   |             | 
 | sec   |             | 
