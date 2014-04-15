@@ -56,6 +56,21 @@ jobscript="./10_${job}_tn${typenum}"
 период, за который собрать данные (если их еще нет) 
 period="30days" 
 
+10_HOURS_NEW:
+-----------
+
+**history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz** 
+
+	 Сбор часовых данных из hl. 
+
+Параметры: $job и $typenum. 
+Каждой комбинации $job и $typenum соответствует свой скрипт сбора. 
+jobscript="./10_${job}_tn${typenum}" 
+Если присутствует total.gz то часовые данные не собираются. 
+Часы группируются в папки по суткам с 04.00 до 04.00. 
+период, за который собрать данные (если их еще нет) 
+period="30days" 
+
 10_net-sixty_tn0:
 -----------
 
@@ -90,7 +105,9 @@ period="30days"
 job=${1:? Job! } 
 параметр: 
 typenum=${2:? Typenum! } 
-Удаление часовых данных, (в основном, для tn3) (для экономии места). 
+
+	 Удаление часовых данных, (в основном, для tn3) (для экономии места). 
+
 на случай если захочется взглянуть на часовые данные, удаляем только старее чем: 
 hours_older="2days" 
 Удаление любых данных /RESULT/10/2014-01-18/$job/$typenum, старее указанного: 
@@ -113,10 +130,10 @@ postfilter="./12_postf_${job}_tn${typenum}"
 -----------
 
 **Обработка смерженного (часы в сутки) потока для google, tn0.** 
-IN: 
- 1   2        3          4 
-sz  ad  exposureprice winprice 
 
+	 IN: 
+	  1   2        3          4 
+	 sz  ad  exposureprice winprice 
 	 OUT: 
 	  1   2     3            4                 5 
 	 sz  ad  cnt_exp  sum_exposureprice  sum_winprice 
@@ -133,10 +150,10 @@ sz  ad  exposureprice winprice
 -----------
 
 **Обработчик смерженного (часы в сутки) потока для google tn1.** 
-IN 
- 1   2 
-sz  ad 
 
+	 IN 
+	  1   2 
+	 sz  ad 
 	OUT: 
 	  1  2      3 
 	 sz ad  cnt_clicks 
@@ -179,7 +196,8 @@ sz  ad
 job=${1:? Job! } 
 параметр: 
 typenum=${2:? Typenum! } 
-Удаление пустых данных ВСЕХ $job, когда gz-файлы ==20байт 
+
+	 Удаление пустых данных ВСЕХ $job, когда gz-файлы ==20байт 
 
 14_BIDS:
 -----------
@@ -235,10 +253,10 @@ job=${1:?JOB!}
 -----------
 
 **Сочетания pz+bt по sz.** 
-in: 
- 1   2     3   4  5       6        7   8   9     10      11 
-uid second sz pz  bt exposureprice ad dom path sestart isview 
 
+	 in: 
+	  1   2     3   4  5       6        7   8   9     10      11 
+	 uid second sz pz  bt exposureprice ad dom path sestart isview 
 	 out: 
 	 
 	 | field | 
@@ -336,10 +354,20 @@ N=${3:?N Days!} # f.e. 30. За сколько дней суммировать
 22_process:
 -----------
 
-**urls + groups = urls_group** 
-Проходит по файлу urls30days (смерженные урлы за 30 дней), глядя в группы от Димы, 
- для каждого урла печатает dom*path*RV, где RV = group * 10 + subgroup 
+**urls30days + groups = urls_group** 
+
+	 Проходит по файлу urls30days (смерженные урлы за 30 дней), глядя в группы от Димы, 
+	  для каждого урла печатает dom*path*RV, где RV = $groups_group * 10 + $subgroup_number + ( Sessions < 50 ? 100 : 0 ) 
+
 если в quant нет такой группы, то подгруппа=0 
+
+	 out: 
+	 
+	 | field | 
+	 | ----- | 
+	 | dom   | 
+	 | path  | 
+	 | RV    | 
 
 22_URLSGROUPS:
 -----------
