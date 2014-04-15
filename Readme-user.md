@@ -156,7 +156,7 @@ sz  ad
 | cell 1   | cell 2   | 
 | cell 3   | cell 4   | 
 OUT: 
-| field | description | 
+| field1 | description | 
 | ----- | ----------- | 
 | uid   |             | 
 | sec   |             | 
@@ -164,7 +164,7 @@ OUT:
 | pz    |             | 
 | bt    |             | 
 | exposure_price |    | 
-| ad    |             | 
+| ad      |           | 
 | domain  |           | 
 | path    |           | 
 | sestart | секунды начала сессии   | 
