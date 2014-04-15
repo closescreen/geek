@@ -153,7 +153,7 @@ sz  ad
 	 OUT: 
 
 | field | description | 
-| ----- | - | 
+| ----- | ----------- | 
 | uid   || 
 | sec   || 
 | sz    || 
