@@ -154,11 +154,11 @@ sz  ad
 
 | field | description | 
 | ----- | ----------- | 
-| uid   || 
-| sec   || 
-| sz    || 
-| pz    || 
-| bt    || 
+| uid   | 
+| sec   | 
+| sz    | 
+| pz    | 
+| bt    | 
 | exposure_price || 
 | ad      || 
 | domain  || 
