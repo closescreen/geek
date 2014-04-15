@@ -235,10 +235,11 @@ job=${1:?JOB!}
 -----------
 
 **Сочетания pz+bt по sz.** 
+in: 
  1   2     3   4  5       6        7   8   9     10      11 
 uid second sz pz  bt exposureprice ad dom path sestart isview 
 
-	 out 
+	 out: 
 	 
 	 | field | 
 	 | ----- | 
