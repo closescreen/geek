@@ -47,19 +47,6 @@
 -----------
 
 **history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz** 
-Сбор часовых данных из hl. 
-Параметры: $job и $typenum. 
-Каждой комбинации $job и $typenum соответствует свой скрипт сбора. 
-jobscript="./10_${job}_tn${typenum}" 
-Если присутствует total.gz то часовые данные не собираются. 
-Часы группируются в папки по суткам с 04.00 до 04.00. 
-период, за который собрать данные (если их еще нет) 
-period="30days" 
-
-10_HOURS_NEW:
------------
-
-**history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz** 
 
 	 Сбор часовых данных из hl. 
 
@@ -369,10 +356,37 @@ N=${3:?N Days!} # f.e. 30. За сколько дней суммировать
 	 | path  | 
 	 | RV    | 
 
-22_URLSGROUPS:
+22_URLGR:
 -----------
 
-**Dima's domain groups ------(./21_process)------->urs_groups.gz** 
+**dom_gr.txt ------(./21_process)------->url_groups.gz** 
+
+23_diff:
+-----------
+
+**различия между предыдущим и текущим url_groups** 
+На входе смерженный поток dom * path * group * "curr"|"prev" 
+Если в curr появилась запись (dom+path) или значение group изменилось, то - insert 
+Если в curr исчезла запись (dom+path) - то delete 
+out: 
+dom * path * curr_group * "insert"|"delete" 
+
+23_process:
+-----------
+
+**параметр (job), (здесь не используется)** 
+job=${1:? Job! } 
+параметр: имя файла-источника (current): 
+src=${2:? src file! } 
+из файла-источника получет день 
+получает предыдущий день 
+получает имя (previous) файла-источника 
+previous + current --> пускает в один смерженный поток с добавлением последней колонки "curr"|"prev" и подает на вход ./23_diff 
+
+23_URLGR_DIFF:
+-----------
+
+**urls_groups.gz [вчера]+[сегодня] -----(23_process---23_diff)------> url_groups_diff.gz** 
 
 29_JOIN:
 -----------
