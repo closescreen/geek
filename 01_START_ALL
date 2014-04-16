@@ -27,13 +27,14 @@ for job in $jobs;do
 
 	fork -pf="../pids/17.$job.pids" -n=1 -kill "nice ./17_URLS $job" # urls 
 
-	fork -pf="../pids/18.$job.pids" -n=1 -kill "nice -n15 ./18_UIDSZ $job" # uidsz # несрочно
-	fork -pf="../pids/19.$job.pids" -n=1 -kill "nice -n15 ./19_URLS30DAYS $job" # urls30days
-	fork -pf="../pids/20.$job.pids" -n=1 -kill "nice -n15 ./20_DOM30DAYS $job" # dom30days
-	fork -pf="../pids/21.$job.pids" -n=1 -kill "nice -n15 ./21_DOMGR $job" # dom_gr
-	fork -pf="../pids/22.$job.pids" -n=1 -kill "nice -n15 ./22_URLSGROUPS $job" # urls_groups
-	fork -pf="../pids/29.$job.pids" -n=1 -kill "nice -n15 ./29_JOIN $job" # table_29 (by sz, ad) # несрочно
-	fork -pf="../pids/30.$job.pids" -n=1 -kill "nice -n15 ./30_SUM $job" # table_30 (by sz) # несрочно
+	fork -pf="../pids/18.$job.pids" -n=1 -kill "nice -n15 ./18_UIDSZ $job" # несрочно
+	fork -pf="../pids/19.$job.pids" -n=1 -kill "nice -n15 ./19_URLS30DAYS $job" 
+	fork -pf="../pids/20.$job.pids" -n=1 -kill "nice -n15 ./20_DOM30DAYS $job" 
+	fork -pf="../pids/21.$job.pids" -n=1 -kill "nice -n15 ./21_DOMGR $job" 
+	fork -pf="../pids/22.$job.pids" -n=1 -kill "nice -n15 ./22_URLGR $job" 
+	fork -pf="../pids/23.$job.pids" -n=1 -kill "nice -n15 ./23_URLGR_DIFF $job"
+	fork -pf="../pids/29.$job.pids" -n=1 -kill "nice -n15 ./29_JOIN $job" #(by sz, ad) # несрочно
+	fork -pf="../pids/30.$job.pids" -n=1 -kill "nice -n15 ./30_SUM $job" # (by sz) # несрочно
 
 	#fork -pf="../pids/32.$job.pids" -n=1 -kill "nice -n15 ./32_ $job" # gender # несрочно
     done

@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #> history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz
-#> Сбор часовых данных из hl.
+#>> Сбор часовых данных из hl.
 #> Параметры: $job и $typenum.
 
 (

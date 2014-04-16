@@ -1,0 +1,50 @@
+#!/usr/bin/env bash
+#> различия между предыдущим и текущим url_groups
+#> На входе смерженный поток dom * path * group * "curr"|"prev"
+#> Если в curr появилась запись (dom+path) или значение group изменилось, то - insert
+#> Если в curr исчезла запись (dom+path) - то delete
+set -u
+set +x
+set -o pipefail
+
+awk -F* -v"OFS=*" '
+# dom * path * group * "curr"|"prev"
+{
+ if ($1!=dom || $2!=path) flush();
+
+ dom=$1; path=$2;  
+
+ if ($4=="prev"){ prev_group=$3 }
+ else{
+    if ($4=="curr"){ curr_group=$3 }
+ }
+}
+
+END{
+ flush()
+}
+
+function flush(){
+ if ( prev_group>0 && curr_group>0 ){
+    if ( curr_group!=prev_group ){
+	print dom,path,curr_group,"insert";
+    }
+ }
+ else{
+    if ( prev_group>0 && !curr_group ){
+	print dom,path,prev_group,"delete";
+    }
+    else{
+	if ( !prev_group && curr_group>0 ){
+	    print dom,path,curr_group,"insert";
+	}
+    }
+ }
+ 
+ prev_group=""; curr_group="";
+ 
+}
+'
+
+#> out:
+#> dom * path * curr_group * "insert"|"delete"
