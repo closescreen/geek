@@ -1,0 +1,44 @@
+#!/usr/bin/env bash
+#> Удаление старых данных.
+
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+
+#>> Удаление часовых данных, (в основном, для tn3) (для экономии места).
+#>: на случай если захочется взглянуть на часовые данные, удаляем только старее чем:
+hours_older="2days"
+
+#>: любые файлы удаляются, которые старше (по дате в имени/пути):
+all_older="45days"
+
+#-----часовые данные google 3 ----
+job="google"
+typenum="3"
+
+ff=`find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+only -near=total.gz | only -older="$hours_older"`
+[[ -n "$ff" ]] && rm $ff
+
+#----------- старые /RESULT/10 ----
+# Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного
+oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$all_older"`
+[[ -n "$oldff" ]] && rm -r $oldff
+
+
+#----------- старые ../RESULT/traits_copy ----
+# Удаление traits_copy
+oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$all_older"`
+[[ -n "$oldff" ]] && rm -r $oldff
+
+
+#----------- пустые *.gz == 20байт ----------
+emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
+[[ -n "$emptyff" ]] && echo -e "Found empty files: $emptyff \n -will removed." && rm $emptyff
+
+
+)>>"$0.log" 2>&1

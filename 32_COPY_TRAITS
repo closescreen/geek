@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+#> "traits"-$host ----- copying ---> ../RESULT/traits_copy
+#> uidsz.gz (за {deep} дней ) + gender predicted_add ---------( ./32_process )-------> gender.gz
+#>> Для каждого tn3 uidsz.gz: мержит за несколько (deep) дней такие же uidsz, включая текущий и объеденяет с gender predicted_add
+#>> см ./32_process
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+upto="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
+remote_host="hist7.adriver.x"
+
+remote_dir="/usr/local/rle/var/grep/d.belyaev/Traits"
+remote_gender_dir="$remote_dir/gender/RESULT"
+remote_age_dir="$remote_dir/age/RESULT"
+
+local_gender_dir="../RESULT/traits_copy"
+local_age_dir="../RESULT/traits_copy"
+
+# список дней, за которые желаем иметь локальные копии:
+find_for_days=`hours -t=today -n=-"$upto" -days -r`
+
+for day in $find_for_days; do
+    # gender:
+    # имена локальных копий немного меняем, приводя к какой-то системе имен:
+    # gender - здесь txt-файлы копируются и потом сжимаются.
+    remote_gender_file="$remote_gender_dir/predicted_add.$day"    
+    local_gender_stem="$local_gender_dir/$day/predicted_add" # ( full file name without any suffix )
+    local_gender_file="$local_gender_stem.gz"
+
+    if [[ ! -s "$local_gender_file" ]]; then
+	if [[ $( ssh "$remote_host" "[[ -s $remote_gender_file ]]" && echo "OK" ) ]]; then
+	    mkdir -p $(dirname "$local_gender_file")
+	    scp -q "$remote_host":"$remote_gender_file" "$local_gender_stem.txt.TMP" && mv "$local_gender_stem.txt.TMP" "$local_gender_stem.txt"
+	    cat "$local_gender_stem.txt" | viatmp -gz "$local_gender_file" && rm "$local_gender_stem.txt"
+	fi
+    fi
+    
+    # age:
+    remote_age_file="$remote_age_dir/$day/predict_gr_v2.gz"
+    local_age_file="$local_age_dir/$day/predict_gr_v2.gz"
+
+    if [[ ! -s "$local_age_file" ]]; then
+	if [[ $( ssh "$remote_host" "[[ -s $remote_age_file ]]" && echo "OK" ) ]]; then
+	    mkdir -p $(dirname "$local_age_file")
+	    scp -q "$remote_host":"$remote_age_file" "$local_age_file.TMP" && mv "$local_age_file.TMP" "$local_age_file"
+	fi
+    fi    
+    
+done
+
+)>>"$0.log" 2>&1

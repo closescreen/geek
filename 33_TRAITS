@@ -13,16 +13,17 @@ cd `dirname $0`
 
 deep=3 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
 job=${1:?Job!}
+traits_host="hist7.adriver.x"
 traits_dir="/usr/local/rle/var/grep/d.belyaev/Traits"
-
-
-
 gender_dir="$traits_dir/gender/RESULT"
+age_dir="$traits_dir/age/RESULT"
+
+
 gender_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$gender_dir'/predicted_add.$1|'
 gender_tmpl="$gender_dir/predicted_add.%F" # шаблон полного имени файла predicted_add
 
 
-age_dir="$traits_dir/age/RESULT"
+
 age_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$age_dir'/$1/predict_gr.gz|'
 age_tmpl="$age_dir/%F/predict_gr.gz"
 

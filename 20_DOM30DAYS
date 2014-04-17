@@ -6,11 +6,9 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
-#N=15 # days. За сколько дней суммировать файлы.
 job=${1:?Job!}
 
 find ../RESULT/10/ -wholename "*/$job/3/urls?*.gz" | sort -r |
-words --first -comm="ОТЛАДКА" |
 washing -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=$0.time.log
 
 )>>"$0.log" 2>&1

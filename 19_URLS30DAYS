@@ -8,10 +8,11 @@ cd `dirname $0`
 
 N=30 # days. За сколько дней суммировать файлы.
 job=${1:?Job!}
+deep="$(conf 00_conf.txt report_deep)" # "<--- считать этот отчет на расчетные даты не старше report_deep из конфа"
 
 find ../RESULT/10 -wholename "*/$job/3/urls.gz" | sort -r | 
-only '[[ $(fn2days %f | hours -n=-30days -days | files "../RESULT/10/%F/'$job'/3/urls.gz" | only -s -all  ) ]]' |
-words --first -comm="ОТЛАДКА" |
+only '[[ $(fn2days %f | hours -n=-'$N'days -days | files "../RESULT/10/%F/'$job'/3/urls.gz" | only -s -all  ) ]]' |
+only --upto="$deep" |
 washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="./19_process %s $job $N" -comp=gzip -timelog=$0.time.log
 
 #find ../RESULT/10/ -wholename "*/$job/3/urls.gz" | sort -r | only -without="urls${N}days.gz" |
