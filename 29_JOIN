@@ -15,6 +15,6 @@ find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/
 only -near="bids.gz sessions.gz" -comment='<----( рядом должны иметься все перечисленные файлы )' | 
 only -having="s|/3/|/0/|" -comm='<----в папке /0/ тоже должен иметься total.gz' | 
 only -having="s|/3/|/1/|" -comm='<----и в папке /1/ тоже' |
-washing  -res="s|total\.gz|table29.gz|" -v_flag="./29_process %s $job"  -compr=gzip
+washing  -res="s|total\.gz|table29.gz|" -v_flag="./29_process %s $job"  -compr=gzip -timelog=$0.time.log
 
 )>>"$0.log" 2>&1

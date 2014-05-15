@@ -29,10 +29,13 @@ for job in $jobs;do
 	fork -pf="../pids/21.$job.pids" -n=1 -kill "nice -n15 ./21_DOMGR $job" 
 	fork -pf="../pids/22.$job.pids" -n=1 -kill "nice -n15 ./22_URLGR $job" 
 	fork -pf="../pids/23.$job.pids" -n=1 -kill "nice -n15 ./23_URLGR_DIFF $job"
-	fork -pf="../pids/29.$job.pids" -n=1 -kill "nice -n15 ./29_JOIN $job" #(by sz, ad) # несрочно
-	fork -pf="../pids/30.$job.pids" -n=1 -kill "nice -n15 ./30_SUM $job" # (by sz) # несрочно
+	#fork -pf="../pids/29.$job.pids" -n=1 -kill "nice -n15 ./29_JOIN $job" #(by sz, ad) # несрочно
+	#fork -pf="../pids/30.$job.pids" -n=1 -kill "nice -n15 ./30_SUM $job" # (by sz) # несрочно
 
-	#fork -pf="../pids/32.$job.pids" -n=1 -kill "nice -n15 ./32_ $job" # gender # несрочно
+	fork -pf="../pids/32.$job.pids" -n=1 -kill "nice -n15 ./32_COPY_TRAITS" 
+	fork -pf="../pids/33.$job.pids" -n=1 -kill "nice -n15 ./33_TRAITS $job" 
+	
+	fork -pf="../pids/51.$job.pids" -n=1 -kill "nice -n15 ./51_SZVARS_30DAYS $job"
     done
 done
 

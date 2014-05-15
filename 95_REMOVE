@@ -14,7 +14,7 @@ cd `dirname $0`
 hours_older="2days"
 
 #>: любые файлы удаляются, которые старше (по дате в имени/пути):
-all_older="45days"
+all_older="38days"
 
 #-----часовые данные google 3 ----
 job="google"
@@ -27,13 +27,14 @@ only -near=total.gz | only -older="$hours_older"`
 #----------- старые /RESULT/10 ----
 # Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного
 oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$all_older"`
-[[ -n "$oldff" ]] && rm -r $oldff
+[[ -n "$oldff" ]] && rm -rf $oldff
 
 
 #----------- старые ../RESULT/traits_copy ----
 # Удаление traits_copy
-oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$all_older"`
-[[ -n "$oldff" ]] && rm -r $oldff
+traits_older=10days
+oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$traits_older"`
+[[ -n "$oldff" ]] && rm -rf $oldff
 
 
 #----------- пустые *.gz == 20байт ----------

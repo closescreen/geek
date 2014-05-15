@@ -1,57 +1,55 @@
 #!/usr/bin/env bash
-#> uidsz.gz (за {deep} дней ) + gender predicted_add ---------( ./32_process )-------> gender.gz
-#>> Для каждого tn3 uidsz.gz: мержит за несколько (deep) дней такие же uidsz, включая текущий и объеденяет с gender predicted_add
-#>> см ./32_process
+#> uidsz [за 30 дней] + traits_copy/.. ------(33_process)--------->traits30days.gz 
 (
 set -u
 set +x
 set -o pipefail
 cd `dirname $0`
 
-#>? Здесь мешает неопределенность, на каких серверах будут файлы с трейтами.Нужен способ указывать это гибко.
-#>? Мешает не всегда имеющийся полный набор файлов с трейтами, ( нужно чтоб работало и без одного или нет? )
-
-deep=3 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
+merge_deep=30 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
 job=${1:?Job!}
-traits_host="hist7.adriver.x"
-traits_dir="/usr/local/rle/var/grep/d.belyaev/Traits"
-gender_dir="$traits_dir/gender/RESULT"
-age_dir="$traits_dir/age/RESULT"
+
+report_deep=`conf 00_conf.txt report_deep`
+
+traits_base_dir="../RESULT/traits_copy"
+uids_base_dir="../RESULT/10"
+
+# ищем список файлов uidsz.gz не старше $report_deep (потому что на старые числа не нужно считать отчет)
+uids_ff=`find $uids_base_dir/ -wholename "*/$job/3/uidsz.gz" | sort -r | only -upto="$report_deep"`
+chk "$uids_ff" "uidsz files upto $report_deep days. " || exit 2
+
+# ... для каждого из которых существует 30 файлов (за 30 соответствующих дней) включая его самого где он последний,
+uids_ff=`echo "$uids_ff" | 
+only 'fn2days "%f" | hours -n=-'$merge_deep'days -shift=1day -days | files '$uids_base_dir/%F/$job/3/uidsz.gz' | only -all -e -noprint'`
+chk "$uids_ff" "uidsz files with $merge_deep days for merge. " || exit 2
+
+# а так же для каждого файла uidsz должны иметься predict_gr_v2.gz
+uids_ff=`echo "$uids_ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/predict_gr_v2.gz"'`
+chk "$uids_ff" "uidsz files with predict_gr_v2.gz " || exit 2
+
+# ... и predicted_add.gz  
+uids_ff=`echo "$uids_ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/predicted_add.gz"'`
+chk "$uids_ff" "uidsz files with predicted_add.gz " || exit 2
+
+# ... и ctr10gr.gz
+uids_ff=`echo "$uids_ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr10gr.gz"'`
+chk "$uids_ff" "uidsz files with ctr10gr.gz " || exit 2
+
+# ... и ctr11gr.gz
+uids_ff=`echo "$uids_ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr11gr.gz"'`
+chk "$uids_ff" "uidsz files with ctr11gr.gz " || exit 2
+
+# DEBUG: (get first file from list):
+#uids_ff=`echo $uids_ff | words -first` # закомментировать потом
+
+chk "$uids_ff" "files. " || exit 2
 
 
-gender_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$gender_dir'/predicted_add.$1|'
-gender_tmpl="$gender_dir/predicted_add.%F" # шаблон полного имени файла predicted_add
+echo "$uids_ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="./33_process %s %f '$job' '$merge_deep' '$traits_base_dir' '$uids_base_dir'" \
+ -comp=gzip -time=$0.time.log
 
-
-
-age_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$age_dir'/$1/predict_gr.gz|'
-age_tmpl="$age_dir/%F/predict_gr.gz"
-
-ctr10_dir="/usr/local/rle/var/grep/k.fedorenko/1126"
-ctr10_replacement='s|../RESULT/10/(\d\d\d\d-\d\d-\d\d)/'$job'/3/uidsz.gz|'$ctr10_dir'/traits$1.gz|'
-ctr10_tmpl="$ctr10_dir/traits%F.gz"
-
-# возьмем uidsz.gz:
-ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/uidsz.gz" | sort -r | only -without="traitgroups.gz"`
-
-#> только те, для которых есть прошлые данные на глубину $deep:
-ff=`echo "$ff" | only '[[ $( fn2days %f | hours -n=-'$deep'days -days | files "../RESULT/10/%F/'$job'/3/uidsz.gz" | only -s -all ) ]]' -comm="For deep $deep"`
-# -- проверку глубины в 32_process можно удалить
-
-exit
-# только те, для которых есть predicted_add из gender:
-ff=`echo "$ff" | only -having=$gender_replacement`
-# только те для которых есть predict_gr.gz из age:
-ff=`echo "$ff" | only -having=$age_replacement`
-# только те, для которых есть k.fedorenlo ctr10:
-ff=`echo "$ff" | only -having=$ctr10_replacement`
-
-ff=`echo $ff | words -first` # DEBUG, закомментировать потом
-chk "$ff" "files"
-
-exit
-
-echo "$ff" | washing -res="s|uidsz\.gz|traitgroups.gz|" -v_flag="./32_process %s $job $deep $gender_tmpl $age_tmpl $ctr10_tmpl" \
- -d -comp=gzip -time=$0.time.log
-
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

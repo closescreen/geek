@@ -46,7 +46,7 @@ _{
  my $exppr = $tn0{ &Sz }{ &Ad }{ exppr };
  my $dom_sessions = $sessions{ &Dom }{ sessions };
  my $dom_views = $sessions{ &Dom }{ views };
- 
+
  p0 Sz, Ad, $exposures, $clicks, Bids, $exppr, $winpr, Dom, $dom_sessions, $dom_views;
 
  #>>OUT:

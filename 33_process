@@ -1,94 +1,152 @@
 #!/usr/bin/env bash
-#> Объединение смерженных за {deep} дней uidsz с gender, age, ctr_&_inactive 
-#>> gender: 
+#> пересечение uidsz.gz за 30 дней с файлами трейтов predict_add.gz, predict_gr_v2.gz, ctr10gr.gz, ctr11gr.gz
+#> v2, надеемся на ускорение.
+
+#>> gender (predict_add.gz): 
+#>> format: 1480566*11
 #>>  11 - 2.54 муж
 #>>  12 - 2.55 жен
-#>> age:
+
+#>> age (predict_gr_v2.gz):
+#>> format: 10000022992*1
 #>>  1 - 2.56 young (12-24)
 #>>  2 - 2.57 adult (25-44)
 #>>  3 - 2.60 old (45+) 
-#>> ctr: 1(most active)..10 groups + 11=inactive      
+
+#>> ctr: (ctr10gr.gz )
+#>> format: 25777293644*29926*0.3*1.00247e-05*10 (see field 5)
+#>> 1 - most active
+#>> 10 - minumum activity 
+
+#>> ctr11gr.gz
+#>> format: 10039181520*1*0*0*0
+#> all cookies in 1-st field - in 11 group (inactive )
 set -u
-set -x
+set +x
 set -o pipefail
-set -e
 
-#>> Дается имя текущего uidsz.gz
+# Параметр 1: имя текущего uidsz.gz
 srcfile=${1:?File!} # ../REESULT/.../uidsz.gz
-#>> Дается job (напр. google)
-job=${2:?Job!} # google
-#>> Задается глубина дней, за сколько мержить uidsz
-deep=${3:?Deep!} # в днях (30), за сколько дней нужны uidsz.gz
-#>> Указывается основная папка файлов трейтов. 
-gender_tmpl=${4:?gender_tmpl!} # шаблон имени gender
-age_tmpl=${5:?age_tmpl!} # шаблон age
-ctr10_tmpl=${6:?ctr10_tmpl!} # шаблон ctr10
+# Параметр 2: имя результирующего файла:
+resf=${2:? ResFile! }
+# Параметр 3: job (напр. google)
+job=${3:?Job!} # google
+# Параметр 4: глубина дней, за сколько мержить uidsz
+merge_deep=${4:?Merge Deep!} # в днях (30), за сколько дней нужны uidsz.gz
+# Параметр 5: основная папка файлов трейтов. 
+traits_base_dir=${5:? traits base dir!}
+# Параметр 6: uids_base_dir
+uids_base_dir=${6:? uids_base_dir !}
 
-#>> по имени текущего uidsz получает текущий день
+
 day=`fn2days "$srcfile"`
 
-#>> по текущему дню получает имя соответствующего predict_add файла из трейтов по gender и проверяет его существование:
-gender_file=`files "$gender_tmpl" "$day"`
+gender_file="$traits_base_dir/$day/predicted_add.gz"
 chk "$gender_file" "gender file" "-s" "exists" nop || exit 2
 
-#>> тоже для age:
-age_file=`files "$age_tmpl" "$day"`
+age_file="$traits_base_dir/$day/predict_gr_v2.gz"
 chk "$age_file" "age file" "-s" "exists" nop || exit 2
 
-#>> тоже для ctr-групп:
-ctr10_file=`files "$ctr10_tmpl" "$day"`
+ctr10_file="$traits_base_dir/$day/ctr10gr.gz"
+chk "$ctr10_file" "ctr10file" "-s" "exists" nop || exit 2
 
+ctr11_file="$traits_base_dir/$day/ctr11gr.gz"
+chk "$ctr11_file" "ctr11file" "-s" "exists" nop || exit 2
 
-#>> по текущему дню и {deep}, вычисляет за какие дни мержить
-nextday=`hours -d="$day" -n=2days -last -day`
-#>> deep дней, включая day: 
-days=`hours -d="$nextday" -n=-"$deep"days -days`
-#>> по дням вычисляет соответствующие файлы uidsz.gz:
-ff=`files "../RESULT/10/%F/$job/3/uidsz.gz" "$days"`
-#>> должны все присутствовать и быть >20b:
-exists_files=`echo "$ff" | only -all -s | only -sizegt=20`
-chk "$exists_files" "For files deep=$deep days, not found $? nonempty files." "$_" "found all files" nop || exit 3
+uidsz30files=`hours -d="$day" -shift=1day -n=-"$merge_deep"days -days | files "$uids_base_dir/%F/$job/3/uidsz.gz"`
 
-#>> мержит все uidsz, уникалит и подает на вход скриту
-mergef -ff="$exists_files" -m -k=1,1n -k=2,2n -stdout |
-uniq |
-lae -lb="uid sz" '
-open GENDER, shift or die "cant open GENDER file!";
-open AGE, shift or die "cant open AGE file!";
-my $gender_line="";
-my $gender_uid=-1;
-my $gender_gr=-1;
+# должны быть все на месте:
+uidsz30files=`echo "$uidsz30files" | only -all -s`
+chk "$uidsz30files" "30 uidsz.gz files for merge, не хватает: $? файлов" || exit 2 
 
-my $age_line="";
-my $age_uid=-1;
-my $age_gr=-1;
+#>> мержит все uidsz за 30 дней, уникалит и подает на вход скриту
 
-_{
- #>> на входе отуникаленные uid sz, отсортированный по uid
- 
- while ( $gender_uid < Uid ){
-    if ( !defined( $gender_line = <GENDER>) ){
-	die $! if $!;
-	last;
+sort -m -k1,1n \
+<(mergef -ff="$uidsz30files" -m -k=1,1n -k=2,2n -postfilter="uniq | awk -v'OFS=*' '{print \$0,\"sz\"}'" -stdout ) \
+<(zcat $gender_file | awk -v"OFS=*" '{print $0,"gender"}') \
+<(zcat $age_file | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"age"}' ) \
+<(zcat $ctr10_file | cut -d* -f1,5 | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"ctr"}') \
+<(zcat $ctr11_file | cut -d* -f1 | sort -T. -S333M -k1,1n | awk -v"OFS=*" '{print $0,11,"ctr"}') |
+perl -Mstrict -Mwarnings -MData::Dumper -e'
+# uid * value * type
+# 5*43527*sz
+# 66*12*gender
+# 66*29*sz
+# 66*2*age
+# 66*34*sz
+# 66*56*sz
+# 66*6*ctr
+
+# распределение значений и их типов по колонкам отчета, начиная с нулевой.
+my %ind = (
+ all_uids => 0, # all uids counter
+ gender => { 
+    11=>1, #male 
+    12=>2 ,#female
+ },
+ age => {
+    1=>3, # young
+    2=>4, # adult
+    3=>5, # old
+ },
+ ctr => {
+    1=>6, # max activity
+    2=>7,
+    3=>8,
+    4=>9,
+    5=>10,
+    6=>11,
+    7=>12,
+    8=>13,
+    9=>14,
+    10=>15, # min activity
+    11=>16, # inactive
+ },
+ trash => 17, # unknown traits or values
+);
+
+my $uid=0; 
+my @uid_sz; 
+my %uid_traits;
+my %sz;
+
+$\="\n";
+$,="*";
+
+sub break_uid(){
+ for my $sz ( @uid_sz ){
+    $sz{ $sz }[ $ind{ all_uids } ]++;
+    for my $type ( keys %uid_traits ){
+	my $value = $uid_traits{ $type };
+	$sz{ $sz }[ $ind{ $type }{ $value } || $ind{ trash } ]++;
     }
-    chomp($gender_line);
-    ($gender_uid, $gender_gr) = split /\*/, $gender_line;
  }
- 
- while ( $age_uid < Uid ){
-    if ( !defined( $age_line = <AGE>) ){
-	die $! if $!;
-	last;
-    }
-    chomp($age_line);
-    ($age_uid, $age_gr) = split /\*/, $age_line;
- } 
+ undef @uid_sz;
+ undef %uid_traits; 
+}
 
+while(<>){
+ chomp;
+ my ($new_uid, $new_value, $new_type) = split /\*/;
+ break_uid() if $new_uid != $uid;
 
+ $uid = $new_uid;
+ if ( $new_type eq "sz" ){ push @uid_sz, $new_value }
+ else{ $uid_traits{ $new_type } = $new_value }
 
- #>> OUT:
- #>>  uid sz gendered_group age_group
- p0 Uid, Sz, ($gender_uid == Uid ? $gender_gr : 0), ($age_uid == Uid ? $age_gr : 0);
 };
-' "$gender_file" <(zcat $age_file) # gender_file не gzip'нутый, age - gzip-нутый
+
+
+
+for my $sz ( sort {$a<=>$b} keys %sz ){
+    $sz{ $sz }[ $ind{ trash } ]||=0; # чтобы пропечатать все колонки, даже пустые.
+    print map {$_||0} $sz, @{ $sz{ $sz } };
+}
+
+#>> out
+#>> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * trash
+'
+ 
+
+
 

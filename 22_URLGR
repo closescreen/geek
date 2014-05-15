@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> dom_gr.txt ------(./21_process)------->url_groups.gz
+#> dom_gr.txt ------(./22_process)------->url_groups.gz
 (
 set -u
 set +x
