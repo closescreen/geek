@@ -153,19 +153,19 @@ _{
   @{$traits_sz}[1..16];
 
  #>> OUT:
- #>> | field           | description  |
- #>> | --------------- | ------------ |
- #>> | sz              | 
- #>> | ctr             | клики/показы |
- #>> | winbids         | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | avg_session     | ср длина пользов. сессии на домене                 |
- #>> | all_uids        | вего кук на сайтзоне                               |
- #>> | avg_winprice    | средний winprice                                   |
- #>> | avg_exp_div_win | среднее отношение expprice/winprice                |
- #>> | posibids	       | отношение posibids/bids - доля бидов с положит ставкой  |
- #>> | win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
- #>> | pzbt_count      | количество сочетаний bt-pz                              |
- #>> | 16 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ #>> | field               | description  |
+ #>> | ------------------- | ------------ |
+ #>> | 1  sz               | 
+ #>> | 2  ctr              | клики/показы |
+ #>> | 3  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 4  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 5  all_uids         | вего кук на сайтзоне                               |
+ #>> | 6  avg_winprice     | средний winprice                                   |
+ #>> | 7  avg_exp_div_win  | среднее отношение expprice/winprice                |
+ #>> | 8  posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 9  win_posi_bids    | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 10 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 11..26 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
  
 };
 
