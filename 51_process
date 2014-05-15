@@ -1,0 +1,196 @@
+#!/usr/bin/env bash
+#> Объединение сумм из отдельных: bids.gz, tn0/.../total.gz, tn1/.../total.gz, sessions.gz
+#>  в одну таблицу по sz + ad.
+#> за 30 дней
+set -u
+set +x
+set -o pipefail
+
+tn3_bids_fn=${1:?src_file!} 
+job=${2:?Job!}
+day=`fn2days "$tn3_bids_fn"`
+
+days=`hours -d="$day" -shift=1day -n=-30days -days`
+
+# для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
+tn3_bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/bids.gz" | only -all -s`
+chk "$tn3_bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
+
+tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only -all -s`
+chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" || exit 3
+
+tn1_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/1/total.gz" | only -all -s`
+chk "$tn1_total_ff" "30 файлов кликов (не хватает $?)" || exit 3
+
+tn3_sessions_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/sessions.gz" | only -all -s`
+chk "$tn3_sessions_ff" "30 файлов sessions.gz (не хватает $?)" || exit 3
+
+tn3_pzbt_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/pzbt.gz" | only -all -s`
+chk "$tn3_pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
+
+# а так же 1 файл traits30days.gz (в нем уже 30 дней)
+tn3_traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/3/traits30days.gz" | only -all -s`
+chk "$tn3_traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
+
+#> смерженные файлы bids.gz:
+#> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
+#> (ad нужна для posi_bids - ни равны 0 при ad==0)
+mergef -ff="$tn3_bids_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,last" |
+awk -F* -v"OFS=*" '
+# здесь сворачиваем строки по sz, добавляя positive_bids
+# INPUT:
+# sz ad bids dom
+{
+ if($1 != sz) flush();
+ sz=$1;
+ bids+=$3;
+ if ($2!=0) posibids+=$3;
+ dom=$4;
+}
+END{
+ flush();
+}
+
+function flush(){
+ if (sz){
+    print sz,bids,posibids,dom
+ }
+ bids=0; posibids=0;
+}
+# OUT:
+# sz, all_bids, positive_bids, dom
+# ------------------------------------
+' | lae -lb="sz bids posibids dom" '
+# Объединение входных строк по sz с другими таблицами.
+
+
+my %vars;
+
+# views:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $exposures, $winprice, $expprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
+ $vars{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
+}
+
+# clicks:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $clicks) = split /\*/, $_, -1;
+ $vars{ $sz }{ clicks } = $clicks;
+}
+
+# sessions:
+my %sessions;
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($dom, $sess_cnt, $views) = split /\*/, $_, -1;
+ $sessions{ $dom } = { sessions_count => $sess_cnt, views => $views };
+}
+
+# pzbt:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $pzbt_count) = split /\*/, $_, -1;
+ $vars{ $sz }{ pzbt_count } = $pzbt_count;
+}
+
+# traits:
+my %traits;
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ( $sz, $all_uids, @in_traits ) = split /\*/;
+ next if !$all_uids;
+ # преобразуем суммы в проценты от общего числа кук на сайтзоне:
+ #  sprintf("%.3f", $number)
+ $traits{ $sz } = [ $all_uids, map { sprintf( "%.2f", $_ * 100 / $all_uids) } @in_traits[0..15] ]; # 2 пола, 3 возраста и 11 ctr-групп. Всего - 16. Последнее поле - trash. Оно ненужно.
+}
+
+$|=1;
+_{
+ # in:
+ # sz, bids, posibids, dom
+ 
+ my $vars_sz = $vars{ $F[SZ] }||{};
+ 
+ my ( $ctr, $avg_winprice, $avg_exp_div_win );
+ if ( my $exposures = $vars_sz->{exposures} ){
+    $ctr = sprintf( "%.6f", ($vars_sz->{clicks}||0) / $exposures );
+    $avg_winprice = sprintf( "%.4f", ( $vars_sz->{ winprice }||0 ) / $exposures);
+    $avg_exp_div_win = sprintf( "%.4f", $vars_sz->{ exp_div_win } / $exposures );
+ }else{
+    $ctr = -1;
+    $avg_winprice = -1;
+    $avg_exp_div_win =-1;
+ }
+ 
+ my $winbids =  $F[BIDS] ?
+    sprintf("%.2f", ($vars_sz->{exposures}||0) / $F[BIDS] * 100 ) :
+    -1;
+
+ my $avg_session = $sessions{ $F[DOM] } && $sessions{ $F[DOM] }{sessions_count} ?
+    sprintf("%.2f" ,($sessions{ $F[DOM] }{views}||0) / $sessions{ $F[DOM] }{sessions_count} ) :
+    -1;
+ 
+ my $traits_sz = $traits{ $F[SZ] }||[];
+
+ my $all_uids = $traits_sz->[0]||-1;
+    
+ my $posibids = $F[BIDS] ?
+    sprintf( "%.4f", ($F[POSIBIDS]||0) / $F[BIDS] ) :
+    -1;   
+    
+ my $win_posi_bids = $F[POSIBIDS] ?
+    sprintf("%.4f", ( $vars_sz->{exposures}||0 ) / $F[POSIBIDS] ) :
+    -1; 
+ 
+ p0 $F[SZ], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $vars_sz->{pzbt_count},
+  @{$traits_sz}[1..16];
+
+ #>> OUT:
+ #>> | field           | description  |
+ #>> | --------------- | ------------ |
+ #>> | sz              | 
+ #>> | ctr             | клики/показы |
+ #>> | winbids         | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | avg_session     | ср длина пользов. сессии на домене                 |
+ #>> | all_uids        | вего кук на сайтзоне                               |
+ #>> | avg_winprice    | средний winprice                                   |
+ #>> | avg_exp_div_win | среднее отношение expprice/winprice                |
+ #>> | posibids	       | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | pzbt_count      | количество сочетаний bt-pz                              |
+ #>> | 16 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ 
+};
+
+' \
+ <(
+# просмотры за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (exposures,winprice,expprice,exp_div_win):
+mergef -ff="$tn0_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3,4,5,6 | summator -fu="sum,sum,sum,sum"
+# Format: sz exposures winprice expprice exp_divided_by_win
+) <(
+# клики за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
+mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
+# Format: sz clicks
+) <(
+# sessions за 30 дней, ключ (dom), суммы по (sess_count,views):
+mergef -ff="$tn3_sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
+# Format: dom, sess_counts, views
+) <(
+# pzbt за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
+mergef -ff="$tn3_pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
+# Format: sz cnt
+) <(
+# traits30days.gz
+zcat "$tn3_traits_fn"
+ #         1   2         3    4     5     6     7   8    9         18   19
+ # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
+)
+
+
