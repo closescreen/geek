@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> dom_gr.txt ------(./22_process)------->url_groups.gz
+#> dom_gr.txt ------(./25_process)------->url_groups.gz
 (
 set -u
 set +x
@@ -13,7 +13,6 @@ r_filename="dom_gr.txt" #"test_groups.gz"
 
 find ../RESULT/10 -wholename "*/$r_filename" | sort -r |
 only -sizegt=20 |
-words -first -comm="<-----ОтЛАДКА" |
-washing -res="s|$r_filename|url_groups.gz|" -v_flag="./22_process %s $job $N" -comp=gzip -time=$0.time.log
+washing -res="s|$r_filename|url_groups.gz|" -v_flag="./25_process %s $job $N" -comp=gzip -time=$0.time.log
 
 )>>"$0.log" 2>&1
