@@ -31,7 +31,7 @@ zcat "$urls_fn" | lae -lb="dom path sessions sess_ends" '
 my ($groups_fn, $quant_fn)=@ARGV;
 
 my %groups;
-open GROUPS, "cat $groups_fn |" or die "$groups_fn: $!";
+open GROUPS, "zcat $groups_fn |" or die "$groups_fn: $!";
 while ( my $l = <GROUPS>){
     chomp $l;
     my ( $groups_dom, $groups_group ) = split /\*/, $l;

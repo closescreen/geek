@@ -13,15 +13,26 @@ job=${1:? Job! }
 typenum=${2:? Typenum! }
 #>:Имя скрипта $postfilter зависит от $job и $typenum:
 postfilter="./12_postf_${job}_tn${typenum}"
-chk "$postfilter" "postfilter script" "-x" "exists and executable" noprint || exit 2
+[[ -x "$postfilter" ]] || exit 3
+#chk "$postfilter" "postfilter script" "-x" "exists and executable" noprint || exit 2
 
+# Набор ключей для mergef тоже зависит от job и typenum:
+mkeys=$( href -v="$job" -v="$typenum" -dict='
+ "net-sixty" => 	{ 0 => "1,1 2,2n" }, # там на входе - dom,ad
+ "net-forty-three" =>	{ 0 => "1,1 2,2n" },
+ "net-forty-four" =>	{ 0 => "1,1 2,2n" },
+ "net-forty-five" =>	{ 0 => "1,1 2,2n" },
+ "google" => 		{ 0 => "1,1n 2,2n", 1 => "1,1n 2,2n", 3 => "1,1n 2,2n" },
+' )
+chk "$mkeys" "Ключи для mergef по $job и $typenum" || exit 1
 
 #> не обрабатываются часовые данные, где рядом уже есть total.gz
 #> не обрабатываются часовые данные с размером меньше или равно 20 байт
-find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+find ../RESULT/10/ -type f -wholename "*/$job/$typenum/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
 only --without="total.gz" |
 only -sizegt=20 |
-mergef -allow-empty -least=24 -m -k=1,1n -k=2,2n -k=3,3n -postfilter="$postfilter" -reverse
+LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -reverse -local
 
 
 )>>"$0.log" 2>&1
+

@@ -1,13 +1,11 @@
 #!/usr/bin/env bash
 #> сбор из hl typenum==0 (показы) , network==60 
 
-#>> отбрасываются нулевые sz,uid
+# если нужны будут exposureprice,winprice - то помнить, что winprice = (Winprice||(Secondprice/100_000))
 
+job_history_log "$1" "ref,ad,uid,network=60,typenum=0,statusnum=0" -fn -cut="uid,network,typenum,statusnum" -true="uid" -fn -ll |
+lae -M=Dom '_{ $F[ REF ] = Dom::ref2dom( Ref ); $F[ REF ]=~s/\.$//; p @F }' |
+LANG=POSIX sort -T. -t\* -k1,1 -k2,2n
 
-job_history_log "$1" "sz,ad,exposureprice,winprice,secondprice,uid,typenum=0,network=60,statusnum=0" -fn -cut="network,statusnum,typenum,uid" -true="sz,uid" -ll |
-lae '_{ p Sz, Ad, Exposureprice, (Winprice||(Secondprice/100_000)) }' |
-sort -T. -t\* -n -k1,1 -k2,2
-
-#>> OUT: 
-#>>  Sz, Ad, Exposureprice, (Winprice||(Secondprice/100_000))
-#>>  сортировка по sz, ad.
+#>> OUT:
+#>> dom, ad

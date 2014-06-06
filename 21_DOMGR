@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> doms30days.gz -----( ...crawler job via ssh ...)---->dom_gr.gz , quant.gz
+#> doms30days.gz -----( ...crawler job via ssh ...)---->dom_gr.txt , quant.gz
 #> Запускать 1 поток!
 (
 set -u
@@ -14,12 +14,11 @@ remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="1.sh"
 
 find ../RESULT/10/ -name "doms${N}days.gz" | sort -r | only -younger=31days |
-words -first -comm="<--ОТЛАДКА" |
 washing \
     -res="s|doms${N}days\.gz|dom_gr.txt|" \
-    -w="flag --check --file=\"%f.FLAG\" -rm" \
-    -r="( ! flag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
-    -do="set -o pipefail; mkdir -p %d && flag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $remote_script\""
+    -w="netflag --check --file=\"%f.FLAG\" -rm" \
+    -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
+    -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $job $remote_script\""
 
 #washing -d -res="s|doms${N}days\.gz|dom_gr.gz|" -v_flag="./21_process %s %f $server $remote_project $remote_script" -compr=gzip -time=$0.time.log 
 

@@ -5,5 +5,7 @@
 #>> OUT: sz, ad
 #>> сортировка: по sz,ad
 
-job_history_log "$1" "sz,ad,uid,typenum=1,network=60,statusnum=0" -fn -cut="network,statusnum,typenum,uid" -true="sz,uid" |
-sort -T. -t\* -n -k1,1 -k2,2
+#job_history_log "$1" "sz,ad,uid,typenum=1,network=60,statusnum=0" -fn -cut="network,statusnum,typenum,uid" -true="sz,uid" |
+#sort -T. -t\* -n -k1,1 -k2,2
+
+echo "test"

@@ -37,9 +37,8 @@ sub ref2dom{
  $ref||="";
  $ref=~s/^\'|\'$//g; # quotas
  $ref =~s|^.+?\://||; # protocol
+ $ref =~s|^www\.||; # www
  $ref =~s|/.*$||; # path
- 
- 
  $ref=~ s/^\s+|\s+$//g; # spaces
  
  #($rv) = $ref=~m/([^\.]+\.[^\.]+)$/;

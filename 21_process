@@ -11,9 +11,10 @@ local_src=${1:?Src!}
 local_resf=${2:?Resf!}
 server=${3:?Server!}
 rem_project=${4:?Rem_proj!}
-rem_script=${5:?Rem_script!}
+job=${5:?JOB!}
+rem_script=${6:?Rem_script!}
 day=`fn2days "$local_resf"`
-rem_result="$rem_project/RESULT/10/$day"
+rem_result="$rem_project/RESULT/10/$job/$day"
 USER=d.belyaev
 
 if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) 
@@ -26,11 +27,5 @@ then
     scp "${USER}@${server}:$rem_result/*.txt" "$(dirname $local_resf)"
 fi    
 
-#ssh "${USER}@${server}" "find $remote_project/RESULT -regextype posix-extended -regex \".*dom_gr.*\"" | viatmp 21.remote.list
-
-#-wait="[[ -n \"$(grep %f.TMP 21.remote.list)\" ]]" \
-#-ready="[[ -n \"$(grep %f 21.remote.list)\" ]]" \
-#-do="ssh ${USER}@${server} \"mkdir -p \$(dirname %f)\" && scp -r %s ${USER}@${server}:%f && ssh ${USER}@${server} \"$remote_project/bin/1.sh %f\""
-
-
-#)>>"$0.log" 2>&1
+# clear old data on $server:
+ssh "${USER}@${server}" "$rem_project/bin/90_clear"

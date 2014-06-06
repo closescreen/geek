@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> dom_gr.txt ------(./25_process)------->url_groups.gz
+#> dom_gr7days.gz ------(./25_process)------->url_groups.gz
 (
 set -u
 set +x
@@ -9,7 +9,7 @@ cd `dirname $0`
 job=${1:?Job!}
 N=`froms 19_URLS30DAYS -var=N -strict`
 
-r_filename="dom_gr.txt" #"test_groups.gz"
+r_filename="dom_gr7days.gz" #"test_groups.gz"
 
 find ../RESULT/10 -wholename "*/$r_filename" | sort -r |
 only -sizegt=20 |
