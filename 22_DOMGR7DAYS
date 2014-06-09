@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#> dom_gr.txt за 7 дней -----> dom_gr7days.gz
+#> Для домена выбирает кластер: последний из самых частых за 7 дней.
+ 
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+job=${1:?Job!}
+
+days=`find ../RESULT/10/ -name "dom_gr.txt" | sort -r | only --upto=7days | fn2days | only -without=dom_gr7days.txt`
+[[ -z "$days" ]] && exit 0
+for day in $days; do
+    echo "$result_f" | only -all -sizegt=20 -nop && continue
+    src_ff=`hours -t=${day}T00 -shift=1day -n=-7days -days | files "../RESULT/10/%F/$job/3/dom_gr.txt" | only -all -s`
+    [[ -z "$src_ff" ]] && continue
+    result_f="../RESULT/10/$day/$job/3/dom_gr7days.gz"
+    LANG=POSIX mergef -ff="$src_ff" -k=1,1 -k=2,2n -k=3,3 -prefilter="awk -F* -vOFS=* -vfile=\$(date -d\$( fn2days %file) +%s) '{print \$0,file}'" --stdout |
+    lae -lb="dom cluster daysec" -comm="daysec - это дата файла-источника dom_gr.txt в секундах" '
+    my %h;
+    _{
+	if ( prevDom and ( prevDom ne Dom )){ domain_end() }
+	$h{ $F[DOM] }{ $F[DAYSEC] } = $F[CLUSTER];
+    } -prev=>"dom";
+    domain_end();
+    
+    sub domain_end{
+	my $dom = prevDom();
+	my $sec_cluster = $h{ prevDom() };
+	my %stat;
+	for my $sec ( keys %$sec_cluster ){
+	    $stat{ $sec_cluster->{$sec} }{count}++;
+	    $stat{ $sec_cluster->{$sec} }{ maxsec } = $sec if $sec > ($stat{ $sec_cluster->{$sec} }{ maxsec }||0);
+	}   
+
+	my $best_cluster = [ sort { $stat{$b}{count}.$stat{$b}{maxsec} <=> $stat{$a}{count}.$stat{$a}{maxsec} } keys %stat ]->[0];
+	p $dom, $best_cluster; # debug:, join(",", map {"$_=>$sec_cluster->{$_}"} keys %$sec_cluster);
+	delete $h{ prevDom() };	
+    }
+    ' | gzip > $result_f.TMP && mv $result_f.TMP $result_f     
+done
+
+
+#> OUT:
+#> dom, group (a.k.a. cluster)
+
+)>>"$0.log" 2>&1
