@@ -11,13 +11,13 @@ cut -d* -f3,4,5 |
 lae -lb="sz pz bt" '
 my %hash;
 _{
- $hash{ &Sz }{ &Pz }{ &Bt }||=1;
+ $hash{ &Sz }{ &Pz }{ &Bt }++;
 };
 
 for my $sz ( keys %hash ){
     for my $pz ( keys %{$hash{$sz}} ){
 	for my $bt ( keys %{$hash{$sz}{$pz}} ){
-	    p $sz, $pz, $bt;
+	    p $sz, $pz, $bt, $hash{ &Sz }{ &Pz }{ &Bt };
 	}
     }
 } 
@@ -30,3 +30,4 @@ for my $sz ( keys %hash ){
 #>> | sz    |
 #>> | pz    |
 #>> | bt    |
+#>> | cnt   |
