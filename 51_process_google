@@ -1,0 +1,334 @@
+#!/usr/bin/env bash
+#> Объединение сумм из отдельных: bids.gz, tn0/.../total.gz, tn1/.../total.gz, sessions.gz
+#>  в одну таблицу по sz + ad.
+#> за 30 дней
+set -u
+set +x
+set +v
+set -o pipefail
+
+#> Этот скрипт только для google.
+job="google"
+
+tn3_bids_fn=${1:?src_file!} 
+
+day=`fn2days "$tn3_bids_fn"`
+
+days=`hours -d="$day" -shift=1day -n=-30days -days`
+
+# для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
+tn3_bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/bids.gz" | only -all -s`
+chk "$tn3_bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
+
+tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only -all -s`
+chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" || exit 3
+
+tn1_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/1/total.gz" | only -all -s`
+chk "$tn1_total_ff" "30 файлов кликов (не хватает $?)" || exit 3
+
+tn3_sessions_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/sessions.gz" | only -all -s`
+chk "$tn3_sessions_ff" "30 файлов sessions.gz (не хватает $?)" || exit 3
+
+tn3_pzbt_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/pzbt.gz" | only -all -s`
+chk "$tn3_pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
+
+# а так же 1 файл traits30days.gz (в нем уже 30 дней)
+tn3_traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/3/traits30days.gz" | only -all -s`
+chk "$tn3_traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
+
+# Чтобы получить количество сетей в которые входит сайтзона - для каждой сети из ее tn0-total30days получаем списки доменов
+#>>: какие сети и в каком порядке д.б. представлены в отчете:
+nets="net-forty-three net-forty-four net-forty-five net-sixty"
+all_net_tn0_ff=""
+for net in $nets;do
+    net_tn0_file="../RESULT/10/$day/$net/0/total30days.gz"
+    chk "$net_tn0_file" "File with views for 30 days" "-s" "exists" noprint || exit 3 # отключение этой проверки уберет сообщеня в лог
+    [[ -s "$net_tn0_file" ]] || exit 3 # вариант проверки пофайлово или см ниже
+    all_net_tn0_ff="$all_net_tn0_ff $net_tn0_file"
+done
+# если дошли до сюда - значит нашли файлы для всех перечисленных сетей
+
+#> смерженные файлы bids.gz:
+#> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
+#> (ad нужна для posi_bids - ни равны 0 при ad==0)
+mergef -ff="$tn3_bids_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,last" |
+awk -F* -v"OFS=*" '
+# здесь сворачиваем строки по sz, добавляя positive_bids
+# INPUT:
+# sz ad bids dom
+{
+ if($1 != sz) flush();
+ sz=$1;
+ bids+=$3;
+ if ($2!=0) posibids+=$3;
+ dom=$4;
+}
+END{
+ flush();
+}
+
+function flush(){
+ if (sz){
+    print sz,bids,posibids,dom
+ }
+ bids=0; posibids=0;
+}
+# OUT:
+# sz, all_bids, positive_bids, dom
+# ------------------------------------
+' | lae -lb="sz bids posibids dom" '
+# Объединение входных строк по sz с другими таблицами.
+
+my %co=do"00_conf.txt";
+
+my %vars;
+
+# views:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $exposures, $winprice, $expprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
+ $vars{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
+}
+
+# clicks:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $clicks) = split /\*/, $_, -1;
+ $vars{ $sz }{ clicks } = $clicks;
+}
+
+# sessions:
+my %sessions;
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($dom, $sess_cnt, $views) = split /\*/, $_, -1;
+ $sessions{ $dom } = { sessions_count => $sess_cnt, views => $views };
+}
+
+# pzbt:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sz, $pzbt_count) = split /\*/, $_, -1;
+ $vars{ $sz }{ pzbt_count } = $pzbt_count;
+}
+
+my %minimum_by_index = map { $_, 50 } 0..15; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
+@minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
+
+# traits:
+my %traits;
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ( $sz, $cnt_on_sz, @in_traits ) = split /\*/;
+ next if !$cnt_on_sz;
+ # преобразуем суммы в проценты от общего числа кук на сайтзоне:
+ #  sprintf("%.3f", $number)
+ # OLD: $traits{ $sz } = [ $cnt_on_sz, map { sprintf( "%.2f", $_ * 100 / $cnt_on_sz) } @in_traits[0..15] ]; # 2 пола, 3 возраста и 11 ctr-групп. Всего - 16. Последнее поле - trash. Оно ненужно.
+
+ # NEW:
+ $traits{ $sz } = [ $cnt_on_sz ];
+ for my $i ( 0 .. 15 ){
+    my $cnt_in_trait = $in_traits[$i]; # кол-во кук в трейте
+    push @{ $traits{ $sz } }, 
+	$cnt_on_sz >= $minimum_by_index{ $i } ?
+	    sprintf( "%.2f", $cnt_in_trait * 100 / $cnt_on_sz) :
+	    "NA";
+ }
+}
+
+# all nets views:
+my %all_net_views;
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($dom, $filename) = split /\*/;
+ my ($net) = $filename=~m|\d\d\d\d-\d\d-\d\d/(.+?)/\d|;
+ #die "line=$_ dom=$dom net=$net";
+ $net or die "lina=$_, dom=$dom, filename = $filename , cant get net!";
+ $all_net_views{ $dom }{ $net }||=1;
+}
+die "Hash all_net_views is empty. Possible file(s) for all nets from 30 days typenum=tn0 is empty?" if !%all_net_views;
+
+my $net_list = shift or die "nets!";
+my @net_list = grep {$_} split /\s+/, $net_list;
+
+# список интересуемых PZ-он:
+my @pz_list = @{ $co{pz} } or die "pz!"; 
+
+# суммы бидов по pz:
+my $pz_file = shift or die "pz_file!";
+open FILE, $pz_file or die "cant open $pz_file: $!";
+my %pz_bids;
+while(<FILE>){
+ chomp;
+ my ($sz, $pz, $cnt) = split /\*/, $_, -1;
+ $pz_bids{ $sz }{ $pz } = $cnt;
+}
+
+# список интересуемых BT-пов:
+my @bt_list = @{ $co{bt} } or die "bt!";
+
+#суммы бидов по bt:
+my $bt_file = shift or die "bt_file!";
+open FILE, $bt_file or die "cant open %bt_file: $:";
+my %bt_bids;
+while(<FILE>){
+ chomp;
+ my ($sz, $bt, $cnt) = split /\*/, $_, -1;
+ $bt_bids{ $sz }{ $bt } = $cnt;
+}
+
+$|=1;
+_{
+ # in:
+ # sz, bids, posibids, dom
+ 
+ my $vars_sz = $vars{ $F[SZ] }||{};
+ 
+ my ( $ctr, $avg_winprice, $avg_exp_div_win );
+ if ( my $exposures = $vars_sz->{exposures} ){
+    if ( $F[BIDS]>=1000 && $vars_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sz->{clicks}||0) / $exposures );
+    }else{ 
+	$ctr = "NA" 
+    }	
+    if ( $exposures>=50 ){
+	$avg_winprice = sprintf( "%.4f", ( $vars_sz->{ winprice }||0 ) / $exposures);
+	$avg_exp_div_win = sprintf( "%.4f", $vars_sz->{ exp_div_win } / $exposures );
+    }else{
+	$avg_winprice = "NA";
+	$avg_exp_div_win = "NA";
+    }	
+ }else{
+    $ctr = "NA";
+    $avg_winprice = "NA";
+    $avg_exp_div_win = "NA";
+ }
+ 
+ my $winbids =  $F[BIDS]>=200 ?
+    sprintf("%.2f", ($vars_sz->{exposures}||0) / $F[BIDS] * 100 ) :
+    "NA";
+
+ my $traits_sz = $traits{ $F[SZ] }||[];
+
+ my $all_uids = $traits_sz->[0]||"NA";
+
+ my $avg_session = $all_uids >= 30 && $F[BIDS] >= 500 && $sessions{ $F[DOM] } && $sessions{ $F[DOM] }{sessions_count} ?
+    sprintf("%.2f" ,($sessions{ $F[DOM] }{views}||0) / $sessions{ $F[DOM] }{sessions_count} ) :
+    "NA";
+ 
+ my $posibids = $F[BIDS] >= 200 ?
+    sprintf( "%.4f", ($F[POSIBIDS]||0) / $F[BIDS] ) :
+    "NA";   
+    
+ my $win_posi_bids = $F[POSIBIDS] >= 100 ?
+    sprintf("%.4f", ( $vars_sz->{exposures}||0 ) / $F[POSIBIDS] ) :
+    "NA"; 
+ 
+ # список сетей, в кот входит сайтзона:
+ my @in_nets = $all_net_views{ $F[DOM] } ?
+    map { $all_net_views{ $F[DOM] }{ $_ } || 0 } @net_list :
+    map {0} @net_list;
+
+ my $pzbt_count = $F[BIDS] >= 100 ?
+    $vars_sz->{pzbt_count} :
+    "NA";    
+
+ my @pz_bids = $pz_bids{ $F[SZ] } && $F[BIDS] 
+    ?
+    map { 
+	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
+    } @{ $pz_bids{ $F[SZ] } }{ @pz_list } 
+    :
+    map {0} @pz_list;
+
+ my @bt_bids = $bt_bids{ $F[BT] } && $F[BIDS] 
+    ?
+    map {
+	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
+    } @{ $bt_list{ $F[BT] } }{ @bt_list }
+    :
+    map {0} @pz_list;
+    
+ p0 $F[SZ], $F[DOM], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
+  @{$traits_sz}[1..16], @pz_bids, @bt_bids;
+
+ #>> OUT:
+ #>> | field               | description  |
+ #>> | ------------------- | ------------ |
+ #>> | 1  sz               | 
+ #>> | 2  domain           | 
+ #>> | 3  ctr              | клики/показы |
+ #>> | 4  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 5  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 6  all_uids         | вего кук на сайтзоне                               |
+ #>> | 7  avg_winprice     | средний winprice                                   |
+ #>> | 8  avg_exp_div_win  | среднее отношение expprice/winprice                |
+ #>> | 9  posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 10  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 11 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 12..15 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
+ #>> | 16..31 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ #>> | 32..33 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 34..46 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
+ 
+};
+
+' \
+ <(
+# ПРОСМОТРЫ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (exposures,winprice,expprice,exp_div_win):
+mergef -ff="$tn0_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3,4,5,6 | summator -fu="sum,sum,sum,sum"
+# Format: sz exposures winprice expprice exp_divided_by_win
+) <(
+# КЛИКИ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
+mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
+# Format: sz clicks
+) <(
+# SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
+mergef -ff="$tn3_sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
+# Format: dom, sess_counts, views
+) <(
+# PZBT за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
+mergef -ff="$tn3_pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
+# Format: sz cnt
+) <(
+# traits30days.gz:
+zcat "$tn3_traits_fn"
+ #         1   2         3    4     5     6     7   8    9         18   19
+ # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
+) <(
+ # tn0 total30days всех сетей - для определения количества сетей в кот входит сайтзона
+ # каждый файл имеет формат: dom * ad * cnt(показов)
+ LANG=POSIX mergef -ff="$all_net_tn0_ff" -prefilter="cut -d* -f1 | uniq | awk -vOFS=* -vfile=%file '{print \$0,file}'" -k=1,1 -m -stdout
+ # Format: dom * net-file (имя файла, содержащее имя сети)
+) \
+"$nets" \
+<(
+ # суммы бидов по PZ'нам за 30 дней:
+ mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout |
+ lae -lb="sz pz bt cnt" '
+  my %co=do"00_conf.txt"; 
+  my @pz=@{$co{pz}}; 
+    _{ 
+	return unless grep {$_==$F[PZ]} @pz; 
+	p @F[SZ,PZ,CNT]
+    }
+ ' | summator -fu=sum
+) <( 
+ # суммы бидов по BT'пам за 30 дней:
+ mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout |
+ lae -lb="sz pz bt cnt" '
+  my %co=do"00_conf.txt"; 
+  my @bt=@{$co{bt}}; 
+   _{ 
+    return unless grep {$_==$F[BT]} @bt; 
+    p @F[SZ,BT,CNT]
+   }
+ ' | summator -fu=sum
+)
+
