@@ -14,7 +14,7 @@ jobs="google ssp_sites"
 typenums="0 1 3"
 for job in $jobs;do
     for typenum in $typenums; do
-	fork -pf="../pids/10.$job.t${typenum}.pids" -n=1 "nice ./10_HOURS $job $typenum"
+	fork -pf="../pids/10.$job.t${typenum}.pids" -n=2 "nice ./10_HOURS $job $typenum"
 	fork -pf="../pids/12.$job.t${typenum}.pids" -n=2 "nice ./12_MERGE $job $typenum"
 	
 	fork -pf="../pids/14.$job.pids" -n=1 "nice ./14_BIDS $job" # несрочно
@@ -27,6 +27,7 @@ for job in $jobs;do
 	fork -pf="../pids/19.$job.pids" -n=1  "nice ./19_URLS30DAYS $job" 
 	fork -pf="../pids/20.$job.pids" -n=1  "nice ./20_DOM30DAYS $job" 
 	fork -pf="../pids/21.$job.pids" -n=1  "nice ./21_DOMGR $job" 
+	fork -pf="../pids/22.$job.pids" -n=1  "nice ./22_DOMGR7DAYS $job" 
 	fork -pf="../pids/22.$job.pids" -n=1  "nice ./25_URLGR $job" 
 	fork -pf="../pids/23.$job.pids" -n=1  "nice ./27_URLGR_DIFF $job"
 	#fork -pf="../pids/29.$job.pids" -n=1  "nice ./29_JOIN $job" #(by sz, ad) # несрочно
