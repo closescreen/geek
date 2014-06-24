@@ -7,10 +7,10 @@ set +x
 set +v
 set -o pipefail
 
-#> Этот скрипт только для google.
-job="google"
+#> Этот скрипт только для google, ssp_sites.
+job="$1"
 
-tn3_bids_fn=${1:?src_file!} 
+tn3_bids_fn=${2:?src_file!} 
 
 day=`fn2days "$tn3_bids_fn"`
 
@@ -318,7 +318,7 @@ zcat "$tn3_traits_fn"
 	return unless grep {$_==$F[PZ]} @pz; 
 	p @F[SZ,PZ,CNT]
     }
- ' | summator -fu=sum
+ ' | sort -t\* -n -k1,1 -k2,2 | summator -fu=sum
 ) <( 
  # суммы бидов по BT'пам за 30 дней:
  mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout |
@@ -329,6 +329,6 @@ zcat "$tn3_traits_fn"
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SZ,BT,CNT]
    }
- ' | summator -fu=sum
+ ' | sort -t\* -n -k1,1 -k2,2 | summator -fu=sum
 )
 

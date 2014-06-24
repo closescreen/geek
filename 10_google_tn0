@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
-#> сбор из hl typenum==0 (показы) , sid==187537 (google)
+#> сбор из hl typenum==0 (показы) , sid for google, ssp_sites
 
 #>> отбрасываются нулевые sz,uid
 #>> OUT: 
 #>>  sz,ad,exposureprice,winprice
 #>>  сортировка по sz, ad.
 
-job_history_log "$1" "sz,ad,exposureprice,winprice,uid,typenum=0,sid=187537,statusnum=0" -fn -cut="sid,statusnum,typenum,uid" -true="sz,uid" |
+set +x
+
+sids=$2 #like a: 123|234|3254
+
+job_history_log "$1" "sz,ad,exposureprice,winprice,uid,typenum=0,sid=$sids,statusnum=0" -fn -cut="sid,statusnum,typenum,uid" -true="sz,uid" |
 sort -T. -t\* -n -k1,1 -k2,2
 

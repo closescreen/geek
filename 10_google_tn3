@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
-#> сбор из hl typenum==3 (bids), sid==187537 (google)
+#> сбор из hl typenum==3 (bids), sids for google, ssp_sites
 
 #>> отбрасываются нулевые sz,uid.
 #>> поля: uid, second, sz, pz, bt, exposureprice, ad, ref
 #>> "ref" сплитится на два поля: "dom" и "path"
 #>> сортировка: uid, second.
 
-job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=187537,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" -ll |
+
+sids=$2 #like a: 123|234|3254
+
+job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" -ll |
 lae -M=Dom '_{ @F[ REF, REF_F ] = Dom::split_ref( Ref ); p @F }' |
 sort -T. -t\* -n -k1,1 -k2,2
 

@@ -17,12 +17,14 @@ hours_older="2days"
 all_older="38days"
 
 #-----часовые данные google 3 ----
-job="google"
+jobs="google ssp_sites"
 typenum="3"
 
-ff=`find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
-only -near=total.gz | only -older="$hours_older"`
-[[ -n "$ff" ]] && rm $ff
+for job in $jobs; do
+ ff=`find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+ only -near=total.gz | only -older="$hours_older"`
+ [[ -n "$ff" ]] && rm $ff
+done
 
 #----------- старые /RESULT/10 ----
 # Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного

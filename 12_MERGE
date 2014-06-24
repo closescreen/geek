@@ -23,6 +23,7 @@ mkeys=$( href -v="$job" -v="$typenum" -dict='
  "net-forty-four" =>	{ 0 => "1,1 2,2n" },
  "net-forty-five" =>	{ 0 => "1,1 2,2n" },
  "google" => 		{ 0 => "1,1n 2,2n", 1 => "1,1n 2,2n", 3 => "1,1n 2,2n" },
+ "ssp_sites" =>		{ 0 => "1,1n 2,2n", 1 => "1,1n 2,2n", 3 => "1,1n 2,2n" },
 ' )
 chk "$mkeys" "Ключи для mergef по $job и $typenum" || exit 1
 
