@@ -1,0 +1,4 @@
+shell_patterns=0
++ ! t t
+@       Who is work now
+	for file in `find ../RESULT -name "*.FLAG"`; do echo -n $file; (netflag --check -file=$file && echo "" )||echo " ( NOT WORK )"  ; done

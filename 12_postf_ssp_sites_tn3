@@ -1,0 +1,3 @@
+#!/usr/bin/env bash
+
+./12_postf_google_tn3 $*

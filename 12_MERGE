@@ -32,7 +32,7 @@ chk "$mkeys" "Ключи для mergef по $job и $typenum" || exit 1
 find ../RESULT/10/ -type f -wholename "*/$job/$typenum/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
 only --without="total.gz" |
 only -sizegt=20 |
-LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -reverse -local
+LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -reverse -on_another="silent_skip"
 
 
 )>>"$0.log" 2>&1

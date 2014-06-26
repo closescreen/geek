@@ -13,7 +13,7 @@ server="crawler.adriver.x"
 remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="1.sh"
 
-find ../RESULT/10/ -name "doms${N}days.gz" | sort -r | only -younger=31days |
+find ../RESULT/10/ -wholename "*/$job/3/doms${N}days.gz" | sort -r | only -younger=31days |
 washing \
     -res="s|doms${N}days\.gz|dom_gr.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \

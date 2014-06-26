@@ -10,36 +10,41 @@ cd `dirname $0`
 
 export PATH=$PATH:/home/d.belyaev/grep/bike
 
-jobs="google ssp_sites"
+jobs="google ssp_sites net-forty-three net-forty-four net-forty-five net-sixty"
 typenums="0 1 3"
 for job in $jobs;do
     for typenum in $typenums; do
-	fork -pf="../pids/10.$job.t${typenum}.pids" -n=2 "nice ./10_HOURS $job $typenum"
-	fork -pf="../pids/12.$job.t${typenum}.pids" -n=2 "nice ./12_MERGE $job $typenum"
-	
-	fork -pf="../pids/14.$job.pids" -n=1 "nice ./14_BIDS $job" # несрочно
-	fork -pf="../pids/15.$job.pids" -n=1 "nice ./15_SESSIONS $job" # несрочно
-	fork -pf="../pids/16.$job.pids" -n=1  "nice ./16_PZBT $job" # несрочно
-
-	fork -pf="../pids/17.$job.pids" -n=1  "nice ./17_URLS $job" # urls 
-
-	fork -pf="../pids/18.$job.pids" -n=1  "nice ./18_UIDSZ $job" # несрочно
-	fork -pf="../pids/19.$job.pids" -n=1  "nice ./19_URLS30DAYS $job" 
-	fork -pf="../pids/20.$job.pids" -n=1  "nice ./20_DOM30DAYS $job" 
-	fork -pf="../pids/21.$job.pids" -n=1  "nice ./21_DOMGR $job" 
-	fork -pf="../pids/22.$job.pids" -n=1  "nice ./22_DOMGR7DAYS $job" 
-	fork -pf="../pids/22.$job.pids" -n=1  "nice ./25_URLGR $job" 
-	fork -pf="../pids/23.$job.pids" -n=1  "nice ./27_URLGR_DIFF $job"
-	#fork -pf="../pids/29.$job.pids" -n=1  "nice ./29_JOIN $job" #(by sz, ad) # несрочно
-	#fork -pf="../pids/30.$job.pids" -n=1  "nice ./30_SUM $job" # (by sz) # несрочно
-
-	fork -pf="../pids/32.$job.pids" -n=1  "nice ./32_COPY_TRAITS" 
-	fork -pf="../pids/33.$job.pids" -n=1  "nice ./33_TRAITS $job" 
-	
-	fork -pf="../pids/51.$job.pids" -n=1  "nice ./51_SZVARS_30DAYS $job"
+	# for any jobs and typenums:
+	fork -pf="../pids/10.$job.t${typenum}.pids" -n=1 "nice -n15 ./10_HOURS $job $typenum"
+	fork -pf="../pids/12.$job.t${typenum}.pids" -n=1 "nice -n15 ./12_MERGE $job $typenum"
     done
+
+    # for any jobs:
+    fork -pf="../pids/13.$job.pids" -n=1 "nice -n15 ./13_MERGE_30DAYS $job"
+    fork -pf="../pids/14.$job.pids" -n=1 "nice -n15 ./14_BIDS $job" # несрочно
+    fork -pf="../pids/15.$job.pids" -n=1 "nice -n15 ./15_SESSIONS $job" # несрочно
+    fork -pf="../pids/16.$job.pids" -n=1  "nice -n15 ./16_PZBT $job" # несрочно
+
+    fork -pf="../pids/17.$job.pids" -n=1  "nice -n15 ./17_URLS $job" # urls 
+
+    fork -pf="../pids/18.$job.pids" -n=1  "nice -n15 ./18_UIDSZ $job" # несрочно
+    fork -pf="../pids/19.$job.pids" -n=1  "nice -n15 ./19_URLS30DAYS $job" 
+    fork -pf="../pids/20.$job.pids" -n=1  "nice -n15 ./20_DOM30DAYS $job" 
+    fork -pf="../pids/21.$job.pids" -n=1  "nice -n15 ./21_DOMGR $job" 
+    fork -pf="../pids/22.$job.pids" -n=1  "nice -n15 ./22_DOMGR7DAYS $job" 
+    fork -pf="../pids/22.$job.pids" -n=1  "nice -n15 ./25_URLGR $job" 
+    fork -pf="../pids/23.$job.pids" -n=1  "nice -n15 ./27_URLGR_DIFF $job"
+    #fork -pf="../pids/29.$job.pids" -n=1  "nice -n15 ./29_JOIN $job" #(by sz, ad) # несрочно
+    #fork -pf="../pids/30.$job.pids" -n=1  "nice -n15 ./30_SUM $job" # (by sz) # несрочно
+
+    fork -pf="../pids/32.$job.pids" -n=1  "nice -n15 ./32_COPY_TRAITS" 
+    fork -pf="../pids/33.$job.pids" -n=1  "nice -n15 ./33_TRAITS $job" 
+	
+    fork -pf="../pids/51.$job.pids" -n=1  "nice -n15 ./51_SZVARS_30DAYS $job"
+    fork -pf="../pids/55.$job.pids" -n=1  "nice -n15 ./55_SZGR $job"
 done
 
-fork -pf="../pids/95.pids" -single " ./95_REMOVE"
+# for once call:
+fork -pf="../pids/95.pids" -single "nice ./95_REMOVE"
 
 )#>>"$0.log" 2>&1

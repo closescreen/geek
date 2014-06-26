@@ -10,11 +10,7 @@ cd `dirname $0`
 
 
 #>> Удаление часовых данных, (в основном, для tn3) (для экономии места).
-#>: на случай если захочется взглянуть на часовые данные, удаляем только старее чем:
-hours_older="2days"
 
-#>: любые файлы удаляются, которые старше (по дате в имени/пути):
-all_older="38days"
 
 #-----часовые данные google 3 ----
 jobs="google ssp_sites"
@@ -22,20 +18,19 @@ typenum="3"
 
 for job in $jobs; do
  ff=`find ../RESULT/10/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum -type f -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
- only -near=total.gz | only -older="$hours_older"`
+ only -near=total.gz | only -older=6days`
  [[ -n "$ff" ]] && rm $ff
 done
 
 #----------- старые /RESULT/10 ----
 # Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного
-oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$all_older"`
+oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=38days`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
 #----------- старые ../RESULT/traits_copy ----
 # Удаление traits_copy
-traits_older=10days
-oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older="$traits_older"`
+oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=10days`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
@@ -43,5 +38,8 @@ oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][
 emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
 [[ -n "$emptyff" ]] && echo -e "Found empty files: $emptyff \n -will removed." && rm $emptyff
 
+# ---- google/3/urls30days.gz --------
+old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" | only --older=10days`
+[[ -n "$old_urls30days_ff" ]] && rm $old_urls30days_ff
 
 )>>"$0.log" 2>&1

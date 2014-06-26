@@ -10,13 +10,13 @@ cd `dirname $0`
 
 job=${1:?Job!}
 
-days=`find ../RESULT/10/ -name "dom_gr.txt" | sort -r | only --upto=7days | fn2days | only -without=dom_gr7days.txt`
+days=`find ../RESULT/10/ -name "dom_gr.txt" | sort -r | only --upto=7days | only -without=dom_gr7days.gz | fn2days`
 [[ -z "$days" ]] && exit 0
 for day in $days; do
+    result_f="../RESULT/10/$day/$job/3/dom_gr7days.gz"
     echo "$result_f" | only -all -sizegt=20 -nop && continue
     src_ff=`hours -t=${day}T00 -shift=1day -n=-7days -days | files "../RESULT/10/%F/$job/3/dom_gr.txt" | only -all -s`
     [[ -z "$src_ff" ]] && continue
-    result_f="../RESULT/10/$day/$job/3/dom_gr7days.gz"
     LANG=POSIX mergef -ff="$src_ff" -k=1,1 -k=2,2n -k=3,3 -prefilter="awk -F* -vOFS=* -vfile=\$(date -d\$( fn2days %file) +%s) '{print \$0,file}'" --stdout |
     lae -lb="dom cluster daysec" -comm="daysec - это дата файла-источника dom_gr.txt в секундах" '
     my %h;

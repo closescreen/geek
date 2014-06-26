@@ -8,9 +8,10 @@ set +v
 set -o pipefail
 
 #> Этот скрипт только для google, ssp_sites.
-job="$1"
 
-tn3_bids_fn=${2:?src_file!} 
+tn3_bids_fn=${1:?src_file!} 
+
+job=${2:?job!}
 
 day=`fn2days "$tn3_bids_fn"`
 
@@ -80,6 +81,8 @@ function flush(){
 # Объединение входных строк по sz с другими таблицами.
 
 my %co=do"00_conf.txt";
+my $net_list = shift or die "nets!";
+my @net_list = grep {$_} split /\s+/, $net_list;
 
 my %vars;
 
@@ -154,8 +157,7 @@ while(<FILE>){
 }
 die "Hash all_net_views is empty. Possible file(s) for all nets from 30 days typenum=tn0 is empty?" if !%all_net_views;
 
-my $net_list = shift or die "nets!";
-my @net_list = grep {$_} split /\s+/, $net_list;
+
 
 # список интересуемых PZ-он:
 my @pz_list = @{ $co{pz} } or die "pz!"; 
@@ -239,7 +241,9 @@ _{
     $vars_sz->{pzbt_count} :
     "NA";    
 
- my @pz_bids = $pz_bids{ $F[SZ] } && $F[BIDS] 
+ # процент бидов по sz,pz:  @{ $pz_bids{ $F[SZ] } } / к бидам по sz: $F[BIDS]
+ 
+ my @pz_bids = $F[BIDS] 
     ?
     map { 
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
@@ -247,14 +251,16 @@ _{
     :
     map {0} @pz_list;
 
- my @bt_bids = $bt_bids{ $F[BT] } && $F[BIDS] 
+ my @bt_bids = $F[BIDS] 
     ?
     map {
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
-    } @{ $bt_list{ $F[BT] } }{ @bt_list }
+    } @{ $bt_bids{ $F[SZ] } }{ @bt_list }
     :
-    map {0} @pz_list;
-    
+    map {0} @bt_list;
+
+# die Dumper \@F, \@pz_list, \@pz_bids, \@bt_list, \@bt_bids if $F[SZ]==21;    
+ 
  p0 $F[SZ], $F[DOM], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
   @{$traits_sz}[1..16], @pz_bids, @bt_bids;
 
@@ -279,8 +285,7 @@ _{
  
 };
 
-' \
- <(
+' "$nets" <(
 # ПРОСМОТРЫ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (exposures,winprice,expprice,exp_div_win):
 mergef -ff="$tn0_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3,4,5,6 | summator -fu="sum,sum,sum,sum"
 # Format: sz exposures winprice expprice exp_divided_by_win
@@ -305,30 +310,24 @@ zcat "$tn3_traits_fn"
  # tn0 total30days всех сетей - для определения количества сетей в кот входит сайтзона
  # каждый файл имеет формат: dom * ad * cnt(показов)
  LANG=POSIX mergef -ff="$all_net_tn0_ff" -prefilter="cut -d* -f1 | uniq | awk -vOFS=* -vfile=%file '{print \$0,file}'" -k=1,1 -m -stdout
- # Format: dom * net-file (имя файла, содержащее имя сети)
-) \
-"$nets" \
-<(
- # суммы бидов по PZ'нам за 30 дней:
- mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout |
- lae -lb="sz pz bt cnt" '
+ # Format: dom * net-file имя файла, содержащее имя сети
+) <(
+ mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my %co=do"00_conf.txt"; 
   my @pz=@{$co{pz}}; 
     _{ 
 	return unless grep {$_==$F[PZ]} @pz; 
 	p @F[SZ,PZ,CNT]
     }
- ' | sort -t\* -n -k1,1 -k2,2 | summator -fu=sum
-) <( 
- # суммы бидов по BT'пам за 30 дней:
- mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout |
- lae -lb="sz pz bt cnt" '
+ ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+) <(
+ mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my %co=do"00_conf.txt"; 
   my @bt=@{$co{bt}}; 
    _{ 
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SZ,BT,CNT]
    }
- ' | sort -t\* -n -k1,1 -k2,2 | summator -fu=sum
+ ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
 )
 

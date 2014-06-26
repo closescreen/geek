@@ -30,11 +30,11 @@ chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 2
 #> Часы группируются в папки по суткам с 04.00 до 04.00.
 
 #>: период, за который собрать данные (если их еще нет)
-period="30days" 
+period="34days" 
 
 hours -t=todayT04 -n=-"$period" -r |
 files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" |
 only --without="total.gz" |
-washing -time=10.time.log -v_flag="$jobscript %f \"$sids\"" -comp=gzip
+washing -time=10.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip
 
 )>>"$0.log" 2>&1
