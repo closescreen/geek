@@ -15,7 +15,7 @@ traits_base_dir="../RESULT/traits_copy"
 uids_base_dir="../RESULT/10"
 
 # ищем список файлов uidsz.gz не старше $report_deep (потому что на старые числа не нужно считать отчет)
-uids_ff=`find $uids_base_dir/ -wholename "*/$job/3/uidsz.gz" | sort -r | only -upto="$report_deep"`
+uids_ff=`find $uids_base_dir/ -wholename "*/$job/3/uidsz.gz" | sort | only -upto="$report_deep"`
 chk "$uids_ff" "uidsz files upto $report_deep days. " || exit 2
 
 # ... для каждого из которых существует 30 файлов (за 30 соответствующих дней) включая его самого где он последний,

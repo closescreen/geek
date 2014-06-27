@@ -32,7 +32,7 @@ chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 2
 #>: период, за который собрать данные (если их еще нет)
 period="34days" 
 
-hours -t=todayT04 -n=-"$period" -r |
+hours -t=todayT04 -n=-"$period" |
 files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" |
 only --without="total.gz" |
 washing -time=10.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip

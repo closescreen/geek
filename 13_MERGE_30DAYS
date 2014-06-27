@@ -8,7 +8,7 @@ cd `dirname $0`
 
 deep=`conf 00_conf.txt report_deep`
 job=${1:?JOB!}
-days=${2:-"$(hours -t=today -shift=-1day -n=-$deep -days -r )"}
+days=${2:-"$(hours -t=today -shift=-1day -n=-$deep -days )"}
 
 # скрипт выполняется только для перечисленных $job
 todo=$( href -dict='

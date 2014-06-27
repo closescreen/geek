@@ -24,7 +24,7 @@ remote_kris_dir="/usr/local/rle/var/grep/"k.fedorenko/1126
 local_dir="../RESULT/traits_copy"
 
 # список дней, за которые желаем иметь локальные копии:
-find_for_days=`hours -t=today -n=-"$upto" -days -r`
+find_for_days=`hours -t=today -n=-"$upto" -days`
 
 for day in $find_for_days; do
     # gender:

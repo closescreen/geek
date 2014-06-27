@@ -15,8 +15,8 @@ typenums="0 1 3"
 for job in $jobs;do
     for typenum in $typenums; do
 	# for any jobs and typenums:
-	fork -pf="../pids/10.$job.t${typenum}.pids" -n=1 "nice -n15 ./10_HOURS $job $typenum"
-	fork -pf="../pids/12.$job.t${typenum}.pids" -n=1 "nice -n15 ./12_MERGE $job $typenum"
+	fork -pf="../pids/10.$job.t${typenum}.pids" -n=1 "nice -n20 ./10_HOURS $job $typenum"
+	fork -pf="../pids/12.$job.t${typenum}.pids" -n=1 "nice ./12_MERGE $job $typenum"
     done
 
     # for any jobs:

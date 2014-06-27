@@ -11,7 +11,7 @@ job=${1:?Job!}
 src="url_groups.gz" 
 result="url_groups_diff.gz"
 
-find ../RESULT/10 -wholename "*/$job/3/$src" | sort -r | only -without="$result" |
+find ../RESULT/10 -wholename "*/$job/3/$src" | sort | only -without="$result" |
  washing -result="s|$src|$result|" -v_flag="./27_process $job %s" -compr=gzip -timelog="$0.time.log" -nolog=3 -max=1
 
 

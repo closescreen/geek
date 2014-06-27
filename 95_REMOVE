@@ -24,7 +24,7 @@ done
 
 #----------- старые /RESULT/10 ----
 # Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного
-oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=38days`
+oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=40days`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
@@ -39,7 +39,7 @@ emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
 [[ -n "$emptyff" ]] && echo -e "Found empty files: $emptyff \n -will removed." && rm $emptyff
 
 # ---- google/3/urls30days.gz --------
-old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" | only --older=10days`
+old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" | only --older=8days | only -near=sz_vars_30days.gz`
 [[ -n "$old_urls30days_ff" ]] && rm $old_urls30days_ff
 
 )>>"$0.log" 2>&1

@@ -1,4 +1,9 @@
 shell_patterns=0
 + ! t t
 @       Who is work now
-	for file in `find ../RESULT -name "*.FLAG"`; do echo -n $file; (netflag --check -file=$file && echo "" )||echo " ( NOT WORK )"  ; done
+	for file in `find ../RESULT -name "*.FLAG" | sort`; do 
+	    echo -n "$file  |"; (netflag --check -file=$file -print=STARTED && echo " " )||echo " ( NOT WORK )"  ; 
+	done
+	
+@	*_new file copy
+	file=%t; cp $file ${file}_NEW	

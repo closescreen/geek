@@ -8,7 +8,7 @@ cd `dirname $0`
 
 job=${1:?Job!}
 
-find ../RESULT/10/ -wholename "*/$job/3/urls?*.gz" | sort -r |
+find ../RESULT/10/ -wholename "*/$job/3/urls?*.gz" | sort  |
 washing -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=$0.time.log
 
 )>>"$0.log" 2>&1

@@ -11,7 +11,7 @@ N=`froms 19_URLS30DAYS -var=N -strict`
 
 r_filename="dom_gr7days.gz" #"test_groups.gz"
 
-find ../RESULT/10 -wholename "*/$r_filename" | sort -r |
+find ../RESULT/10 -wholename "*/$r_filename" | sort |
 only -sizegt=20 |
 washing -res="s|$r_filename|url_groups.gz|" -v_flag="./25_process %s $job $N" -comp=gzip -time=$0.time.log
 
