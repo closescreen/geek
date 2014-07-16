@@ -10,7 +10,7 @@ cd `dirname $0`
 
 job=${1:?Job!}
 
-days=`find ../RESULT/10/ -name "dom_gr.txt" | sort | only --upto=7days | only -without=dom_gr7days.gz | fn2days`
+days=`find ../RESULT/10/ -wholename "*/$job/3/dom_gr.txt" | sort | only --upto=7days | only -without=dom_gr7days.gz | fn2days`
 [[ -z "$days" ]] && exit 0
 for day in $days; do
     result_f="../RESULT/10/$day/$job/3/dom_gr7days.gz"

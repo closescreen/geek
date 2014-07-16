@@ -24,13 +24,15 @@ done
 
 #----------- старые /RESULT/10 ----
 # Удаление любых данных /RESULT/10/$day/$job/$typenum, старее указанного
-oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=40days`
+oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=60days`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
 #----------- старые ../RESULT/traits_copy ----
 # Удаление traits_copy
-oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | only --older=10days`
+oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | 
+ only -having='s|traits_copy/(\d\d\d\d-\d\d-\d\d)|10/$1/google/3/sz_vars_30days.gz|' | 
+ only -older=10days`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 

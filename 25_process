@@ -51,13 +51,15 @@ for my $line ( cat $quant_fn ){
 my ( $groups_group, @groups_subgroups );
 
 _{
+ return if $F[SESSIONS]==0;
+
  if ( Dom ne prevDom ){
     $groups_group = $groups{ &Dom }||0;
     @groups_subgroups = @{ $quant{ $groups_group }||[] };
  }
 
  my $rv=0; 
- my $f43 = Sess_ends / Sessions * 100;
+ my $f43 = $F[SESS_ENDS] / $F[SESSIONS] * 100;
 
  my $subgroup_number;
  if ( !$groups_group or !@groups_subgroups ){
