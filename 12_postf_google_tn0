@@ -10,7 +10,7 @@ set +x
 #>>  1   2        3          4           
 #>> sz  ad  exposureprice winprice
 
-awk -F* -v"OFS=*" '{ print $0, ($3/$4) } 
+awk -F* -v"OFS=*" '{ print $0, ( $4 ? ($3/$4) : "NA" ) } 
 # теперь стало 5 полей: sz, ad, exposureprice, winprice, expprice/winprice' |
 summator -fu="cnt,+sum,sum,sum" 
 

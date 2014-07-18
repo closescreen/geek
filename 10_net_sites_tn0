@@ -1,0 +1,32 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==0 (показы) , network==60 
+
+# для сетевых сайтов, не сетевые показы - это как биды (проигранные?), сетевые показы - как биды(выигранные) и показы
+# следовательно, этот сбор может включать в себя:
+
+ 
+
+
+sids=${2:? sids !} # like a 111|2222|33333|...
+
+job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,secondprice,ad,network,ref,sid=${sids},typenum=0,statusnum=0"\
+    -fn -cut="sid,typenum,statusnum" -true="uid" -fn -ll |
+ lae -M=Dom '_{ 
+    @F[ REF, REF_F ] = map {$_||""} Dom::split_ref( Ref ); # предполагается что поле REF-последнее
+    $F[ REF ]=~s/\.$//; 
+    p @F 
+    }' |
+ LANG=POSIX sort -T. -t\* -k1,1 -k2,2n
+
+#>> OUT
+#>> uid - для сессий
+#>> sec - для сессий
+#>> sz
+#>> pz - для комбинаций pzbt
+#>> bt - для комбинаций pzbt
+#>> exppr - для: среднего отношения к winprice, для доли бидов с положит ставкой( если не исп. ad для этого ) ( для выигранных бидов - сетевых просмотров), 
+#>> secondprice - для: среднего winprice, среднего отношения expprice к winprice ( для выигранных бидов - сетевых просмотров)
+#>> ad - для детализации по клиенту,  
+#>> network - (нужно ли фильтровать 43|44|45|60|0 ?) network=43|44|45|60|0 - показ сетевой (в какой сети) или нет
+#>> dom - для bids, sessions, urls
+#>> path

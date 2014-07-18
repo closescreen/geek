@@ -5,7 +5,7 @@
 #>> поля: sz,ad
 #>> сортировка: по sz,ad
 
-sids=$2 #like a: 123|234|3254
+sids=${2:?sids!} #like a: 123|234|3254
 
 job_history_log "$1" "sz,ad,uid,typenum=1,sid=$sids,statusnum=0" -fn -cut="sid,statusnum,typenum,uid" -true="sz,uid" |
 sort -T. -t\* -n -k1,1 -k2,2

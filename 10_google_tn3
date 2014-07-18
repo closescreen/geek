@@ -8,7 +8,7 @@
 
 #set -x
 
-sids=$2 #like a: 123|234|3254
+sids=${2:?sids!} #like a: 123|234|3254
 
 job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" -ll |
 lae -M=Dom '_{ @F[ REF, REF_F ] = Dom::split_ref( Ref ); p @F }' |

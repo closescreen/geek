@@ -1,9 +1,20 @@
 shell_patterns=0
 + ! t t
-@       Who is work now
+@	Who is work now
 	for file in `find ../RESULT -name "*.FLAG" | sort`; do 
 	    echo -n "$file  |"; (netflag --check -file=$file -print=STARTED && echo " " )||echo " ( NOT WORK )"  ; 
 	done
 	
+@	01_STOP_ALL
+	./01_STOP_ALL		
+	
+
+@	remove 01_STOP_ALL.stop AND 01_START_ALL
+	if [ -s ./01_STOP_ALL.stop ] ; then
+	    rm ./01_STOP_ALL.stop && echo "01_STOP_ALL.stop removed"
+	fi    
+	./01_START_ALL && echo "01_START_ALL started"
+
+
 @	*_new file copy
 	file=%t; cp $file ${file}_NEW	

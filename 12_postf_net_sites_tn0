@@ -1,18 +1,23 @@
 #!/usr/bin/env bash
-#> Обработчик смерженного (часы в сутки) потока для google tn3.
+
+#> Обработчик смерженного (часы в сутки) потока для net_sites tn0
+#> net_sites tn0 - это показы, а также "биды" (сетевые показы - выигранные биды)
+
+
+# Если смотреть как на показы - то их можно получить фильтруя и агрегируя эти результаты. 
 
 #>> Добавляем колонку про сессии: СЕКУНДЫ начала сессии КУКИ на ДОМЕНЕ, 
 #>> и колонку "признак засчитываемого просмотра страницы" - незасчитываются повторные просмотры одной и тойже страницы с интервалом менее 10 сук.
 #>> На входе поток за сутки (т.е период начало и конец которого можно считать разрывом сессии), лучше с 04-00 по 04-00.
 #>> отсортрованный по КУКЕ и ВРЕМЕНИ. 
 
-lae -lb="uid second sz pz bt exposureprice ad dom path +sestart +isview" '
+
+lae -lb="uid second sz pz bt exposureprice secondprice +divexpsecond ad network dom path +sestart +isview" '
 my %sestart; 
 my %last_view; 
 my %prev_exp_sec;
 _{
 
-    
     if ( prevUid and $F[UID]!=prevUid ){
 	# uid was changed:
 	undef %sestart;
@@ -20,14 +25,12 @@ _{
 	undef %prev_exp_sec;
     }
 
-    
     if ( $prev_exp_sec{ $F[DOM] } and ( $F[SECOND] - $prev_exp_sec{ $F[DOM] } )>1800 ){
 	# session timed out:
 	$sestart{ $F[DOM] } = 0;
 	$prev_exp_sec{ $F[DOM] } = 0; 
     }	
     
- 
     # Если нет секунды начала на данном домене, значит началом сессии считаем текущую секунду:
     set_sestart( $sestart{ $F[DOM] } ||= $F[SECOND] );
  
@@ -47,6 +50,14 @@ _{
 	$last_view{ $ref } = $F[SECOND]
     }
 
+ # secondprice делится на 100_000.
+ # $F[SECONDPRICE] /= 100_000; # <------отключил, непохоже что надо делить
+
+ # expprice/secondprice нужно для нахождения среднего отношения expprice/secondprice
+ $F[DIVEXPSECOND] = $F[SECONDPRICE] ? sprintf("%.2f", $F[EXPOSUREPRICE]/$F[SECONDPRICE]) : "NA";
+ 
+ p @F;
+
  #>> OUT:
  #>>
  #>> | field | description |
@@ -56,14 +67,14 @@ _{
  #>> | sz    |
  #>> | pz    |
  #>> | bt    |
- #>> | exposure_price |изза ad не используется|
+ #>> | exposureprice |
+ #>> | secondprice |
+ #>> | expprice/(secondprice) |
  #>> | ad      |
  #>> | domain  |
  #>> | path    |
  #>> | sestart | секунды начала сессии   |
  #>> | isview  | просмотр засчитан (1/0) |
-
- p @F;
 
  $prev_exp_sec{ $F[DOM] } = $F[SECOND]; # храним время предыдущего просмотра любого реферера на домене
 } -prev=>"uid=0";

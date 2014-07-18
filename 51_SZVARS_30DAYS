@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+#> bids.gz , totals... ----> sz_vars_30days.gz
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+job=${1:?JOB!}
+
+day=${2:-""} # можно указать день, за который считать
+
+if [[ -n "$day" ]]; then
+    deep=1day
+else    
+    deep=`conf 00_conf.txt "report_deep"`
+fi    
+
+hours -t=${day:-"today"} -shift=1day -n=-"$deep" -days |
+files "../RESULT/10/%F/$job/3/bids.gz" | only -s |
+only -without="sz_vars_30days.gz" | 
+washing -res="s|bids.gz|sz_vars_30days.gz|" -cmd="./51_process_$job %s $job" -time=$0.time.log -comp=gzip
+
+)>>"$0.log" 2>&1

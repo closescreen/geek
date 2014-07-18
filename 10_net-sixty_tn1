@@ -1,5 +1,0 @@
-#!/usr/bin/env bash
-#> сбор из hl typenum==1 (клики) , network=60
-
-
-echo "test"
