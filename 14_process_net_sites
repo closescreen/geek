@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#> Making table "bids" for net_sites (tn0).
+
+#>> in (from tn0 total.gz):
+# для net_sites биды - это все просмотры, сетевые и не сетевые
+
+lae -lb="uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview" '
+my ( %bids, %positive_bids, %dom );
+_{
+ $bids{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0 }{ $F[NETWORK]>0 }++;
+ $dom{ &Sz } ||= &Dom;
+};
+
+for my $sz ( keys %bids ){
+    for my $ad ( keys %{$bids{$sz}} ){
+	for my $is_posibid ( keys %{ $bids{$sz}{$ad} } ){
+	    for my $is_network ( keys %{ $bids{$sz}{$ad}{$is_posibid} } ){
+		p0 $sz, $ad, $is_posibid, $is_network, $bids{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{ $sz };
+	    }	
+	}
+    }
+}
+
+' | sort -T. -t\* -S 333M -n -k1,1 -k2,2
+
+#>> OUT: sz, ad, is_posibid, is_network, bids, domain.
+#>> 
+#>> | field  | description |
+#>> | ------ | ----------- |
+#>> | sz     |
+#>> | ad     |
+#>> | is_posibid | ставки >0 |
+#>> | is_network | сетевые показы (выинранные биды) |
+#>> | bids   | количество бидов |
+#>> | domain | домен (как внешний ключ для объединения с данными, сгруппированными по доменам ) |
+
+
+
