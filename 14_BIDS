@@ -9,8 +9,22 @@ cd `dirname $0`
 #>:параметр:
 job=${1:?Job!} # google 
 
-find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort |
-only --without="bids.gz" |
-washing -res="s|total\.gz|bids.gz|" -v_flag="zcat %s | ./14_process" -comp=gzip -timelog="$0.time.log"
+#> для разных $job разные источники:
+wholename=$(
+    href -dict="
+	net_sites => '*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/0/total.gz',
+    " -default="*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" -value="$job"
+)
+
+#> script может отличаться для разных job:
+scriptname=$(
+    href -dict="
+	net_sites => './14_process_net_sites'
+    " -defa='./14_process_google' -val="$job"
+)
+
+find ../RESULT/10 -wholename "$wholename" | sort |
+ only --without="bids.gz" |
+ washing -res="s|total\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="$0.time.log"
 
 )>>"$0.log" 2>&1
