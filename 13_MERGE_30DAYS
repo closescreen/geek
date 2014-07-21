@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#>
+#> total.gz ----( summator -fu=sum )------->total30days.gz
 (
 set -u
 set +x
@@ -10,9 +10,9 @@ deep=`conf 00_conf.txt report_deep`
 job=${1:?JOB!}
 days=${2:-"$(hours -t=today -shift=-1day -n=-$deep -days )"}
 
-# скрипт выполняется только для перечисленных $job
+# скрипт выполняется только для перечисленных ниже:
 todo=$( href -dict='
-    "net-forty-three"=>1, "net-forty-four"=>1, "net-forty-five"=>1, "net-sixty"=>1
+    net_sites => "yes", 
 ' -val=$job )
 
 [[ -z "$todo" ]] && exit 0

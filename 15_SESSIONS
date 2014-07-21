@@ -6,11 +6,32 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
-#>:параметр:
-job=${1:?JOB!}
+#>:параметры:
+job=${1:?JOB!} # job
+days=${2:-""} # можно указать days
+deb=${3:-""} # можно указать "deb"
 
-find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort |
-only -without="sessions.gz" |
-washing -res="s|total\.gz|sessions.gz|" -v_flag="zcat %s | ./15_process" -comp=gzip -time="$0.time.log"
+[[ -n "$deb" ]] && set -x
+
+typenum=$(
+ href -dict="
+    net_sites => '0',
+ " -default="3" -val="$job"
+)
+
+if [[ -n "$days" ]];then
+    ff=` echo "$days" | files ../RESULT/10/%F/$job/$typenum/total.gz`
+else
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort | only -without="sessions.gz"`
+fi    
+
+# у разных job форматы исходных total.gz могут быть разными:
+lb=$(
+ href -dict="
+    net_sites => 'uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
+ " -default='uid second sz pz  bt exposureprice ad dom path sestart isview' -val="$job"
+)
+
+echo "$ff" | washing -res="s|total\.gz|sessions.gz|" -v_flag="zcat %s | ./15_process \"$lb\"" -comp=gzip -time="$0.time.log"
 
 )>>"$0.log" 2>&1

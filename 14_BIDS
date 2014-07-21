@@ -8,12 +8,16 @@ cd `dirname $0`
 
 #>:параметр:
 job=${1:?Job!} # google 
+days=${2:-""}
+deb=${3-""} # можно указать deb и читать лог
+
+[[ -n "$deb" ]] && set -x
 
 #> для разных $job разные источники:
-wholename=$(
+typenum=$(
     href -dict="
-	net_sites => '*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/0/total.gz',
-    " -default="*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" -value="$job"
+	net_sites => '0',
+    " -default="3" -value="$job"
 )
 
 #> script может отличаться для разных job:
@@ -23,8 +27,13 @@ scriptname=$(
     " -defa='./14_process_google' -val="$job"
 )
 
-find ../RESULT/10 -wholename "$wholename" | sort |
- only --without="bids.gz" |
- washing -res="s|total\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="$0.time.log"
+# либо берем файлы за указанные дни, либо если не указаны - находим непосчитанные:
+if [[ -n "$days" ]]; then
+    ff=`echo $days | files "../RESULT/10/%F/$job/$typenum/total.gz"`
+else
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort | only --without="bids.gz"`
+fi
+    
+echo "$ff" | washing -res="s|total\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="$0.time.log"
 
 )>>"$0.log" 2>&1

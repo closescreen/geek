@@ -8,20 +8,20 @@ lae -lb="uid second sz pz bt exposureprice secondprice divexpsecond ad network d
 my ( %bids, %positive_bids, %dom );
 _{
  $bids{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0 }{ $F[NETWORK]>0 }++;
- $dom{ &Sz } ||= &Dom;
+ $dom{ $F[SZ] } ||= $F[DOM];
 };
 
-for my $sz ( keys %bids ){
-    for my $ad ( keys %{$bids{$sz}} ){
-	for my $is_posibid ( keys %{ $bids{$sz}{$ad} } ){
-	    for my $is_network ( keys %{ $bids{$sz}{$ad}{$is_posibid} } ){
+for my $sz ( sort {$a<=>$b} keys %bids ){
+    for my $ad ( sort {$a<=>$b} keys %{$bids{$sz}} ){
+	for my $is_posibid ( sort {$a<=>$b} keys %{ $bids{$sz}{$ad} } ){
+	    for my $is_network ( sort {$a<=>$b} keys %{ $bids{$sz}{$ad}{$is_posibid} } ){
 		p0 $sz, $ad, $is_posibid, $is_network, $bids{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{ $sz };
 	    }	
 	}
     }
 }
 
-' | sort -T. -t\* -S 333M -n -k1,1 -k2,2
+' 
 
 #>> OUT: sz, ad, is_posibid, is_network, bids, domain.
 #>> 
@@ -34,5 +34,5 @@ for my $sz ( keys %bids ){
 #>> | bids   | количество бидов |
 #>> | domain | домен (как внешний ключ для объединения с данными, сгруппированными по доменам ) |
 
-
+#>> сортировака -n -k1,1 -k2,2 -k3,3 -k4,4
 

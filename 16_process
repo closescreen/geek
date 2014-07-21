@@ -5,19 +5,18 @@
 #>>  1   2     3   4  5       6        7   8   9     10      11
 #>> uid second sz pz  bt exposureprice ad dom path sestart isview
 
+lb=${1:?labels!}
 
-
-cut -d* -f3,4,5 |
-lae -lb="sz pz bt" '
+lae -lb="$lb" '
 my %hash;
 _{
- $hash{ &Sz }{ &Pz }{ &Bt }++;
+ $hash{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
 };
 
 for my $sz ( keys %hash ){
     for my $pz ( keys %{$hash{$sz}} ){
 	for my $bt ( keys %{$hash{$sz}{$pz}} ){
-	    p $sz, $pz, $bt, $hash{ &Sz }{ &Pz }{ &Bt };
+	    p $sz, $pz, $bt, $hash{ $sz }{ $pz }{ $bt };
 	}
     }
 } 
