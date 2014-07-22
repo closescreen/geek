@@ -7,49 +7,62 @@ set -o pipefail
 cd `dirname $0`
 
 merge_deep=30 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
-job=${1:?Job!}
-
+job=${1:?Job!} # google | ssp_sites | net_sites
+days=${2:-""} # можно указать "$day1 $day2 ..."
+deb=${3:-""} # можно указать "deb"
 report_deep=`conf 00_conf.txt report_deep`
 
 traits_base_dir="../RESULT/traits_copy"
 uids_base_dir="../RESULT/10"
 
-# ищем список файлов uidsz.gz не старше $report_deep (потому что на старые числа не нужно считать отчет)
-uids_ff=`find $uids_base_dir/ -wholename "*/$job/3/uidsz.gz" | sort | only -upto="$report_deep"`
-chk "$uids_ff" "uidsz files upto $report_deep days. " || exit 2
+[[ -n "$deb" ]] && set -x
+
+typenum=$(
+ href -dict="
+     net_sites => '0',
+ " -default="3" -val="$job"
+)
+
+
+if [[ -n "$days" ]]; then
+    ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/uidsz.gz" | only -s`
+else
+    ff=`find $uids_base_dir/ -wholename "*/$job/$typenum/uidsz.gz" | sort | only -upto="$report_deep" | only -without="traits30days.gz"`
+fi
+
+chk "$ff" "uidsz files upto $report_deep days. " || exit 2
 
 # ... для каждого из которых существует 30 файлов (за 30 соответствующих дней) включая его самого где он последний,
-uids_ff=`echo "$uids_ff" | 
-only 'fn2days "%f" | hours -n=-'$merge_deep'days -shift=1day -days | files '$uids_base_dir/%F/$job/3/uidsz.gz' | only -all -e -noprint'`
-chk "$uids_ff" "uidsz files with $merge_deep days for merge. " || exit 2
+ff=`echo "$ff" | 
+only 'fn2days "%f" | hours -n=-'$merge_deep'days -shift=1day -days | files '$uids_base_dir/%F/$job/$typenum/uidsz.gz' | only -all -e -noprint'`
+chk "$ff" "uidsz files with $merge_deep days for merge. " || exit 2
 
 # а так же для каждого файла uidsz должны иметься predict_gr_v2.gz
-uids_ff=`echo "$uids_ff" | 
+ff=`echo "$ff" | 
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/predict_gr_v2.gz"'`
-chk "$uids_ff" "uidsz files with predict_gr_v2.gz " || exit 2
+chk "$ff" "uidsz files with predict_gr_v2.gz " || exit 2
 
 # ... и predicted_add.gz  
-uids_ff=`echo "$uids_ff" | 
+ff=`echo "$ff" | 
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/predicted_add.gz"'`
-chk "$uids_ff" "uidsz files with predicted_add.gz " || exit 2
+chk "$ff" "uidsz files with predicted_add.gz " || exit 2
 
 # ... и ctr10gr.gz
-uids_ff=`echo "$uids_ff" | 
+ff=`echo "$ff" | 
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr10gr.gz"'`
-chk "$uids_ff" "uidsz files with ctr10gr.gz " || exit 2
+chk "$ff" "uidsz files with ctr10gr.gz " || exit 2
 
 # ... и ctr11gr.gz
-uids_ff=`echo "$uids_ff" | 
+ff=`echo "$ff" | 
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr11gr.gz"'`
-chk "$uids_ff" "uidsz files with ctr11gr.gz " || exit 2
+chk "$ff" "uidsz files with ctr11gr.gz " || exit 2
 
 # DEBUG: (get first file from list):
-#uids_ff=`echo $uids_ff | words -first` # закомментировать потом
+#ff=`echo $ff | words -first` # закомментировать потом
+#chk "$ff" "files. " || exit 2
 
-chk "$uids_ff" "files. " || exit 2
 
-
-echo "$uids_ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="./33_process %s %f '$job' '$merge_deep' '$traits_base_dir' '$uids_base_dir'" \
+echo "$ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="./33_process %s %f '$job' '$typenum' '$merge_deep' '$traits_base_dir' '$uids_base_dir'" \
  -comp=gzip -time=$0.time.log
 
 )>>"$0.log" 2>&1

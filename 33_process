@@ -31,12 +31,14 @@ srcfile=${1:?File!} # ../REESULT/.../uidsz.gz
 resf=${2:? ResFile! }
 # Параметр 3: job (напр. google)
 job=${3:?Job!} # google
-# Параметр 4: глубина дней, за сколько мержить uidsz
-merge_deep=${4:?Merge Deep!} # в днях (30), за сколько дней нужны uidsz.gz
-# Параметр 5: основная папка файлов трейтов. 
-traits_base_dir=${5:? traits base dir!}
-# Параметр 6: uids_base_dir
-uids_base_dir=${6:? uids_base_dir !}
+# парам 4: typenum:
+typenum=${4:?typenum!}
+# Параметр 5: глубина дней, за сколько мержить uidsz
+merge_deep=${5:?Merge Deep!} # в днях (30), за сколько дней нужны uidsz.gz
+# Параметр 6: основная папка файлов трейтов. 
+traits_base_dir=${6:? traits base dir!}
+# Параметр 7: uids_base_dir
+uids_base_dir=${7:? uids_base_dir !}
 
 
 day=`fn2days "$srcfile"`
@@ -53,7 +55,7 @@ chk "$ctr10_file" "ctr10file" "-s" "exists" nop || exit 2
 ctr11_file="$traits_base_dir/$day/ctr11gr.gz"
 chk "$ctr11_file" "ctr11file" "-s" "exists" nop || exit 2
 
-uidsz30files=`hours -d="$day" -shift=1day -n=-"$merge_deep"days -days | files "$uids_base_dir/%F/$job/3/uidsz.gz"`
+uidsz30files=`hours -d="$day" -shift=1day -n=-"$merge_deep"days -days | files "$uids_base_dir/%F/$job/$typenum/uidsz.gz"`
 
 # должны быть все на месте:
 uidsz30files=`echo "$uidsz30files" | only -all -s`
