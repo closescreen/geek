@@ -9,12 +9,15 @@ src_file=${1:?Src file!} # f.e...../urls.gz
 #>: параметр (job):
 job=${2:?Job!} # f.e. google
 
+#>: парам:
+typenum=${3:?typenum!}
+
 #>: параметр (days):
-N=${3:?N Days!} # f.e. 30. За сколько дней суммировать
+N=${4:?N Days!} # f.e. 30. За сколько дней суммировать
 
 day=`fn2days $src_file`
 
-ff=$( hours -t="${day}T00" -shift=1day -n=-"$N"days -days -comm="<---$N days with $day included." | files "../RESULT/10/%F/$job/3/urls.gz" )
+ff=$( hours -t="${day}T00" -shift=1day -n=-"$N"days -days -comm="<---$N days with $day included." | files "../RESULT/10/%F/$job/$typenum/urls.gz" )
 ff=$( echo "$ff" | only -all -s | only -all -sizegt=20 )
 chk "$ff" "Files for $N days back from $day. (Not found $? files)" || exit 2
 

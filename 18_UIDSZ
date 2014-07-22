@@ -14,14 +14,27 @@ deb=${3:-""} # можно указать "deb"
 
 [[ -n "$deb" ]] && set -x
 
+typenum=$(
+ href -dict="
+     net_sites => '0',
+ " -default="3" -val="$job"
+)
+
+
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/3/total.gz" | only -s`
 else
-    ff=$(
-	find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/3/total.gz" | sort |
-	only --without="uidsz.gz"
-	)
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort | only --without="uidsz.gz"`   
 fi
+
+      
+# у разных job форматы исходных total.gz могут быть разными:
+lb=$(
+ href -dict="
+    net_sites => 'uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
+ " -default='uid second sz pz  bt exposureprice ad dom path sestart isview' -val="$job"
+)
+
     
 echo "$ff" |
  washing -res="s|total\.gz|uidsz.gz|" -v_flag='zcat %s |awk -F* -v"OFS=*" "{print \$1,\$3}" | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ' -comp=gzip -timelog="$0.time.log"

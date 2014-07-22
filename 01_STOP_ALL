@@ -11,6 +11,8 @@ export PATH=$PATH:/home/d.belyaev/grep/bike
 echo "Stopped by $USER at $(date)" >> 01_STOP_ALL.stop
 
 ff=`find ../pids -name "*.pids"`
-for f in $ff; do fork -pf=$f -kila -d; done
+for f in $ff; do 
+    fork -pf=$f -kila -d; 
+done
 
 )#>>"$0.log" 2>&1

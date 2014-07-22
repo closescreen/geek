@@ -13,7 +13,10 @@ export PATH=$PATH:/home/d.belyaev/grep/bike
 #jobs="google ssp_sites net-forty-three net-forty-four net-forty-five net-sixty"
 jobs="google ssp_sites net_sites"
 typenums="0 1 3"
+
+loadaverage -1m -gt 5 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))" && exit
 for job in $jobs;do
+    
     for typenum in $typenums; do
 	# for any jobs and typenums:
 	fork -pf="../pids/10.$job.t${typenum}.pids" -n=1 "nice -n20 ./10_HOURS $job $typenum"
@@ -48,4 +51,4 @@ done
 # for once call:
 fork -pf="../pids/95.pids" -single "nice ./95_REMOVE"
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1
