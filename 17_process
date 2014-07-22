@@ -7,13 +7,17 @@
 
 #>> sorted by UID,SECOND:
 
-awk -F* '$11' |
-lae -lb="uid second sz pz  bt exposureprice ad dom path sestart isview" '
+lb=${1:?labels!}
+
+lae -lb="$lb" '
 my %sessions_count;
 my %sessions_ends;
 my %urls;
 
 _{
+
+ return if not $F[ISVIEW];
+ 
  #> when uid+sestart was changed:
  increment_counters() if ( Uid!=prevUid or Sestart!=prevSestart ) and prevUid and prevSestart;
  
@@ -45,5 +49,12 @@ for my $ref ( keys %sessions_count ){
 #>>  
 #>> | field          | description |
 #>> | -------------- | ----------- |
+#>> | dom |
+#>> | ref |
 #>> | sessions_count | количество сессий, где dom+url участвовал |
 #>> | sessions_ends  | количество сессий, где он был последним.  |
+
+
+
+
+
