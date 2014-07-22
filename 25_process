@@ -8,13 +8,14 @@ set -o pipefail
 
 groups_fn=${1:? groups_fn !} 
 job=${2:?Job!} # f.e. google
-N=${3:?N!}
+typenum=${3:?typenum!}
+N=${4:?N!}
 
 day=`fn2days "$groups_fn"`
-urls_fn="../RESULT/10/$day/$job/3/urls${N}days.gz"
+urls_fn="../RESULT/10/$day/$job/$typenum/urls${N}days.gz"
 chk "$urls_fn" "File with urls sum for $day $job $N days" "-s" "exists and filled" nop || exit 2
 
-quant_fn="../RESULT/10/$day/$job/3/quant.txt"
+quant_fn="../RESULT/10/$day/$job/$typenum/quant.txt"
 chk "$quant_fn" "File with quants for $day $job" "-s" "exists and filled" nop || exit 2
 
 # quant_fn

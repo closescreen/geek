@@ -8,10 +8,28 @@ cd `dirname $0`
 
 job=${1:?Job!}
 N=`froms 19_URLS30DAYS -var=N -strict`
+src_filename="dom_gr7days.gz" 
+days=${2:-""} # можно указать "$day1 $day2 ..."
+deb=${3:-""} # можно указать "deb"
 
-src_filename="dom_gr7days.gz" #"test_groups.gz"
+[[ -n "$deb" ]] && set -x
 
-find ../RESULT/10 -wholename "*/$job/3/$src_filename" | sort | only -sizegt=20 |
-washing -res="s|$src_filename|url_groups.gz|" -v_flag="./25_process %s $job $N" -comp=gzip -time=$0.time.log
+typenum=$(
+ href -dict="
+     net_sites => '0',
+ " -default="3" -val="$job"
+)
+
+
+if [[ -n "$days" ]]; then
+    ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/$src_filename" | only -sizegt=20`
+else
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/$src_filename" | sort | only --without="url_groups.gz" |
+	only -sizegt=20`   
+fi
+
+      
+echo "$ff" |
+washing -res="s|$src_filename|url_groups.gz|" -v_flag="./25_process %s $job $typenum $N" -comp=gzip -time=$0.time.log
 
 )>>"$0.log" 2>&1
