@@ -10,13 +10,9 @@ set -o pipefail
 #> Этот скрипт только для google, ssp_sites.
 
 tn3_bids_fn=${1:?src_file!} 
-
 job=${2:?job!}
-
 typenum=${3:?typenum!}
-
 day=`fn2days "$tn3_bids_fn"`
-
 days=`hours -d="$day" -shift=1day -n=-30days -days`
 
 # для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
@@ -39,11 +35,9 @@ chk "$pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
 traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" | only -all -s`
 chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
-echo "STOP! переделать!" >&2 && exit
-
 # Чтобы получить количество сетей в которые входит сайтзона
-net_sites_tn0_ff=$( echo "$days" | files "../RESULT/10/%F/net_sites/0/total.gz" | only -all -s )
-chk "$net_sites_tn0_ff" "net_sites for 30 days (не хватает: $? файлов)" || exit 3 
+dom_net_ff=$( echo "$days" | files "./RESULT/10%F/net_sites/0/dom_net.gz" | only -all -s )
+chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $? файлов)" || exit 3 
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
@@ -300,12 +294,10 @@ zcat "$traits_fn"
  #         1   2         3    4     5     6     7   8    9         18   19
  # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
 ) <(
- # tn0 total30days всех сетей - для определения количества сетей в кот входит сайтзона
- # каждый файл имеет формат: 
- #  1    2     3  4 5     6             7            8        9    10    11  12    13      14
- # uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
- zcat "$net_sites_tn0_ff" | awk -F\* -vOFS='*' '{ print $11,$10 }'
- # Format: dom*net (nosorted)
+ # dom_net за 30 дней
+ # dom * net
+ LANG=POSIX mergef -ff="$dom_net_ff" -k=1,1 -k=2,2n -m --stdout | uniq
+ # Format: dom1*net1 (sorted)
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my %co=do"00_conf.txt"; 
