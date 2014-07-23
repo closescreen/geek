@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#>
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+src=${1:?src!}
+job=${2:?job!}
+typenum=${3:?typenum!}
+N=${4:?N!}
+
+#echo "$src" | fn2days | hours -n=-30days -shift=1day -days | files "./RESULT/10/%F/$job/$typenum/total.gz"
+
+#  1    2    3   4  5      6            7           8         9   10     11  12    13      14
+# uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+
+zcat "$src" | awk -F* -v"OFS=*" '$10>0 {print $11,$10}' | LANG=POSIX sort -t\* -T. -S 333M -k1,1 -k2,2n -u 
+
