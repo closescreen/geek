@@ -13,13 +13,15 @@ tn3_bids_fn=${1:?src_file!}
 
 job=${2:?job!}
 
+typenum=${3:?typenum!}
+
 day=`fn2days "$tn3_bids_fn"`
 
 days=`hours -d="$day" -shift=1day -n=-30days -days`
 
 # для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
-tn3_bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/bids.gz" | only -all -s`
-chk "$tn3_bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
+bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/bids.gz" | only -all -s`
+chk "$bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
 
 tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only -all -s`
 chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" || exit 3
@@ -27,32 +29,26 @@ chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" ||
 tn1_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/1/total.gz" | only -all -s`
 chk "$tn1_total_ff" "30 файлов кликов (не хватает $?)" || exit 3
 
-tn3_sessions_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/sessions.gz" | only -all -s`
-chk "$tn3_sessions_ff" "30 файлов sessions.gz (не хватает $?)" || exit 3
+sessions_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/sessions.gz" | only -all -s`
+chk "$sessions_ff" "30 файлов sessions.gz (не хватает $?)" || exit 3
 
-tn3_pzbt_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/pzbt.gz" | only -all -s`
-chk "$tn3_pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
+pzbt_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/pzbt.gz" | only -all -s`
+chk "$pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
 
 # а так же 1 файл traits30days.gz (в нем уже 30 дней)
-tn3_traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/3/traits30days.gz" | only -all -s`
-chk "$tn3_traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
+traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" | only -all -s`
+chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
-# Чтобы получить количество сетей в которые входит сайтзона - для каждой сети из ее tn0-total30days получаем списки доменов
-#>>: какие сети и в каком порядке д.б. представлены в отчете:
-nets="net-forty-three net-forty-four net-forty-five net-sixty"
-all_net_tn0_ff=""
-for net in $nets;do
-    net_tn0_file="../RESULT/10/$day/$net/0/total30days.gz"
-    chk "$net_tn0_file" "File with views for 30 days" "-s" "exists" noprint || exit 3 # отключение этой проверки уберет сообщеня в лог
-    [[ -s "$net_tn0_file" ]] || exit 3 # вариант проверки пофайлово или см ниже
-    all_net_tn0_ff="$all_net_tn0_ff $net_tn0_file"
-done
-# если дошли до сюда - значит нашли файлы для всех перечисленных сетей
+echo "STOP! переделать!" >&2 && exit
+
+# Чтобы получить количество сетей в которые входит сайтзона
+net_sites_tn0_ff=$( echo "$days" | files "../RESULT/10/%F/net_sites/0/total.gz" | only -all -s )
+chk "$net_sites_tn0_ff" "net_sites for 30 days (не хватает: $? файлов)" || exit 3 
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
 #> (ad нужна для posi_bids - ни равны 0 при ad==0)
-mergef -ff="$tn3_bids_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,last" |
+mergef -ff="$bids_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,last" |
 awk -F* -v"OFS=*" '
 # здесь сворачиваем строки по sz, добавляя positive_bids
 # INPUT:
@@ -149,10 +145,7 @@ my %all_net_views;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($dom, $filename) = split /\*/;
- my ($net) = $filename=~m|\d\d\d\d-\d\d-\d\d/(.+?)/\d|;
- #die "line=$_ dom=$dom net=$net";
- $net or die "lina=$_, dom=$dom, filename = $filename , cant get net!";
+ my ($dom, $net) = split /\*/;
  $all_net_views{ $dom }{ $net }||=1;
 }
 die "Hash all_net_views is empty. Possible file(s) for all nets from 30 days typenum=tn0 is empty?" if !%all_net_views;
@@ -295,24 +288,26 @@ mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator
 # Format: sz clicks
 ) <(
 # SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
-mergef -ff="$tn3_sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
+mergef -ff="$sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
 # Format: dom, sess_counts, views
 ) <(
 # PZBT за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
-mergef -ff="$tn3_pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
+mergef -ff="$pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
 # Format: sz cnt
 ) <(
 # traits30days.gz:
-zcat "$tn3_traits_fn"
+zcat "$traits_fn"
  #         1   2         3    4     5     6     7   8    9         18   19
  # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
 ) <(
  # tn0 total30days всех сетей - для определения количества сетей в кот входит сайтзона
- # каждый файл имеет формат: dom * ad * cnt(показов)
- LANG=POSIX mergef -ff="$all_net_tn0_ff" -prefilter="cut -d* -f1 | uniq | awk -vOFS=* -vfile=%file '{print \$0,file}'" -k=1,1 -m -stdout
- # Format: dom * net-file имя файла, содержащее имя сети
+ # каждый файл имеет формат: 
+ #  1    2     3  4 5     6             7            8        9    10    11  12    13      14
+ # uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+ zcat "$net_sites_tn0_ff" | awk -F\* -vOFS='*' '{ print $11,$10 }'
+ # Format: dom*net (nosorted)
 ) <(
- mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
+ mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my %co=do"00_conf.txt"; 
   my @pz=@{$co{pz}}; 
     _{ 
@@ -321,7 +316,7 @@ zcat "$tn3_traits_fn"
     }
  ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
 ) <(
- mergef -ff="$tn3_pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
+ mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my %co=do"00_conf.txt"; 
   my @bt=@{$co{bt}}; 
    _{ 
