@@ -9,10 +9,14 @@ set -o pipefail
 
 #> Этот скрипт только для google, ssp_sites.
 
-tn3_bids_fn=${1:?src_file!} 
+bids_fn=${1:?src_file!} 
 job=${2:?job!}
 typenum=${3:?typenum!}
-day=`fn2days "$tn3_bids_fn"`
+deb=${4:-""}
+
+[[ -n "$deb" ]] && set -x
+
+day=`fn2days "$bids_fn"`
 days=`hours -d="$day" -shift=1day -n=-30days -days`
 
 # для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
@@ -36,7 +40,7 @@ traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" |
 chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
 # Чтобы получить количество сетей в которые входит сайтзона
-dom_net_ff=$( echo "$days" | files "./RESULT/10%F/net_sites/0/dom_net.gz" | only -all -s )
+dom_net_ff=`echo "$days" | files "../RESULT/10/%F/net_sites/0/dom_net.gz" | only -all -s`
 chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $? файлов)" || exit 3 
 
 #> смерженные файлы bids.gz:

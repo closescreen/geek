@@ -2,7 +2,7 @@
 #> net_sites tn0 total.gz ----( 35_process )------> dom_net.gz
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 

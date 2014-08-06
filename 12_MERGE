@@ -10,6 +10,11 @@ cd `dirname $0`
 job=${1:? Job! }
 #>:параметр:
 typenum=${2:? Typenum! }
+#> days:
+day=${3:-""} # можно указать day
+deb=${4:-""} # млжно указать deb
+[[ -n "$deb" ]] && set -x
+
 
 # некоторые комбинации job+typenum не обрабатываются:
 silent_exit=$( href -dict="
@@ -33,10 +38,16 @@ chk "$mkeys" "Ключи для mergef по $job и $typenum" || exit 1
 
 #> не обрабатываются часовые данные, где рядом уже есть total.gz
 #> не обрабатываются часовые данные с размером меньше или равно 20 байт
-find ../RESULT/10/ -type f -wholename "*/$job/$typenum/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+if [[ -n "$day" ]]; then
+    find_path=../RESULT/10/$day/
+else
+    find_path=../RESULT/10/
+fi
+ 
+find "$find_path" -type f -wholename "*/$job/$typenum/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
  only --without="total.gz" |
  only -sizegt=20 |
- LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -on_another="silent_skip"
+ LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -on_another="silent_skip" -timelog=$0.time.log
 
 
 )>>"$0.log" 2>&1

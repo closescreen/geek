@@ -25,7 +25,7 @@ for day in $days; do
     need_files=$( hours -d=$day -shift=1day -n=-30days -days | files "../RESULT/10/%F/$job/0/total.gz" )
     if echo $need_files | only -all -sizegt=20 -noprint ; then
 	
-	mergef -ff="$need_files" -m -k=1,1 -k=2,2n -postf="summator -fu=sum" -gr="'$total_dir'" -tt="$total_f" -on_other_process="silent-skip"
+	mergef -ff="$need_files" -m -k=1,1 -k=2,2n -postf="summator -fu=sum" -gr="'$total_dir'" -tt="$total_f" -on_other_proc="silent-skip" -time=$0.time.log
 	 
     else
 	    #echo "Not found $? files: " >&2

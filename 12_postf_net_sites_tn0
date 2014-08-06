@@ -71,6 +71,7 @@ _{
  #>> | secondprice |
  #>> | expprice/(secondprice) |
  #>> | ad      |
+ #>> | network |
  #>> | domain  |
  #>> | path    |
  #>> | sestart | секунды начала сессии   |

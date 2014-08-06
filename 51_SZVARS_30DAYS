@@ -7,18 +7,34 @@ set -o pipefail
 cd `dirname $0`
 
 job=${1:?JOB!}
+day=${2:-""} # можно указать $day
+deb=${3:-""} # можно указать "deb"
+[[ -n "$deb" ]] && set -x
 
-day=${2:-""} # можно указать день, за который считать
+typenum=$(
+ href -dict="
+     net_sites => '0',
+ " -default="3" -val="$job"
+)
 
+
+# у разных job форматы исходных total.gz могут быть разными:
+lb=$(
+ href -dict="
+    net_sites => 'uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
+ " -default='uid second sz pz  bt exposureprice ad dom path sestart isview' -val="$job"
+)
+
+    
 if [[ -n "$day" ]]; then
     deep=1day
 else    
     deep=`conf 00_conf.txt "report_deep"`
-fi    
+fi
 
 hours -t=${day:-"today"} -shift=1day -n=-"$deep" -days |
-files "../RESULT/10/%F/$job/3/bids.gz" | only -s |
-only -without="sz_vars_30days.gz" | 
-washing -res="s|bids.gz|sz_vars_30days.gz|" -cmd="./51_process_$job %s $job" -time=$0.time.log -comp=gzip
+ files "../RESULT/10/%F/$job/$typenum/bids.gz" | only -s |
+ only -without="sz_vars_30days.gz" | 
+ washing -res="s|bids.gz|sz_vars_30days.gz|" -cmd="./51_process_$job \"%s\" \"$job\" \"$typenum\" \"deb\"" -time=$0.time.log -comp=gzip
 
 )>>"$0.log" 2>&1

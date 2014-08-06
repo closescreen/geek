@@ -13,10 +13,8 @@ server="crawler.adriver.x"
 remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="clust_sz.sh"
 
-maxf=1 # пока по одному
-
 find ../RESULT/10/ -wholename "*/$job/3/sz_vars_${N}days.gz" | sort | only -younger=31days |
-washing -maxf=$maxf \
+washing \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
     -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \

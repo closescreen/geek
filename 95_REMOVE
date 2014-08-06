@@ -46,8 +46,9 @@ emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
 
 # ---- google/3/urls30days.gz --------
 old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" |
- only --older=8days |
- only -near=sz_vars_30days.gz`
+ only --older=1days |
+ only -near=url_groups.gz |
+ only -near=doms30days.gz`
 [[ -n "$old_urls30days_ff" ]] && rm $old_urls30days_ff
 
 )>>"$0.log" 2>&1
