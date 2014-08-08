@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#> net_sites tn0 total.gz ----()-------> views.gz 
+
+(
+
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+job="net_sites"
+typenum="0"
+N=`froms 19_URLS30DAYS -var=N -strict`
+days=${1:-""} # можно указать "$day1 $day2 ..."
+deb=${2:-""} # можно указать "deb"
+
+[[ -n "$deb" ]] && set -x
+
+
+if [[ -n "$days" ]]; then
+    ff=$( echo "$days" | files "../RESULT/10/%F/$job/$typenum/total.gz" | only -sizegt=20 )
+else
+    ff=$(
+	find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort | only --without="views.gz" |
+	only -sizegt=20
+	)
+fi
+  
+echo "$ff" |
+ washing -res="s|total\.gz|views.gz|" -v_flag="./37_process %s $job $typenum $N" -comp=gzip -time=$0.time.log
+
+
+)>>"$0.log" 2>&1

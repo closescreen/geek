@@ -47,7 +47,7 @@ fi
 find "$find_path" -type f -wholename "*/$job/$typenum/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
  only --without="total.gz" |
  only -sizegt=20 |
- LANG=POSIX mergef -allow-empty -least=24 -m -k="$mkeys" -postfilter="$postfilter" -on_another="silent_skip" -timelog=$0.time.log
+ LANG=POSIX mergef -allow-empty -least=24 --incomplete='20: %t_%n_hours.%e' -m -k="$mkeys" -postfilter="$postfilter" -on_another="silent_skip" -timelog=$0.time.log
 
 
 )>>"$0.log" 2>&1

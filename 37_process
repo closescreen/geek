@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+#> net_sites tn0 total ----> views
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+src=${1:?src!}
+job=${2:?job!}
+typenum=${3:?typenum!}
+N=${4:?N!}
+
+# format net_sites tn0 total 
+# IN:
+#  1    2    3   4  5      6            7           8         9   10     11  12    13      14
+# uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+
+zcat "$src" | awk -F\* -v'OFS=*' '$10>0 { print $3,$6,$7,$8 }' | sort -t\* -T. -S 333M -k1,1n | summator -fu="+cnt,sum,sum,sum" | 
+ perl -F'\*' -lane'
+ # округление десятичных во всех полях:
+ print join "*", map {int($_)} @F'
+
+#>> OUT:
+#>> | field            | decr |
+#>> |----------------  | ---- |   
+#>> | sz               |
+#>> | sum_exposures    | сумма просмотров            |
+#>> | sum_expprice     | сумма exposureprice         |
+#>> | sum_secondprice  | сумма secondprice           |
+#>> | sum_divexpsecond | сумма отношений exppr/secpr |

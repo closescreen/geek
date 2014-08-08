@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 #> Объединение сумм из отдельных: bids.gz, tn0/.../total.gz, tn1/.../total.gz, sessions.gz
-#>  в одну таблицу по sz + ad.
+#>  в одну таблицу по sz [+ad].
 #> за 30 дней
 set -u
 set +x
 set +v
 set -o pipefail
 
-#> Этот скрипт только для google, ssp_sites.
+#> Этот скрипт только для net_sites.
 
 bids_fn=${1:?src_file!} 
 job=${2:?job!}
@@ -19,10 +19,11 @@ deb=${4:-""}
 day=`fn2days "$bids_fn"`
 days=`hours -d="$day" -shift=1day -n=-30days -days`
 
-# для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
+# Биды: для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
 bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/bids.gz" | only -all -s`
 chk "$bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
 
+# показы:
 tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only -all -s`
 chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" || exit 3
 
@@ -39,14 +40,9 @@ chk "$pzbt_ff" "30 файлов pzbt.gz (не хватает $?)" || exit 3
 traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" | only -all -s`
 chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
-# Порядок сетей в отчете:
-nets="net-forty-three net-forty-four net-forty-five net-sixty"
-
-# Чтобы получить список сетей в которые входит сайтзона
-dom_net_ff=`echo "$days" | files "../RESULT/10/%F/net_sites/0/dom_net.gz" | only -all -s`
-not_found_ff=""
-[[ -z "$dom_net_ff" ]] && not_found_ff=`echo "$days" | files "../RESULT/10/%F/net_sites/0/dom_net.gz" | only "[[ ! -s %f ]]"`
-chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $not_found_ff)" || exit 3 
+# Чтобы получить количество сетей в которые входит сайтзона
+dom_net_ff=$( echo "$days" | files "../RESULT/10%F/net_sites/0/dom_net.gz" | only -all -s )
+chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $? файлов)" || exit 3 
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
@@ -79,8 +75,7 @@ function flush(){
 ' | lae -lb="sz bids posibids dom" '
 # Объединение входных строк по sz с другими таблицами.
 
-my %co = do "00_conf.txt";
-
+my %co=do"00_conf.txt";
 my $net_list = shift or die "nets!";
 my @net_list = grep {$_} split /\s+/, $net_list;
 
@@ -90,7 +85,7 @@ my %vars;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $exposures, $winprice, $expprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
+ my ($sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
  $vars{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
 }
 
@@ -283,28 +278,32 @@ _{
 };
 
 ' "$nets" <(
-# ПРОСМОТРЫ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (exposures,winprice,expprice,exp_div_win):
-mergef -ff="$tn0_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3,4,5,6 | summator -fu="sum,sum,sum,sum"
-# Format: sz exposures winprice expprice exp_divided_by_win
+ # ПРОСМОТРЫ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы exposures,winprice,expprice,exp_div_win:
+ #         1     2    3  4  5       6           7          8          9   10    11   12     13     14
+ # input: uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+ # интересуют суммы: $sz, $exposures, $expprice, $secondprice, $exp_div_win
+ # просмотрами считаем СЕТЕВЫЕ просмотры.
+ mergef -ff="$tn0_total_ff" -prefilter="awk -F\* -v'OFS=*' '\$10>0 { print \$3,\$6,\$7,\$8 }'" -k=1,1n | summator -fu="+cnt,sum,sum,sum"
+ # OUT format: sz exposures expprice winprice exp_divided_by_win
 ) <(
-# КЛИКИ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
-mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
-# Format: sz clicks
+ # КЛИКИ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
+ mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
+ # Format: sz clicks
 ) <(
-# SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
-mergef -ff="$sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
-# Format: dom, sess_counts, views
+ # SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
+ mergef -ff="$sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
+ # Format: dom, sess_counts, views
 ) <(
-# PZBT за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
-mergef -ff="$pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
-# Format: sz cnt
+ # PZBT за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
+ mergef -ff="$pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
+ # Format: sz cnt
 ) <(
-# traits30days.gz:
-zcat "$traits_fn"
+ # traits30days.gz:
+ zcat "$traits_fn"
  #         1   2         3    4     5     6     7   8    9         18   19
  # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
 ) <(
- # dom_net за 30 дней
+ # В каких сетях присутствует домен: dom_net за 30 дней
  # dom * net
  LANG=POSIX mergef -ff="$dom_net_ff" -k=1,1 -k=2,2n -m --stdout | uniq
  # Format: dom1*net1 (sorted)
