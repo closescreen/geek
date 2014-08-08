@@ -8,7 +8,7 @@ cd `dirname $0`
 
 N=30 # days. За сколько дней суммировать файлы.
 job=${1:?Job!}
-deep="$(conf 00_conf.txt report_deep)" # "<--- считать этот отчет на расчетные даты не старше report_deep из конфа"
+deep=`conf 00_conf.txt report_deep` # "<--- считать этот отчет на расчетные даты не старше report_deep из конфа"
 days=${2:-""} # можно указать day
 deb=${3:-""} # можно указать deb
 

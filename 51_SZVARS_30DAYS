@@ -27,9 +27,9 @@ lb=$(
 
     
 if [[ -n "$day" ]]; then
-    deep=1day
+    deep="1day"
 else    
-    deep=`conf 00_conf.txt "report_deep"`
+    deep=`conf 00_conf.txt report_deep`
 fi
 
 hours -t=${day:-"today"} -shift=1day -n=-"$deep" -days |

@@ -48,7 +48,7 @@ if [[ -n "$day" ]]; then
     hh=`hours -t="$day"T04 -n=24`
 else
     #>: период, за который собрать данные (если их еще нет)
-    period="34days" 
+    period=`conf 00_conf.txt source_deep` 
     hh=`hours -t=todayT04 -n=-"$period"`
 fi
 

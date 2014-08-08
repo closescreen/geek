@@ -27,24 +27,6 @@ scriptname=$(
     " -defa='./14_process_google' -val="$job"
 )
 
-# вариант без симлинков:
-# если нет total.gz, может быть есть total_NN_hours.gz - нецеликовые файлы. 
-#> ( неполные total используются только если не осталось полных тоталов - .т.е. в последнюю очередь ):
-#stems="total.gz total_23_hours.gz total_22_hours.gz"    
-
-# либо берем файлы за указанные дни, либо если не указаны - находим непосчитанные bids:
-
-#if [[ -n "$days" ]]; then
-#    for stem in $stems; do
-#	ff=`echo $days | files "../RESULT/10/%F/$job/$typenum/$stem" | only -s`
-#	[[ -n "$ff" ]] && break
-#    done
-#else
-#    for stem in $stems; do
-#	ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/$stem" | sort | only --without="bids.gz"`
-#	[[ -n "$ff" ]] && break
-#    done
-#fi
 
 if [[ -n "$days" ]]; then
 	ff=`echo $days | files "../RESULT/10/%F/$job/$typenum/total.gz" | only -s`

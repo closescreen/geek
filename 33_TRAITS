@@ -6,7 +6,7 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
-merge_deep=30 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
+merge_days=30 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
 job=${1:?Job!} # google | ssp_sites | net_sites
 days=${2:-""} # можно указать "$day1 $day2 ..."
 deb=${3:-""} # можно указать "deb"
@@ -34,8 +34,8 @@ chk "$ff" "uidsz files upto $report_deep days. " || exit 2
 
 # ... для каждого из которых существует 30 файлов (за 30 соответствующих дней) включая его самого где он последний,
 ff=`echo "$ff" | 
-only 'fn2days "%f" | hours -n=-'$merge_deep'days -shift=1day -days | files '$uids_base_dir/%F/$job/$typenum/uidsz.gz' | only -all -e -noprint'`
-chk "$ff" "uidsz files with $merge_deep days for merge. " || exit 2
+only 'fn2days "%f" | hours -n=-'$merge_days'days -shift=1day -days | files '$uids_base_dir/%F/$job/$typenum/uidsz.gz' | only -all -e -noprint'`
+chk "$ff" "uidsz files with $merge_days days for merge. " || exit 2
 
 # а так же для каждого файла uidsz должны иметься predict_gr_v2.gz
 ff=`echo "$ff" | 
@@ -62,7 +62,7 @@ chk "$ff" "uidsz files with ctr11gr.gz " || exit 2
 #chk "$ff" "files. " || exit 2
 
 
-echo "$ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="./33_process %s %f '$job' '$typenum' '$merge_deep' '$traits_base_dir' '$uids_base_dir'" \
+echo "$ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="./33_process %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \
  -comp=gzip -time=$0.time.log
 
 )>>"$0.log" 2>&1

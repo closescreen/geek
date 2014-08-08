@@ -90,8 +90,8 @@ my %vars;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $exposures, $winprice, $expprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
- $vars{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
+ my ($sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
+ $vars{ $sz } = { exposures => $exposures, expprice => $expprice, winprice => $winprice, exp_div_win=>$exp_div_win };
 }
 
 # clicks:
@@ -285,7 +285,7 @@ _{
 ' "$nets" <(
 # ПРОСМОТРЫ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (exposures,winprice,expprice,exp_div_win):
 mergef -ff="$tn0_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3,4,5,6 | summator -fu="sum,sum,sum,sum"
-# Format: sz exposures winprice expprice exp_divided_by_win
+# Format: sz exposures expprice winprice exp_divided_by_win
 ) <(
 # КЛИКИ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
 mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
