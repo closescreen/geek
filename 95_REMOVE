@@ -9,7 +9,25 @@ set -o pipefail
 cd `dirname $0`
 
 
-#>> Удаление часовых данных, (в основном, для tn3) (для экономии места).
+source_deep=`conf 00_conf.txt source_deep` # сколько дней назад требуется данных для отчетов
+chk "$source_deep" "source_deep" || exit 1
+
+report_deep=`conf 00_conf.txt report_deep` # на сколько дней назад пересчитываются отчеты
+chk "$report_deep" "report_deep" || exit 1
+
+# Для пересчета за неделю отчета с источниками за месяц требуется неделя+цесяц. 
+first_deep_day=$( hours -d=today -shift=-"$report_deep" -n=-"$source_deep" -days -first )
+chk "$first_deep_day" "first_deep_day" || exit 1
+
+# сколько дополнительно дней еще подержать данные, для подстраховки ( "1day" .. 30days ). 
+# Настраивать в зависимости от места на диске:
+safe_period="7days"
+
+# День, старее которого безопасно стирать источники: неделя + цесяц + страховочный_период:
+safe_deep_day=$( hours -d="$first_deep_day" -n=-"$safe_period" -days -first )
+chk "$safe_deep_day" "safe_deep_day" || exit 1
+
+#>> Удаление данных, для экономии места.
 
 
 #-----часовые данные ----
@@ -28,7 +46,7 @@ done
 #----------- старые /RESULT/10 ----
 # Удаление ЛЮБЫХ данных /RESULT/10/$day/$job/$typenum, старее указанного
 oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d |
- only --older=60days`
+ only --older="$safe_deep_day"`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
@@ -47,8 +65,7 @@ emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
 # ---- google/3/urls30days.gz --------
 old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" |
  only --older=1days |
- only -near=url_groups.gz |
- only -near=doms30days.gz`
+ only -near=url_groups.gz`
 [[ -n "$old_urls30days_ff" ]] && rm $old_urls30days_ff
 
 )>>"$0.log" 2>&1

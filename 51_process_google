@@ -4,7 +4,6 @@
 #> за 30 дней
 set -u
 set +x
-set +v
 set -o pipefail
 
 #> Этот скрипт только для google, ssp_sites.
@@ -47,6 +46,11 @@ dom_net_ff=`echo "$days" | files "../RESULT/10/%F/net_sites/0/dom_net.gz" | only
 not_found_ff=""
 [[ -z "$dom_net_ff" ]] && not_found_ff=`echo "$days" | files "../RESULT/10/%F/net_sites/0/dom_net.gz" | only "[[ ! -s %f ]]"`
 chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $not_found_ff)" || exit 3 
+
+# текущий dom_gr:
+dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
+chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " || exit 3
+
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
@@ -182,6 +186,16 @@ while(<FILE>){
  $bt_bids{ $sz }{ $bt } = $cnt;
 }
 
+# группы доменов из dom_gr:
+my $dom_gr = shift or die "dom_gr file!";
+open FILE, $dom_gr or die cant open $dom_gr: $!";
+my %dom_gr;
+while(<FILE>){
+ chomp;
+ my ($dom, $gr) = split /\*/, $_, -1;
+ $dom_gr{ $dom } = $gr;
+}
+
 $|=1;
 _{
  # in:
@@ -257,6 +271,8 @@ _{
     map {0} @bt_list;
 
 # die Dumper \@F, \@pz_list, \@pz_bids, \@bt_list, \@bt_bids if $F[SZ]==21;    
+
+ my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
  
  p0 $F[SZ], $F[DOM], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
   @{$traits_sz}[1..16], @pz_bids, @bt_bids;
@@ -266,19 +282,20 @@ _{
  #>> | ------------------- | ------------ |
  #>> | 1  sz               | 
  #>> | 2  domain           | 
- #>> | 3  ctr              | клики/показы |
- #>> | 4  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | 5  avg_session      | ср длина пользов. сессии на домене                 |
- #>> | 6  all_uids         | вего кук на сайтзоне                               |
- #>> | 7  avg_winprice     | средний winprice                                   |
- #>> | 8  avg_exp_div_win  | среднее отношение expprice/winprice                |
- #>> | 9  posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
- #>> | 10  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
- #>> | 11 pzbt_count       | количество сочетаний bt-pz                              |
- #>> | 12..15 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
- #>> | 16..31 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
- #>> | 32..33 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
- #>> | 34..46 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
+ #>> | 3  dom_gr	   | группа домена |
+ #>> | 4  ctr              | клики/показы  |
+ #>> | 5  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 6  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 7  all_uids         | вего кук на сайтзоне                               |
+ #>> | 8  avg_winprice     | средний winprice                                   |
+ #>> | 9  avg_exp_div_win  | среднее отношение expprice/winprice                |
+ #>> | 10  posibids        | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 11  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 12 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 13..16 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
+ #>> | 17..32 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ #>> | 33..34 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 35..47 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
  
 };
 
@@ -326,5 +343,9 @@ zcat "$traits_fn"
     p @F[SZ,BT,CNT]
    }
  ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+) <(
+ #dom_gr.txt:
+ cat $dom_gr_f
+ # Format :
+ # dom * group
 )
-
