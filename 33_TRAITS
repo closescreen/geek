@@ -57,6 +57,11 @@ ff=`echo "$ff" |
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr11gr.gz"'`
 chk "$ff" "uidsz files with ctr11gr.gz " || exit 2
 
+# ... и auditory.gz
+ff=`echo "$ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/auditory.gz"'`
+chk "$ff" "uidsz files with auditory.gz " || exit 2
+
 # DEBUG: (get first file from list):
 #ff=`echo $ff | words -first` # закомментировать потом
 #chk "$ff" "files. " || exit 2

@@ -51,6 +51,10 @@ chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $not_found_ff)" 
 dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
 chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " || exit 3
 
+# аудитории Ильи (auditory.gz), 
+auditory_f="./auditory.gz"
+scp dm8.adriver.x:/usr/local/rle/var/share3/DATA/all_sites_10p_traffic/auditory.gz ./
+chk "$auditory_f" "файл аудиторий" '-s $_' 'exists' noprint || exit 3  
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
@@ -127,19 +131,21 @@ my %minimum_by_index = map { $_, 50 } 0..15; # ограничения по ум�
 @minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
 
 # traits:
+#> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+#> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
+#> после splita:0      1     2     3  .....  45(auditory30 ) 46(trash)
+
 my %traits;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
  my ( $sz, $cnt_on_sz, @in_traits ) = split /\*/;
  next if !$cnt_on_sz;
- # преобразуем суммы в проценты от общего числа кук на сайтзоне:
- #  sprintf("%.3f", $number)
- # OLD: $traits{ $sz } = [ $cnt_on_sz, map { sprintf( "%.2f", $_ * 100 / $cnt_on_sz) } @in_traits[0..15] ]; # 2 пола, 3 возраста и 11 ctr-групп. Всего - 16. Последнее поле - trash. Оно ненужно.
 
- # NEW:
  $traits{ $sz } = [ $cnt_on_sz ];
- for my $i ( 0 .. 15 ){
+ # количество колонок в отчете д.б. постоянно, поэтому оперируем постоянным набором индексов: 
+ # последнюю колонку (trash) - не включаем в отчет.
+ for my $i ( 0 .. 45 ){
     my $cnt_in_trait = $in_traits[$i]; # кол-во кук в трейте
     push @{ $traits{ $sz } }, 
 	$cnt_on_sz >= $minimum_by_index{ $i } ?
@@ -195,6 +201,16 @@ while(<FILE>){
  my ($dom, $gr) = split /\*/, $_, -1;
  $dom_gr{ $dom } = $gr;
 }
+
+# Аудитории Ильи (auditory.gz)
+my $audit_file = shift or die "auditory file!";
+open FILE, $audit_file or die "cant open $audit_file: $!";
+my %auditory_number;
+while(<FILE>){
+ chomp;
+ my ($dom, $aud_num) = split /\*/, $_, -1;
+}
+
 
 $|=1;
 _{
@@ -273,9 +289,12 @@ _{
 # die Dumper \@F, \@pz_list, \@pz_bids, \@bt_list, \@bt_bids if $F[SZ]==21;    
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
+
+die;
+ my $auditory_number = $auditory_number{ $F[DOM] }||"NA";
  
  p0 $F[SZ], $F[DOM], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
-  @{$traits_sz}[1..16], @pz_bids, @bt_bids;
+  @{$traits_sz}[1..46], @pz_bids, @bt_bids;
 
  #>> OUT:
  #>> | field               | description  |
@@ -293,9 +312,9 @@ _{
  #>> | 11  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
  #>> | 12 pzbt_count       | количество сочетаний bt-pz                              |
  #>> | 13..16 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
- #>> | 17..32 trait fields | 16 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
- #>> | 33..34 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
- #>> | 35..47 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
+ #>> | 17..62 trait fields | 46 полей: 17.male,18.female,19.young,20.adult,21.old, 22.ctr1 ... 32.ctr11, 33.auditory1 ... 62.auditory30 (in %) | 
+ #>> | 63..64 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 65..67 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
  
 };
 
@@ -318,8 +337,9 @@ mergef -ff="$pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summ
 ) <(
 # traits30days.gz:
 zcat "$traits_fn"
- #         1   2         3    4     5     6     7   8    9         18   19
- # format: sz all_uids male female young adult old ctr1 ctr2 ... ctr11 trash(always must be=0)
+ # format: 
+ #>> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+ #>> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
 ) <(
  # dom_net за 30 дней
  # dom * net
@@ -348,4 +368,9 @@ zcat "$traits_fn"
  cat $dom_gr_f
  # Format :
  # dom * group
+) <(
+ # auditory.gz:
+ zcat "$auditory_f"
+ # Format:
+ # dom * property (,where property in 1..30)
 )

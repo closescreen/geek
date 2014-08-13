@@ -36,12 +36,26 @@ typenums="0 1 3"
 
 for job in $jobs; do
  for tn in $typenums; do
+    # часовые данные:
   ff=`find ../RESULT/10/  -type f -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$tn/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
   only -near=total.gz |
   only -older=4days`
   [[ -n "$ff" ]] && rm $ff
+
  done
 done
+
+# крупные google/3/total.gz:
+job="google"
+tn=3
+ff=`find ../RESULT/10 -type f -wholename "*/$job/$tn/total.gz" |
+    only -older="$report_deep" |
+    only -near=bids.gz |
+    only -near=sessions.gz |
+    only -near=pzbt.gz |
+    only -near=urls.gz |
+    only -near=uidsz.gz`
+[[ -n "$ff" ]] && rm $ff
 
 #----------- старые /RESULT/10 ----
 # Удаление ЛЮБЫХ данных /RESULT/10/$day/$job/$typenum, старее указанного
