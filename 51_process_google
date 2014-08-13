@@ -357,22 +357,22 @@ zcat "$traits_fn"
  # Format: dom1*net1 (sorted)
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
-  my %co=do"00_conf.txt"; 
-  my @pz=@{$co{pz}}; 
+  my $pz_list = shift or die "pz_list!";
+  my @pz = split $pz_list;
     _{ 
 	return unless grep {$_==$F[PZ]} @pz; 
 	p @F[SZ,PZ,CNT]
     }
- ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+ ' "$pz_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
-  my %co=do"00_conf.txt"; 
-  my @bt=@{$co{bt}}; 
+  my $bt_list = shift or die "bt_list!";
+  my @bt = split $bt_list;
    _{ 
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SZ,BT,CNT]
    }
- ' | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+ ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
 ) <(
  #dom_gr.txt:
  cat $dom_gr_f
