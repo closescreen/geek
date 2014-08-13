@@ -1,20 +1,12 @@
 source_deep => "30days", # глубина перечета источников для отчетов если будет меньше 30 то urls30days и подобные не смогут делать пересчет
 report_deep => "7days", # глубина пересчета самих отчетов 
-pz => [1,3], # pagezones
-bt => [1,17,27,29,36,40,41,49,57,58,63,67,68] , # bannertypes
+
+# влияет на колонки отчета szvars_30days:
+pz => [1,3], # pagezones 
+bt => [1,17,27,29,36,40,41,49,57,58,63,67,68,99,100] , # bannertypes 99,100 - несуществующие - зарезервировано место.
 
 
 
 
 
 
-__END__
-# занести в crontab:
-#SHELL=/bin/bash
-MAILTO=d.belyaev@adriver.ru
-PATH=/home/d.belyaev/perl5/perlbrew/bin:/home/d.belyaev/bin:/usr/local/bin:/usr/bin:/bin:/home/d.belyaev/bike:/usr/local/rle/bin
-
-#-----------------------(1460)------(группировка сайтзон)------
-#*/3 7-23 * * * /home/d.belyaev/1460/bin2/01_START_ALL
-
-#--last line
