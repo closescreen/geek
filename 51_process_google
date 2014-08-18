@@ -20,10 +20,14 @@ days=`hours -d="$day" -shift=1day -n=-30days -days`
 
 # для каждой таблицы по 30 дней назад (включая рассчетный), с проверкой существования:
 bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/bids.gz" | only -all -s`
-chk "$bids_ff" "30 файлов bids.gz (не хватает $?)" || exit 3
+not_found_bids_ff=""
+[[ -z "$bids_ff" ]] &&  not_found_bids_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/bids.gz" | only "[[ ! -s %f ]]"`
+chk "$bids_ff" "30 файлов bids.gz (не хватает: $not_found_bids_ff)" || exit 3
 
 tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only -all -s`
-chk "$tn0_total_ff" "30 файлов показов (не хватает $?)" || exit 3
+not_found_tn0_total_ff=""
+[[ -z $tn0_total_ff ]] && not_found_tn0_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/0/total.gz" | only "[[ ! -s %f ]]"`
+chk "$tn0_total_ff" "30 файлов показов (не хватает: $not_found_tn0_total_ff)" || exit 3
 
 tn1_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/1/total.gz" | only -all -s`
 chk "$tn1_total_ff" "30 файлов кликов (не хватает $?)" || exit 3
@@ -100,11 +104,11 @@ my @net_list = grep {$_} split /\s+/, $net_list;
 
 # список интересуемых PZ-он:
 my $pz_list = shift or die "pz_list!";
-my @pz_list = split $pz_list or die "pz!";
+my @pz_list = split /\s+/, $pz_list or die "pz!";
 
 # список интересуемых BT-пов:
 my $bt_list = shift or die "bt_list!";
-my @bt_list = split $bt_list or die "bt!";
+my @bt_list = split /\s+/, $bt_list or die "bt!";
 
 my %vars;
 
@@ -204,7 +208,7 @@ while(<FILE>){
 
 # группы доменов из dom_gr:
 my $dom_gr = shift or die "dom_gr file!";
-open FILE, $dom_gr or die cant open $dom_gr: $!";
+open FILE, $dom_gr or die "cant open $dom_gr: $!";
 my %dom_gr;
 while(<FILE>){
  chomp;
@@ -291,19 +295,18 @@ _{
  my @bt_bids = $F[BIDS] 
     ?
     map {
-	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
+	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 )
     } @{ $bt_bids{ $F[SZ] } }{ @bt_list }
     :
     map {0} @bt_list;
 
-# die Dumper \@F, \@pz_list, \@pz_bids, \@bt_list, \@bt_bids if $F[SZ]==21;    
-
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
-die;
  my $auditory_number = $auditory_number{ $F[DOM] }||"NA";
  
- p0 $F[SZ], $F[DOM], $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
+ #     1       2        3     4       5           6            7            8             9            10           11               12        13,14,15,16
+ p0 $F[SZ], $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
+ #    17..62               63,64     65..79
   @{$traits_sz}[1..46], @pz_bids, @bt_bids;
 
  #>> OUT:
@@ -358,7 +361,7 @@ zcat "$traits_fn"
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my $pz_list = shift or die "pz_list!";
-  my @pz = split $pz_list;
+  my @pz = split /\s+/, $pz_list or die "pz!";
     _{ 
 	return unless grep {$_==$F[PZ]} @pz; 
 	p @F[SZ,PZ,CNT]
@@ -367,7 +370,7 @@ zcat "$traits_fn"
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my $bt_list = shift or die "bt_list!";
-  my @bt = split $bt_list;
+  my @bt = split /\s+/, $bt_list or die "bt!";
    _{ 
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SZ,BT,CNT]
