@@ -10,7 +10,14 @@
 
 sids=${2:?sids!} #like a: 123|234|3254
 
-job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" -ll |
-lae -M=Dom '_{ @F[ REF, REF_F ] = Dom::split_ref( Ref ); p @F }' |
-sort -T. -t\* -n -k1,1 -k2,2
+job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" |
+perl -MDom -Mstrict -w -F'\*' -lane'
+# IN: uid,second,sz,pz,bt,exposureprice,ad,ref
+#      0    1     2  3  4       5       6   7
+
+@F[ 7,8 ] = $F[7] ? map {$_||""} Dom::split_ref( $F[7] ) : ("",""); # справа добавляется еще одна колонка
+
+print join("*",@F);
+' | sort -T. -t\* -n -k1,1 -k2,2
+
 

@@ -2,7 +2,7 @@
 #>
 #(
 set -u
-set +x
+set -x
 set -o pipefail
 cd `dirname $0`
 
@@ -18,8 +18,10 @@ day=`fn2days "$local_resf"`
 rem_result="$rem_project/RESULT/10/$job/$day"
 USER=d.belyaev
 
-if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) 
-then
+# если сущ - то удаление для пересчета:
+ssh "${USER}@${server}" "[[ -s $rem_result/$( basename $local_src ) ]] && rm -r $rem_result/$( basename $local_src )" )
+    
+if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) ; then
     scp -p "$local_src" "${USER}@${server}:$rem_result/"
 fi    
 

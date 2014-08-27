@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-#> urls.gz -----(19_process)---------->urls30days.gz
+#>> test test test
+#> urls.gz -----(19_process)---------->scala.urls30days.gz
 (
 set -u
 set +x
@@ -10,28 +11,30 @@ N=30 # days. За сколько дней суммировать файлы.
 job=${1:?Job!}
 deep=`conf 00_conf.txt report_deep` # "<--- считать этот отчет на расчетные даты не старше report_deep из конфа"
 days=${2:-""} # можно указать day
-deb=${3:-""} # можно указать deb
+# если указать 'scala' ,то будет вызван обработчик потока на scala, альтернатива = "":
+processor=`href -dict="scala=>'./19_process.sc'" -defa='./19_process' -value=${3:-""}` 
+deb=${4:-""} # можно указать deb
+
+
 
 [[ -n "$deb" ]] && set -x
 
-typenum=$(
- href -dict="
-     net_sites => '0',
- " -default="3" -val="$job"
-)
+typenum=`href -dict="net_sites => '0'" -default="3" -val="$job"`
       
 
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/urls.gz" | only -s`
 else
-    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/urls.gz" | sort | only --without="urls${N}days.gz"`   
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/urls.gz" | sort | only --without="urls${N}days.gz"`
 fi 
 
 ff=` echo "$ff" | only '[[ $(fn2days %f | hours -n=-'$N'days -days | files "../RESULT/10/%F/'"$job/$typenum"'/urls.gz" | only -s -all  ) ]]' `
 
 ff=$( echo "$ff" | only --upto="$deep" )
 
-echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="./19_process %s $job $typenum $N" -comp=gzip -timelog=$0.time.log
+chk "$ff" "ff files" || exit 1
+
+echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=$0.time.log
 
 
 )>>"$0.log" 2>&1

@@ -20,8 +20,8 @@ first_deep_day=$( hours -d=today -shift=-"$report_deep" -n=-"$source_deep" -days
 chk "$first_deep_day" "first_deep_day" || exit 1
 
 # сколько дополнительно дней еще подержать данные, для подстраховки ( "1day" .. 30days ). 
-# Настраивать в зависимости от места на диске:
-safe_period="7days"
+# Настраивать в зависимости 1)от места на диске, 2)от степени отставания отчетов от реального времени:
+safe_period="14days"
 
 # День, старее которого безопасно стирать источники: неделя + цесяц + страховочный_период:
 safe_deep_day=$( hours -d="$first_deep_day" -n=-"$safe_period" -days -first )
@@ -56,6 +56,7 @@ ff=`find ../RESULT/10 -type f -wholename "*/$job/$tn/total.gz" |
     only -near=urls.gz |
     only -near=uidsz.gz`
 [[ -n "$ff" ]] && rm $ff
+
 
 #----------- старые /RESULT/10 ----
 # Удаление ЛЮБЫХ данных /RESULT/10/$day/$job/$typenum, старее указанного

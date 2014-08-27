@@ -22,7 +22,7 @@ ff=$( echo "$ff" | only -all -s | only -all -sizegt=20 )
 chk "$ff" "Files for $N days back from $day. (Not found $? files)" || exit 2
 
 echo "$ff" |
-LANG=POSIX mergef -m -k=1,1 -k=2,2 -stdout -comm="<---ursl.gz merged for $N days" |
+ LANG=POSIX mergef -m -k=1,1 -k=2,2 -stdout -comm="<---ursl.gz merged for $N days" |
 awk -F* -v"OFS=*" '
 BEGIN{
  prevDom="";
@@ -30,7 +30,7 @@ BEGIN{
 }
 
 {
- if (prevDom!="" && ($1!=prevDom || $2!=prevPath)){ flush() };
+ if ( ($2!=prevPath || $1!=prevDom ) && prevDom ){ flush() };
  sessions+=$3;
  sess_ends+=$4;
  prevDom=$1;

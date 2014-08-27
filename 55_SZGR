@@ -8,12 +8,23 @@ set -o pipefail
 cd `dirname $0`
 
 job=${1:?Job!}
+day=${2:-""}
+deb=${3:-""}
+[[ -n "$deb" ]] && set -x
+
 N=30
 server="crawler.adriver.x"
 remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="clust_sz.sh"
+deep=`conf 00_conf.txt report_deep`
 
-find ../RESULT/10/ -wholename "*/$job/3/sz_vars_${N}days.gz" | sort | only -younger=31days |
+if [[ -n "$day" ]]; then
+    find_path="../RESULT/10/$day/"
+else
+    find_path="../RESULT/10/"
+fi
+
+find "$find_path" -wholename "*/$job/3/sz_vars_${N}days.gz" | sort | only -upto="$deep" |
 washing \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \

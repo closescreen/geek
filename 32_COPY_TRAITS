@@ -2,7 +2,7 @@
 #> hist7 / traits files -----( copying ) ---> ../RESULT/traits_copy
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 
@@ -101,4 +101,4 @@ for day in $find_for_days; do
 done
 
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

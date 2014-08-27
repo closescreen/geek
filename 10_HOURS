@@ -5,7 +5,7 @@
 
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 
@@ -55,6 +55,8 @@ fi
 echo "$hh" |
  files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" |
  only --without="total.gz" |
+ only --without="urls.gz" |
+ only --without="bids.gz" |
  washing -time=10.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip 
 
 )>>"$0.log" 2>&1
