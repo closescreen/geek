@@ -12,7 +12,7 @@
 #>> отсортрованный по КУКЕ и ВРЕМЕНИ. 
 
 
-lae -lb="uid second sz pz bt exposureprice secondprice +divexpsecond ad network dom path +sestart +isview" '
+lae -lb="uid second sid sz pz bt exposureprice secondprice +divexpsecond ad network dom path +sestart +isview" '
 my %sestart; 
 my %last_view; 
 my %prev_exp_sec;
@@ -64,6 +64,7 @@ _{
  #>> | ----- | ----------- |
  #>> | uid   |
  #>> | sec   |
+ #>> | sid   |
  #>> | sz    |
  #>> | pz    |
  #>> | bt    |

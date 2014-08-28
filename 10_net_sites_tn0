@@ -10,41 +10,35 @@ set -u
 
 sids=${2:? sids !} # like a 111|2222|33333|...
 
-job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,secondprice,ad,network,ref,sid=${sids},typenum=0,statusnum=0"\
-    -fn -cut="sid,typenum,statusnum" -true="uid" -fn |
+job_history_log "$1" "uid,second,sid=${sids},sz,pz,bt,exposureprice,secondprice,ad,network,ref,typenum=0,statusnum=0"\
+    -fn -cut="typenum,statusnum" -true="uid" -fn |
  perl -Mstrict -MDom -w -e'
- # IN: uid,second,sz,pz,bt,exposureprice,secondprice,ad,network,ref
- #      0    1    2  3   4      5             6       7    8     9
+ # IN: uid,second,sid,sz,pz,bt,exposureprice,secondprice,ad,network,ref
+ #      0    1     2   3 4  5        6            7       8     9    10
  
  $\="\n";
- my ($uid, $second, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref);
+ my ($uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref);
  my ($dom, $path); 
 
  while(<>){
     chomp;
-    ( $uid, $second, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref ) = split /\*/, $_, 10;
+    ( $uid, $second, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref ) = split /\*/, $_, 11;
     if ( $ref ){
 	($dom, $path) = map {$_||""} Dom::split_ref( $ref );
 	$dom =~ s/\.$//;
     }else{
 	($dom, $path)=("","");
     }
-    print join "*", map {defined($_) ? $_ : ""} $uid, $second, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $dom, $path;
+    print join "*", map {defined($_) ? $_ : ""} $uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $dom, $path;
  } 
 
  ' |
  LANG=POSIX sort -T. -t\* -k1,1 -k2,2n
 
-# lae -M=Dom '_{ 
-#    @F[ REF, REF_F ] = map {$_||""} Dom::split_ref( Ref ); # предполагается что поле REF-последнее
-#    $F[ REF ]=~s/\.$//; 
-#    p @F 
-#    }' |
-# LANG=POSIX sort -T. -t\* -k1,1 -k2,2n
-
 #>> OUT
 #>> uid - для сессий
 #>> sec - для сессий
+#>> sid - *новое для net_sites
 #>> sz
 #>> pz - для комбинаций pzbt
 #>> bt - для комбинаций pzbt
