@@ -8,17 +8,18 @@ set -o pipefail
 set +x
 
 #>> IN
-#>>  1   2  
-#>> sz  ad
+#>>  1   2   3 
+#>> sid  sz  ad
 
 summator -la=0 -fu=+cnt
 
 #>>OUT: 
-#>>  1  2      3
-#>> sz ad  cnt_clicks
+#>>  1  2   3      4
+#>> sid sz ad  cnt_clicks
 
 #>> | field | description |
 #>> | ----- | ----------- |
+#>> | sid   |             |
 #>> | sz    |
 #>> | ad    |
 #>> | cnt_clicks | количество кликов  |
