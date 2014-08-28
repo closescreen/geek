@@ -4,29 +4,31 @@
 #>> in (from tn0 total.gz):
 # для net_sites биды - это все просмотры, сетевые и не сетевые
 
-lae -lb="uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview" '
+lae -lb="uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview" '
 my ( %bids, %positive_bids, %dom );
 _{
- $bids{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0||0 }{ $F[NETWORK]>0||0 }++;
- $dom{ $F[SZ] } ||= $F[DOM];
+ $bids{ $F[SID] }{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0||0 }{ $F[NETWORK]>0||0 }++;
+ $dom{ $F[SID] }{ $F[SZ] } ||= $F[DOM];
 };
 
-for my $sz ( sort {$a<=>$b} keys %bids ){
-    for my $ad ( sort {$a<=>$b} keys %{$bids{$sz}} ){
-	for my $is_posibid ( sort {$a<=>$b} keys %{ $bids{$sz}{$ad} } ){
-	    for my $is_network ( sort {$a<=>$b} keys %{ $bids{$sz}{$ad}{$is_posibid} } ){
-		p0 $sz, $ad, $is_posibid, $is_network, $bids{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{ $sz };
-	    }	
+for my $sid ( sort {$a<=>$b} keys %bids ){
+    for my $sz ( sort {$a<=>$b} keys %{$bids{$sid}} ){
+	for my $ad ( sort {$a<=>$b} keys %{$bids{$sid}{$sz}} ){
+	    for my $is_posibid ( sort {$a<=>$b} keys %{ $bids{$sid}{$sz}{$ad} } ){
+		for my $is_network ( sort {$a<=>$b} keys %{ $bids{$sid}{$sz}{$ad}{$is_posibid} } ){
+		    p0 $sz, $ad, $is_posibid, $is_network, $bids{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{ $sz };
+		}	
+	    }
 	}
     }
 }
-
 ' 
 
 #>> OUT: sz, ad, is_posibid, is_network, bids, domain.
 #>> 
 #>> | field  | description |
 #>> | ------ | ----------- |
+#>> | sid    |
 #>> | sz     |
 #>> | ad     |
 #>> | is_posibid | ставки >0 |
