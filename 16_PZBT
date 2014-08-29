@@ -29,8 +29,10 @@ fi
 # у разных job форматы исходных total.gz могут быть разными:
 lb=$(
  href -dict="
-    net_sites => 'uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
- " -default='uid second sz pz  bt exposureprice ad dom path sestart isview' -val="$job"
+    net_sites => 'uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
+    ssp_sites => 'uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
+    google    => 'uid second sz pz  bt exposureprice ad dom path sestart isview'
+ " -val="$job"
 )
 
 
