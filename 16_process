@@ -1,31 +1,65 @@
 #!/usr/bin/env bash
 #> Сочетания pz+bt по sz.
 
-#>> in:
+#>> in (у google):
 #>>  1   2     3   4  5       6        7   8   9     10      11
 #>> uid second sz pz  bt exposureprice ad dom path sestart isview
+
+#>> или такой (у net_sites)
+#>>  1   2     3   4  5   6        7       8   9   10    11      12
+#>> uid second sid sz pz  bt exposureprice ad dom path sestart isview
 
 lb=${1:?labels!}
 
 lae -lb="$lb" '
-my %hash;
-_{
- $hash{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
-};
 
-for my $sz ( keys %hash ){
-    for my $pz ( keys %{$hash{$sz}} ){
-	for my $bt ( keys %{$hash{$sz}{$pz}} ){
-	    p $sz, $pz, $bt, $hash{ $sz }{ $pz }{ $bt };
+# формат входа м.б. с полем SID и без него
+
+my %hash;
+
+if ( defined $LI{ sid } ){
+    # если поле sid присутствует:
+    _{
+	$hash{ $F[SID] }{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
+    };
+
+}else{
+    # если поля sid нет:
+    _{
+	$hash{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
+    };
+}
+
+if ( defined $LI{ sid } ){ # если поле sid присутствует:
+    
+    for my $sid ( sort {$a<=>$b} keys %hash ){
+	for my $sz ( sort {$a<=>$b} keys %{$hash{$sid}} ){
+	    for my $pz ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}} ){
+		for my $bt ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}{$pz}} ){
+		    p $sz, $pz, $bt, $hash{ $sid }{ $sz }{ $pz }{ $bt };
+		}
+	    }
 	}
     }
-} 
-' | sort -T. -t\* -S 333M -n -k1,1 -k2,2 -k3,3
+    	     
+}else{ # если поля sid нет:
+    
+    for my $sz ( sort {$a<=>$b} keys %hash ){
+	for my $pz ( sort {$a<=>$b} keys %{$hash{$sz}} ){
+	    for my $bt ( sort {$a<=>$b} keys %{$hash{$sz}{$pz}} ){
+		p $sz, $pz, $bt, $hash{ $sz }{ $pz }{ $bt };
+	    }
+	}
+    } 
+
+}
+'
 
 #>> out:
 #>>
 #>> | field |
 #>> | ----- |
+#>> | [sid] | для net_sites,ssp_sites - это поле есть, для google - нет
 #>> | sz    |
 #>> | pz    |
 #>> | bt    |
