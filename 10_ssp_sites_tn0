@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
+# переписать, доюавить sid
+
 ./10_google_tn0 $*

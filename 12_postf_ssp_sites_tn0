@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
+#обработать новое поле sid
+
 ./12_postf_google_tn0 $*

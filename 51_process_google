@@ -61,11 +61,6 @@ chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $not_found_ff)" 
 dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
 chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " || exit 3
 
-# аудитории Ильи (auditory.gz), 
-auditory_f="./auditory.gz"
-scp dm8.adriver.x:/usr/local/rle/var/share3/DATA/all_sites_10p_traffic/auditory.gz ./
-chk "$auditory_f" "файл аудиторий" '-s $_' 'exists' noprint || exit 3  
-
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
 #> (ad нужна для posi_bids - ни равны 0 при ad==0)
@@ -145,7 +140,7 @@ while(<FILE>){
  $vars{ $sz }{ pzbt_count } = $pzbt_count;
 }
 
-my %minimum_by_index = map { $_, 50 } 0..15; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
+my %minimum_by_index = map { $_, 50 } 0..45; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
 @minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
 
 # traits:
@@ -215,16 +210,6 @@ while(<FILE>){
  my ($dom, $gr) = split /\*/, $_, -1;
  $dom_gr{ $dom } = $gr;
 }
-
-# Аудитории Ильи (auditory.gz)
-my $audit_file = shift or die "auditory file!";
-open FILE, $audit_file or die "cant open $audit_file: $!";
-my %auditory_number;
-while(<FILE>){
- chomp;
- my ($dom, $aud_num) = split /\*/, $_, -1;
-}
-
 
 $|=1;
 _{
@@ -302,8 +287,6 @@ _{
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
- my $auditory_number = $auditory_number{ $F[DOM] }||"NA";
- 
  #     1       2        3     4       5           6            7            8             9            10           11               12        13,14,15,16
  p0 $F[SZ], $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
  #    17..62               63,64     65..79
@@ -367,6 +350,7 @@ zcat "$traits_fn"
 	p @F[SZ,PZ,CNT]
     }
  ' "$pz_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+ # format: sz pz cnt
 ) <(
  mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
   my $bt_list = shift or die "bt_list!";
@@ -376,14 +360,10 @@ zcat "$traits_fn"
     p @F[SZ,BT,CNT]
    }
  ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
+ # format: sz bt cnt
 ) <(
  #dom_gr.txt:
  cat $dom_gr_f
  # Format :
  # dom * group
-) <(
- # auditory.gz:
- zcat "$auditory_f"
- # Format:
- # dom * property (,where property in 1..30)
-)
+) 

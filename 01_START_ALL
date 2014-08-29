@@ -36,7 +36,6 @@ for job in $jobs;do
     done
 
     # for any jobs:
-    fork -pf="../pids/13.$job.pids" -n=1 "nice -n15 ./13_MERGE_30DAYS $job"
     fork -pf="../pids/14.$job.pids" -n=1 "nice -n15 ./14_BIDS $job" # несрочно
     fork -pf="../pids/15.$job.pids" -n=1 "nice -n15 ./15_SESSIONS $job" # несрочно
     fork -pf="../pids/16.$job.pids" -n=1  "nice -n15 ./16_PZBT $job" # несрочно

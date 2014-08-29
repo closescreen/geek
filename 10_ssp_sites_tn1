@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
+# добавить sid !
+
 ./10_google_tn1 $*

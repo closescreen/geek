@@ -1,3 +1,5 @@
 #!/usr/bin/env bash
 
+#TODO: обрабатывать sid!
+
 ./12_postf_google_tn1 $*

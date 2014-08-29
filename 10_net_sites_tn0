@@ -22,7 +22,7 @@ job_history_log "$1" "uid,second,sid=${sids},sz,pz,bt,exposureprice,secondprice,
 
  while(<>){
     chomp;
-    ( $uid, $second, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref ) = split /\*/, $_, 11;
+    ( $uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref ) = split /\*/, $_, 11;
     if ( $ref ){
 	($dom, $path) = map {$_||""} Dom::split_ref( $ref );
 	$dom =~ s/\.$//;
