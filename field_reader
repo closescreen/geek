@@ -1,0 +1,71 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+use FindBin qw($Bin);
+
+
+my $usage = q{ Usage: };
+
+my @fields;
+my @parsers = sort <$Bin/field_reader.parser.type*> or warn "not found any parser as $Bin/field_reader.parser.type*";
+my $ifs = "*";
+my $deb;
+my $reader = "cut";
+my $show_command;
+my @definitions_files;
+GetOptions(
+    'fields=s' => \@fields, #which fields to read
+    'parsers=s' => \@parsers, # which parsers parsers to use
+    'definitions|defined-in|defined_in=s' => \@definitions_files,
+    'debug' => \$deb,
+    'ifs=s' => \$ifs,
+    'show_command|show-command' => \$show_command,
+) or die "Bad opt!";
+
+
+@fields = grep {$_} split /[\,\s]+/, join ",", @fields or die "$0: fields list is empty";
+@parsers = grep {$_} split /[\,\s]+/, join ",", @parsers or die "$0: parsers list are empty! ";
+@definitions_files = grep {$_} split /[\,\s]+/, join ",", @definitions_files or die "$0: Option --defined-in must be defined";
+
+
+$"=",";
+warn "fields are: '@fields' parsers are: '@parsers'" if $deb;
+
+my @found_fields;
+for my $parser (@parsers){
+    if ( my $found_fields = `$parser @definitions_files` ){
+	if ( @found_fields = split /\s+/, $found_fields ){
+	    warn "Found fields are: '@found_fields' in @definitions_files parser:$parser" if $deb;
+	    last
+	}    
+    }
+}
+
+
+my %found_fields;
+for my $i (0..$#found_fields){
+ $found_fields{ $found_fields[$i] } = $i+1;
+}
+
+#die Dumper \%found_fields;
+
+for my $wanted_field ( @fields ){
+    die "Not found field '$wanted_field' in @definitions_files" if not $found_fields{ $wanted_field };
+}
+
+
+my %readers = (
+ cut => sub{ "awk -F$ifs -vOFS=* '{ print ".join(",",map {"\$$_"} @found_fields{@_})."}'" }
+);
+
+my $reader_sub = $readers{$reader} or die "No such reader: $reader";
+my $reader_cmd = $reader_sub->( @fields ) or die "can't create reader command for fields @fields";
+warn "reader command: $reader_cmd" if $deb;
+
+print $reader_cmd and exit if $show_command;
+
+warn "execute $reader_cmd ...";
+exec 'bash','-c',$reader_cmd;
