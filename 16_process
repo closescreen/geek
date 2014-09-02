@@ -12,38 +12,29 @@
 lb=${1:?labels!}
 
 lae -lb="$lb" '
-
 # формат входа м.б. с полем SID и без него
-
 my %hash;
 
-if ( defined $LI{ sid } ){
+if ( my $sid_ind = $LI{ sid } ){
+    
     # если поле sid присутствует:
     _{
-	$hash{ $F[SID] }{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
+	$hash{ $F[$sid_ind] }{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
     };
-
+    for my $sid ( sort {$a<=>$b} keys %hash ){
+	for my $sz ( sort {$a<=>$b} keys %{$hash{$sid}} ){
+	    for my $pz ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}} ){
+		for my $bt ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}{$pz}} ){
+		    p $sid, $sz, $pz, $bt, $hash{ $sid }{ $sz }{ $pz }{ $bt };
+		}
+	    }
+	}
+    }
 }else{
     # если поля sid нет:
     _{
 	$hash{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
     };
-}
-
-if ( defined $LI{ sid } ){ # если поле sid присутствует:
-    
-    for my $sid ( sort {$a<=>$b} keys %hash ){
-	for my $sz ( sort {$a<=>$b} keys %{$hash{$sid}} ){
-	    for my $pz ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}} ){
-		for my $bt ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}{$pz}} ){
-		    p $sz, $pz, $bt, $hash{ $sid }{ $sz }{ $pz }{ $bt };
-		}
-	    }
-	}
-    }
-    	     
-}else{ # если поля sid нет:
-    
     for my $sz ( sort {$a<=>$b} keys %hash ){
 	for my $pz ( sort {$a<=>$b} keys %{$hash{$sz}} ){
 	    for my $bt ( sort {$a<=>$b} keys %{$hash{$sz}{$pz}} ){
@@ -51,8 +42,8 @@ if ( defined $LI{ sid } ){ # если поле sid присутствует:
 	    }
 	}
     } 
-
 }
+
 '
 
 #>> out:

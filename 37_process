@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> net_sites tn0 total ----> views
+#> net_sites / 0 / total ----> views
 set -u
 set -x
 set -o pipefail
@@ -12,10 +12,10 @@ N=${4:?N!}
 
 # format net_sites tn0 total 
 # IN:
-#  1    2    3   4  5      6            7           8         9   10     11  12    13      14
-# uid second sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+#  1    2     3  4  5  6        7           8           9        10   11    12   13    14      15
+# uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
 
-zcat "$src" | awk -F\* -v'OFS=*' '$10>0 { print $3,$6,$7,$8 }' | sort -t\* -T. -S 333M -k1,1n | summator -fu="+cnt,sum,sum,sum" | 
+zcat "$src" | awk -F\* -v'OFS=*' '$10>0 { print $3,$4,$7,$8,$9 }' | sort -t\* -T. -S 333M -k1,1n | summator -fu="+cnt,sum,sum,sum" | 
  perl -F'\*' -lane'
  # округление десятичных во всех полях:
  print join "*", map {int($_)} @F'

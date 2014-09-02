@@ -16,7 +16,7 @@ for my $sid ( sort {$a<=>$b} keys %bids ){
 	for my $ad ( sort {$a<=>$b} keys %{$bids{$sid}{$sz}} ){
 	    for my $is_posibid ( sort {$a<=>$b} keys %{ $bids{$sid}{$sz}{$ad} } ){
 		for my $is_network ( sort {$a<=>$b} keys %{ $bids{$sid}{$sz}{$ad}{$is_posibid} } ){
-		    p0 $sz, $ad, $is_posibid, $is_network, $bids{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{ $sz };
+		    p0 $sid, $sz, $ad, $is_posibid, $is_network, $bids{ $sid }{ $sz }{ $ad }{ $is_posibid }{ $is_network }, $dom{$sid}{ $sz };
 		}	
 	    }
 	}
@@ -24,7 +24,7 @@ for my $sid ( sort {$a<=>$b} keys %bids ){
 }
 ' 
 
-#>> OUT: sz, ad, is_posibid, is_network, bids, domain.
+#>> OUT="sz ad is_posibid is_network bids domain" # comment
 #>> 
 #>> | field  | description |
 #>> | ------ | ----------- |
