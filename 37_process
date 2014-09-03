@@ -23,8 +23,9 @@ zcat "$src" | awk -F\* -v'OFS=*' '$10>0 { print $3,$4,$7,$8,$9 }' | sort -t\* -T
 #>> OUT:
 #>> | field            | decr |
 #>> |----------------  | ---- |   
+#>> | sid              |
 #>> | sz               |
-#>> | sum_exposures    | сумма просмотров            |
+#>> | exposures        | сумма просмотров            |
 #>> | sum_expprice     | сумма exposureprice         |
 #>> | sum_secondprice  | сумма secondprice           |
 #>> | sum_divexpsecond | сумма отношений exppr/secpr |

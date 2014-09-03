@@ -13,13 +13,13 @@ set +x
 
 summator -la=0 -fu=+cnt
 
-#>>OUT: 
-#>>  1  2   3      4
-#>> sid sz ad  cnt_clicks
-
+#>> OUT: 
 #>> | field | description |
 #>> | ----- | ----------- |
 #>> | sid   |             |
 #>> | sz    |
 #>> | ad    |
 #>> | cnt_clicks | количество кликов  |
+
+#>>  1  2   3      4
+#>> sid sz ad  cnt_clicks
