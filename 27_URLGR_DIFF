@@ -27,6 +27,6 @@ else
     ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/$src" | sort | only --without="$result"`   
 fi
 
-echo "$ff" | washing -result="s|$src|$result|" -v_flag="./27_process $job %s" -compr=gzip -timelog="$0.time.log" -nolog=3
+echo "$ff" | washing -result="s|$src|$result|" -v_flag="./27_process $job %s" -compr=gzip -timelog="all.time.log" -nolog=3
 
 )>>"$0.log" 2>&1

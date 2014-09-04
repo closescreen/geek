@@ -36,7 +36,8 @@ echo "$ff" | washing \
     -res="s|doms${N}days\.gz|dom_gr.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
     -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
-    -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $job $remote_script\""
+    -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $job $remote_script\"" \
+    -time=all.time.log 
 
 )>>"$0.log" 2>&1
 

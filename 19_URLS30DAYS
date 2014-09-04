@@ -21,9 +21,6 @@ processor=./19_process
 
 
 
-
-
-
 [[ -n "$deb" ]] && set -x
 
 typenum=`href -dict="net_sites => '0'" -default="3" -val="$job"`
@@ -41,7 +38,7 @@ ff=$( echo "$ff" | only --upto="$deep" )
 
 chk "$ff" "ff files" || exit 1
 
-echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=$0.time.log
+echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=all.time.log
 
 
 )>>"$0.log" 2>&1

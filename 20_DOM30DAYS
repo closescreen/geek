@@ -27,6 +27,6 @@ else
 fi
 
       
-echo "$ff" | washing -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=$0.time.log
+echo "$ff" | washing -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=all.time.log
 
 )>>"$0.log" 2>&1

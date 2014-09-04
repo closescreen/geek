@@ -35,6 +35,6 @@ else
 fi
 
     
-echo "$ff" | washing -res="s|total.*?\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="$0.time.log"
+echo "$ff" | washing -res="s|total.*?\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="all.time.log"
 
 )>>"$0.log" 2>&1
