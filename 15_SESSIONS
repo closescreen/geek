@@ -35,6 +35,6 @@ lb=$(
  " -val="$job"
 )
 
-echo "$ff" | washing -res='s|total\.gz|sessions.gz|' -v_flag="zcat %s | ./15_process \"$lb\"" -comp=gzip -time="all.time.log"
+echo "$ff" | washing -res='s|total\.gz|sessions.gz|' -v_flag="zcat %s | ./15_process \"$lb\"" -comp=gzip -time="00_all.time.log"
 
 )>>"$0.log" 2>&1

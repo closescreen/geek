@@ -57,6 +57,6 @@ echo "$hh" |
  only --without="total.gz" |
  only --without="urls.gz" |
  only --without="bids.gz" |
- washing -time=all.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip 
+ washing -time=00_all.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip 
 
 )>>"$0.log" 2>&1

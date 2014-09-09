@@ -40,7 +40,7 @@ ff=$( echo "$ff" | only --upto="$deep" )
 
 chk "$ff" "ff files" || exit 1
 
-echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=all.time.log
+echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=00_all.time.log
 
 
 )>>"$0.log" 2>&1

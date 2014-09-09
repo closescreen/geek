@@ -30,7 +30,7 @@ washing \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
     -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
     -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./55_process %s %f $server $remote_project $job $remote_script\"" \
-    -time=all.time.log
+    -time=00_all.time.log
 
 #washing -d -res="s|doms${N}days\.gz|dom_gr.gz|" -v_flag="./21_process %s %f $server $remote_project $remote_script" -compr=gzip -time=$0.time.log 
 

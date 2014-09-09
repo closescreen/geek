@@ -39,7 +39,7 @@ process_cmd=$(
 
     
 echo "$ff" |
- washing -res="s|total\.gz|uidsz.gz|" -v_flag=$process_cmd -comp=gzip -timelog="all.time.log"
+ washing -res="s|total\.gz|uidsz.gz|" -v_flag="$process_cmd" -comp=gzip -timelog="00_all.time.log"
 
 
 #>>OUT:

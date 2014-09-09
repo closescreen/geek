@@ -24,9 +24,8 @@ typenum=$(
 scriptname=$(
     href -dict="
 	net_sites => './14_process_net_sites'
-    " -defa='./14_process_google' -val="$job"
+    " -defa='./14_process_google.sc.fs' -val="$job"
 )
-
 
 if [[ -n "$days" ]]; then
 	ff=`echo $days | files "../RESULT/10/%F/$job/$typenum/total.gz" | only -s`
@@ -35,6 +34,6 @@ else
 fi
 
     
-echo "$ff" | washing -res="s|total.*?\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="all.time.log"
+echo "$ff" | washing -res="s|total.*?\.gz|bids.gz|" -v_flag="zcat %s | $scriptname" -comp=gzip -timelog="00_all.time.log"
 
 )>>"$0.log" 2>&1
