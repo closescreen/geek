@@ -91,6 +91,7 @@ for day in $find_for_days; do
     if [[ ! -s $local_dir/$day/auditory.gz ]]; then
 	# если он есть на удаленной стороне:
 	if [[ $( ssh "$remote_host2" "[[ -s $remote_file2 ]]" && echo OK ) ]];then 
+	    mkdir -p "$local_dir/$day/"
 	    scp "$remote_host2:$remote_file2" "$local_dir/$day/"
 	    chk "$local_dir/$day/auditory.gz" "auditory file" '-s' 'was copyed' nop || exit 2
 	fi
