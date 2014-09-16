@@ -29,40 +29,34 @@ $geek->routes(
 	    bids=> sub{ 
 		$geek->days( from=>$+{day}, n=>-30 )->files( "../RESULT/10/\%F/google/3/bids.gz" );
 	    },
-	    tn0_total=>sub{
+	    total=>sub{
 		$geek->days( from=>$+{day}, n=>-30 )->files( "../RESULT/10/\%F/google/0/total.gz" );
 	    }, 
+	},
+    },
+    { for_files=>"../RESULT/10/$sm{day}/google/3/bids.gz",
+	need_files=>{
+	    total=>sub{ "../RESULT/10/$+{day}/3/total.gz" },
 	},
     },
 );
 
 
-#$geek->debug(1);
-#die Dumper $geek;
+my @wanted_files = ( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz",
+    "../RESULT/10/2014-09-02/google/3/sz_vars_30days.gz", 
+    "../RESULT/10/2014-09-02/google/3/bids.gz", 
+    );
 
-my $matched = $geek->for_files( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz","../RESULT/10/2014-09-02/google/3/sz_vars_30days.gz" );
-#die Dumper $matched;
-#my $filtered = $matched->need_files("bids");
+my $matched = $geek->for_files(@wanted_files);
+die Dumper $matched;
 
-for my $t ( $matched->types){
-    warn "TYPE: $t";
-    #my $filtered = $matched->need_files('bids');
-    my $filtered = $matched->need_files($t); 
-    #my $filtered = $matched->files(files=>"<31");
-    #my $filtered = $matched->files(type=>qr/bida/);
-    warn "FILES:".Dumper($filtered->files);
-    my @exists = grep { -e $_} @{ $filtered->files };
-    warn "EXISTS:".Dumper( \@exists ); 
-
+for my $wf (@wanted_files){
+    for my $t ( $matched->types( arg=>"$wf" ) ){
+	my @need = $matched->files(arg=>"$wf",type=>$t);
+	print "wanted=$wf, type=$t\n".join("\n", @need )."\n" ;
+    }	
 }
 
-
-#my $need_files = $matched_routes->need_files();
-#my $all_ok = $need_files->is_all_exists();
-
-#die Dumper $matched_routes, $need_files, $all_ok;
-#$matched->need_files
-#die Dumper $geek;
 
 
 
@@ -178,16 +172,6 @@ package Geek::Routes;
 use base qw|Object::Accessor|;
 use Data::Dumper;
 
-sub types{
- # returns list of types in all routes
- my $se = shift or die "self!";
- $se->routes() or die "routes is empty";
- my %rv;
- for my $r ( @{ $se->routes() } ){
-    $rv{ $r->{type} }+=1;
- }
- return wantarray ? keys %rv : [ keys %rv ];
-}
 
 sub need_files{
  # need_files($type) - is alias for: files(type=>$type)
@@ -199,7 +183,26 @@ sub need_files{
 sub files{
  # returns files for given conditions
  # sample: files(type=>$type), files(type=>$type, files=>"<2")
+ # alias for from_routes( "files", type=>$type, files=>"<2" )
  my $se = shift or die 'self!';
+ my %cond = ( files => ">0", @_ ) ;
+ return $se->from_routes( "files", %cond );
+}
+
+sub types{
+ # returns list of types in routes
+ # sample: $matched->types() OR $matched->types(arg=>"../my/file.gz")
+ # alias for from_routes( "types", type=>$type, ... )
+ my $se = shift or die 'self!';
+ my %cond = ( files => ">0", @_ ) ;
+ return $se->from_routes( "type", %cond );
+}
+
+sub from_routes{
+ # returns "files"|"types"|... (- see first argument) for given conditions
+ # sample: from_routes("files", type=>$type), files(type=>$type, files=>"<2")
+ my $se = shift or die 'self!';
+ my $return_field = shift or die "return field!";
  my %cond = ( files => ">0", @_ ) ;
  warn "Conditions:".Dumper(\%cond) if $se->debug;
  my %rv;
@@ -237,21 +240,33 @@ sub files{
     $ddesc.="\n\tRESUME: allow=$allow";
     warn $ddesc if $se->debug;
     if ($allow){
-        $ddesc.="\n\tadd files to return: \n\t\t".join("\n\t\t",@{ $r->{files} });
-        for my $file ( @{ $r->{files} } ){
-            $rv{ $file } +=1;
-        }	    
+	$ddesc.="\n\t $return_field='$r->{$return_field}'";
+	
+	if ( !ref $r->{$return_field} ){
+	    my $return_field_value = $r->{$return_field}||"";
+	    $ddesc.="\n\t will return $return_field=$return_field_value";
+	    $rv{ $return_field_value } +=1;
+	}elsif( ref $r->{$return_field} eq "ARRAY" ){
+	    my $return_field_vaue = $r->{$return_field};
+    	    $ddesc.="\n\tadd to return: \n\t\t".join("\n\t\t", @$return_field_vaue );
+    	    for my $el ( @$return_field_vaue ){
+        	$rv{ $el } +=1;
+    	    }	    
+	}else{
+	    my $return_field_value = $r->{$return_field};
+	    $ddesc.="\n\tadd to return: \n\t\t $return_field_value";
+	    $rv{ $return_field_value } +=1;
+	}
     }
-    
  }
+ 
  my @rv = sort keys %rv;
+
  if (wantarray){
     return @rv;
  }else{
-    my $files = Geek::Files->new('files');
-    $files->files(\@rv);
-    return $files;
- }
+    return \@rv
+ }    
 }
 
 

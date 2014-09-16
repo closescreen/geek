@@ -16,7 +16,7 @@ for f in $ff; do
 done
 
 # когда кочается место на диске sort висит и не удаляет временные файлы. Такие файлы - признак того что висят просессы.
-tsff=`find . -name 'sort??????'`
-[[ -n "$tsff" ]] && echo "Removing temporary sort files: $tsff" && rm $tsff
+#tsff=`find . -name 'sort??????'`
+#[[ -n "$tsff" ]] && echo "Removing temporary sort files: $tsff" && rm $tsff
 
 )#>>"$0.log" 2>&1
