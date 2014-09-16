@@ -152,7 +152,7 @@ while(<FILE>){
  my ( $sid, $sz, $cnt_on_sid_sz, @in_traits ) = split /\*/;
  next if !$cnt_on_sid_sz;
 
- $traits{ $sid }{ $sz } = [ $cnt_on_sid_sz ]; index = 0
+ $traits{ $sid }{ $sz } = [ $cnt_on_sid_sz ]; # index = 0
  # количество колонок в отчете д.б. постоянно, поэтому оперируем постоянным набором индексов: 
  # последнюю колонку (trash) - не включаем в отчет.
  for my $i ( 0 .. 46 ){
