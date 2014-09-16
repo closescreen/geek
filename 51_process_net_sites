@@ -61,34 +61,34 @@ dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only 
 chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " || exit 3
 
 #> смерженные файлы bids.gz:
-#> format net_sites/0/bids: sz, ad, is_posibid, is_network, bids, domain
-#> на выходе должно быть: sz, all_bids, positive_bids, dom
-mergef -ff="$bids_ff" -m -k=1,1n -k=2,2n -stdout | 
- cut -d* -f1,3,5,6 | # <----взяли поля: sz, is_posibid, bids, dom
+#> format net_sites/0/bids: sid, sz, ad, is_posibid, is_network, bids, domain
+mergef -ff="$bids_ff" -m -k=1,1n -k=2,2n -k=3,3n -stdout |
+ cut -d* -f1,2,4,6,7 | # <----взяли поля: sid, sz, is_posibid, bids, dom
  awk -F* -v"OFS=*" '
-# здесь суммируем по sz, в одну строку
+# здесь суммируем по sid,sz
 # INPUT:
-# sz is_posibid bids dom
+# sid sz is_posibid bids dom
 {
- if( $1!=sz && sz ) flush();
- sz=$1;
- bids+=$3;
- if ($2) posibids+=$2;
- dom=$4;
+ if( ($1!=sid || $2!=sz) && sid ) flush();
+ sid=$1;
+ sz=$2;
+ bids+=$4;
+ if ($3) posibids+=$3;
+ dom=$5;
 }
 END{
  flush();
 }
 
 function flush(){
- print sz,bids,posibids,dom
+ print sid,sz,bids,posibids,dom
  bids=0; posibids=0;
 }
 # OUT:
-# sz, all_bids, positive_bids, dom
+# sid, sz, all_bids, positive_bids, dom
 # ------------------------------------
-' | lae -lb="sz bids posibids dom" '
-# Объединение входных строк по sz с другими таблицами.
+' | lae -lb="sid sz bids posibids dom" '
+# Объединение входных строк по sid,sz с другими таблицами.
 
 # список сетей:
 my $net_list = shift or die "nets!";
@@ -108,16 +108,16 @@ my %vars;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
- $vars{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
+ my ($sid, $sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
+ $vars{ $sid }{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
 }
 
 # clicks:
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $clicks) = split /\*/, $_, -1;
- $vars{ $sz }{ clicks } = $clicks;
+ my ($sid, $sz, $clicks) = split /\*/, $_, -1;
+ $vars{ $sid }{ $sz }{ clicks } = $clicks;
 }
 
 # sessions:
@@ -133,27 +133,31 @@ while(<FILE>){
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $pzbt_count) = split /\*/, $_, -1;
- $vars{ $sz }{ pzbt_count } = $pzbt_count;
+ my ($sid, $sz, $pzbt_count) = split /\*/, $_, -1;
+ $vars{ $sid }{ $sz }{ pzbt_count } = $pzbt_count;
 }
 
-my %minimum_by_index = map { $_, 50 } 0..45; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
+my %minimum_by_index = map { $_, 50 } 0..46; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
 @minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
 
 # traits:
 my %traits;
 open FILE, shift or die $!;
 while(<FILE>){
+ #>>@in_traits:        0      1     2      ...                                                                                ...       46
+ #>> sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+ #>>  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
+  
  chomp;
- my ( $sz, $cnt_on_sz, @in_traits ) = split /\*/;
+ my ( $sid, $sz, $cnt_on_sid_sz, @in_traits ) = split /\*/;
  next if !$cnt_on_sz;
 
- $traits{ $sz } = [ $cnt_on_sz ];
+ $traits{ $sid }{ $sz } = [ $cnt_on_sid_sz ]; index = 0
  # количество колонок в отчете д.б. постоянно, поэтому оперируем постоянным набором индексов: 
  # последнюю колонку (trash) - не включаем в отчет.
- for my $i ( 0 .. 45 ){
+ for my $i ( 0 .. 46 ){
     my $cnt_in_trait = $in_traits[$i]; # кол-во кук в трейте
-    push @{ $traits{ $sz } }, 
+    push @{ $traits{ $sid }{ $sz } },
 	$cnt_on_sz >= $minimum_by_index{ $i } ?
 	    sprintf( "%.2f", $cnt_in_trait * 100 / $cnt_on_sz) :
 	    "NA";
@@ -177,8 +181,8 @@ open FILE, $pz_file or die "cant open $pz_file: $!";
 my %pz_bids;
 while(<FILE>){
  chomp;
- my ($sz, $pz, $cnt) = split /\*/, $_, -1;
- $pz_bids{ $sz }{ $pz } = $cnt;
+ my ($sid, $sz, $pz, $cnt) = split /\*/, $_, -1;
+ $pz_bids{ $sid }{ $sz }{ $pz } = $cnt;
 }
 
 #суммы бидов по bt:
@@ -187,8 +191,8 @@ open FILE, $bt_file or die "cant open %bt_file: $:";
 my %bt_bids;
 while(<FILE>){
  chomp;
- my ($sz, $bt, $cnt) = split /\*/, $_, -1;
- $bt_bids{ $sz }{ $bt } = $cnt;
+ my ($sid, $sz, $bt, $cnt) = split /\*/, $_, -1;
+ $bt_bids{ $sid }{ $sz }{ $bt } = $cnt;
 }
 
 # группы доменов из dom_gr:
@@ -204,36 +208,36 @@ while(<FILE>){
 $|=1;
 _{
  # in:
- # sz, bids, posibids, dom
+ # sid, sz, bids, posibids, dom
  
- my $vars_sz = $vars{ $F[SZ] }||{};
+ my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
  my ( $ctr, $avg_winprice, $avg_exp_div_win );
- if ( my $exposures = $vars_sz->{exposures} ){
-    if ( $F[BIDS]>=1000 && $vars_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sz->{clicks}||0) / $exposures );
+ if ( my $exposures = $vars_sid_sz->{exposures} ){
+    if ( $F[BIDS]>=1000 && $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
     }else{ 
 	$ctr = "NA";
-	# DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sz->{clicks}, exposures:$exposures ";
+	# DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sid_sz->{clicks}, exposures:$exposures ";
     }	
     if ( $exposures>=50 ){
-	$avg_winprice = sprintf( "%.4f", ( $vars_sz->{ winprice }||0 ) / $exposures);
-	$avg_exp_div_win = sprintf( "%.4f", $vars_sz->{ exp_div_win } / $exposures );
+	$avg_winprice = sprintf( "%.4f", ( $vars_sid_sz->{ winprice }||0 ) / $exposures);
+	$avg_exp_div_win = sprintf( "%.4f", $vars_sid_sz->{ exp_div_win } / $exposures );
     }else{
 	$avg_winprice = "NA";
 	$avg_exp_div_win = "NA";
     }	
  }else{
     $ctr = "NA";
-    # DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sz->{clicks}, exposures:$exposures ";
+    # DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sid_sz->{clicks}, exposures:$exposures ";
     $avg_winprice = "NA";
     $avg_exp_div_win = "NA";
  }
  
  
- my $traits_sz = $traits{ $F[SZ] }||[];
+ my $traits_sid_sz = $traits{ $F[SID] }{ $F[SZ] }||[];
 
- my $all_uids = $traits_sz->[0]||"NA";
+ my $all_uids = $traits_sid_sz->[0]||"NA";
 
  my $avg_session = $all_uids >= 30 && $F[BIDS] >= 500 && $sessions{ $F[DOM] } && $sessions{ $F[DOM] }{sessions_count} ?
     sprintf("%.2f" ,($sessions{ $F[DOM] }{views}||0) / $sessions{ $F[DOM] }{sessions_count} ) :
@@ -245,16 +249,16 @@ _{
     map {0} @net_list;
 
  my $pzbt_count = $F[BIDS] >= 100 ?
-    $vars_sz->{pzbt_count} :
+    $vars_sid_sz->{pzbt_count} :
     "NA";    
 
- # процент бидов по sz,pz:  @{ $pz_bids{ $F[SZ] } } / к бидам по sz: $F[BIDS]
+ # процент бидов по sz,pz:  @{ $pz_bids{ $F[SID] }{ $F[SZ] } } / к бидам по sid,sz: $F[BIDS]
  my $explain=1;
  my @pz_bids = $F[BIDS] 
     ?
     map { 
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) . ( $explain ? " pz_bids:$_, bids:$F[BIDS]" : "") 
-    } @{ $pz_bids{ $F[SZ] } }{ @pz_list } 
+    } @{ $pz_bids{ $F[SID] }{ $F[SZ] } }{ @pz_list } 
     :
     map {0} @pz_list;
 
@@ -262,18 +266,18 @@ _{
     ?
     map {
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) . ( $explain ? " bt_bids:$_, bids:$F[BIDS]" : "")
-    } @{ $bt_bids{ $F[SZ] } }{ @bt_list }
+    } @{ $bt_bids{ $F[SID] }{ $F[SZ] } }{ @bt_list }
     :
     map {0} @bt_list;
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
 
- #    1        2        3       4    5(winbids)       6           7            8               9            10(posibids)       11(win_posi_bids)   
- p0 $F[SZ], $F[DOM], $dom_gr, $ctr, "NA",        $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win,    "NA",               "NA",       
+ #    1        2        3       4      5(winbids)  6           7            8               9         10                11(posibids)       12(win_posi_bids)   
+ p0 $F[SID], $F[SZ], $F[DOM], $dom_gr,   $ctr,    "NA",     $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win,    "NA",               "NA",       
  
- #  12         13..16       17..64             63..64     65..79
- $pzbt_count, @in_nets, @{$traits_sz}[1..46], @pz_bids, @bt_bids;
+ #  13         14..17       18..63                 64..65     66..102
+ $pzbt_count, @in_nets, @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids;
 
      
     
@@ -281,74 +285,76 @@ _{
  #>> OUT:
  #>> | field               | description  |
  #>> | ------------------- | ------------ |
- #>> | 1  sz               | 
- #>> | 2  domain           | 
- #>> | 3  dom_gr           | доменная группа |
- #>> | 4  ctr              | клики/показы |
- #>> | 5  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | 6  avg_session      | ср длина пользов. сессии на домене                 |
- #>> | 7  all_uids         | вего кук на сайтзоне                               |
- #>> | 8  avg_winprice     | средний winprice                                   |
- #>> | 9  avg_exp_div_win  | среднее отношение expprice/winprice                |
- #>> | 10 posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
- #>> | 11  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
- #>> | 12 pzbt_count       | количество сочетаний bt-pz                              |
- #>> | 13..16 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
- #>> | 17..62 trait fields | 46 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
- #>> | 63..64 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
- #>> | 65..101 bt bids      | процент бидов по bt / к бидам по sz в (%)                             |
+ #>> | 1  sid              |
+ #>> | 2  sz               | 
+ #>> | 3  domain           | 
+ #>> | 4  dom_gr           | доменная группа |
+ #>> | 5  ctr              | клики/показы |
+ #>> | 6  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 7  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 8  all_uids         | вего кук на сайтзоне                               |
+ #>> | 9  avg_winprice     | средний winprice                                   |
+ #>> | 10  avg_exp_div_win | среднее отношение expprice/winprice                |
+ #>> | 11 posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 12  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 13 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 14..17 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
+ #>> | 18..63 trait fields | 46 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ #>> | 64..65 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 66..102 bt bids     | 37 полей процент бидов по bt / к бидам по sz в (%)                    |
  
 };
 
 ' "$nets" "$pz_list" "$bt_list" <(
- # ПРОСМОТРЫ за 30 дней: sz exposures exppr secondpr exp_div_sec
- mergef -ff="$views_ff" -m -k=1,1n -stdout | summator -fu="sum,sum,sum,sum"
- # merged OUT format: sz exposures expprice secondprice exp_divided_by_sec
+ # ПРОСМОТРЫ за 30 дней: sid sz exposures exppr secondpr exp_div_sec
+ mergef -ff="$views_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,sum,sum,sum"
+ # merged OUT format: sid sz exposures expprice secondprice exp_divided_by_sec
 ) <(
- # КЛИКИ за 30 дней ключ (sz,ad) (ad - потом выкидываем) , суммы по (clicks):
- mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator -fu="sum"
- # Format: sz clicks
+ # КЛИКИ за 30 дней ключ (sid,sz,ad,cliks) (ad - выкидываем) , суммы clicks по sid,sz:
+ mergef -ff="$tn1_total_ff" -m -prefilter="cut -d* -f1,2,4" -k=1,1n -k=2,2n -stdout | summator -fu="sum"
+ # Format: sid sz clicks
 ) <(
  # SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
  mergef -ff="$sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
  # Format: dom, sess_counts, views
 ) <(
- # PZBT за 30 дней, ключ (sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается количество уникальных комбинаций, out: sz * кол-во комбинаций:
- mergef -ff="$pzbt_ff" -m -k=1,1n -stdout | awk -F* '{print $1"*"$2"-"$3}' | summator -fu=uniq
- # Format: sz cnt
+ # PZBT за 30 дней, ключ (sid, sz), конкатенируются pz"-"bt (комбинации pz,bt), подсчитывается кол-во уникальных комбинаций, out: sid,sz, кол-во комбинаций:
+ mergef -ff="$pzbt_ff" -m -k=1,1n -k=2,2n -stdout | awk -F* '{print $1"*"$2"*"$3"-"$4}' | summator -fu=uniq
+ # Format: sid sz cnt
 ) <(
  # traits30days.gz:
  zcat "$traits_fn"
  # format: 
- #>> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
- #>> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
+ #>> sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+ #>>  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
+ 
 ) <(
  # В каких сетях присутствует домен: dom_net за 30 дней
  # dom * net
  LANG=POSIX mergef -ff="$dom_net_ff" -k=1,1 -k=2,2n -m --stdout | uniq
  # Format: dom1*net1 (sorted)
 ) <(
- # sz pz cnt:
- mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
+ # pzbt: in: sid,sz,pz,bt,cnt - сортированы
+ mergef -ff="$pzbt_ff" -m -prefilter="cut -d* -f1,2,3,5" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sid sz pz cnt" '
   my $pz_list = shift or die "pz_list!";
-  my @pz=grep {$_} split /\s+/, $pz_list or die "pz_list empty!"; 
+  my @pz = grep {$_} split /\s+/, $pz_list or die "pz_list empty!"; 
     _{ 
 	return unless grep {$_==$F[PZ]} @pz; 
-	p @F[SZ,PZ,CNT]
+	p @F[SID,SZ,PZ,CNT]
     }
- ' "$pz_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
- # format: sz pz cnt
+ ' "$pz_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum" # хотя здеть sort в конце не нужен, но в следующем фрагменте - нужен
+ # format: sid sz pz cnt
 ) <(
- # sz bt cnt:
- mergef -ff="$pzbt_ff" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sz pz bt cnt" '
+ # pzbt: in: sid,sz,pz,bt,cnt - сортированы
+ mergef -ff="$pzbt_ff" -m -prefilter="cut -d* -f1,2,4,5" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sid sz bt cnt" '
   my $bt_list = shift or die "bt_list!";
   my @bt = grep {$_} split /\s+/, "$bt_list" or die "bt_list empty!"; 
    _{ 
     return unless grep {$_==$F[BT]} @bt; 
-    p @F[SZ,BT,CNT]
+    p @F[SID,SZ,BT,CNT]
    }
- ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 | summator -fu="sum"
- # format: sz bt cnt
+ ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
+ # format: sid sz bt cnt
 ) <(
  #dom_gr.txt:
  cat $dom_gr_f
