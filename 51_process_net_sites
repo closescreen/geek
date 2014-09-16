@@ -158,8 +158,8 @@ while(<FILE>){
  for my $i ( 0 .. 46 ){
     my $cnt_in_trait = $in_traits[$i]; # кол-во кук в трейте
     push @{ $traits{ $sid }{ $sz } },
-	$cnt_on_sz >= $minimum_by_index{ $i } ?
-	    sprintf( "%.2f", $cnt_in_trait * 100 / $cnt_on_sz) :
+	$cnt_on_sid_sz >= $minimum_by_index{ $i } ?
+	    sprintf( "%.2f", $cnt_in_trait * 100 / $cnt_on_sid_sz ) :
 	    "NA";
  }
 }
