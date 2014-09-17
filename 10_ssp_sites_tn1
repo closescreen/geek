@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-# добавить sid !
 
 sids=${2:?sids!} #like a: 123|234|3254
 

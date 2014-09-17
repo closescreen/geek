@@ -1,0 +1,224 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+
+#my $usage = q{ Usage: };
+#GetOptions(
+#    
+#) or die "Bad opt!";
+
+#my %some = (
+# day => qr/(?<day>\d\d\d\d-\d\d-\d\d)/,
+# 
+#);
+
+my $g = Geek->new( );
+my %sm = $g->named_groups(
+    day => '\d\d\d\d-\d\d-\d\d',
+    hour => '\d\d\d\d-\d\d-\d\dT\d\d',
+    job => '\w+',
+    typenum => '\d+',
+);
+
+# 'set -o pipefail; mkdir -p %d && netflag --local --file="%f.FLAG" -cmd=\'' . $via_flag_cmd . '\'' . ( $compress ? " | $compress " : '' ). ' > %f.TMP && mv %f.TMP %f'	
+
+$g->routes(
+    { 	target=>"../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
+	need_files=>{ 
+	    bids=> sub{ 
+		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/3/bids.gz" );
+	    },
+	    total=>sub{
+		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/0/total.gz" );
+	    }, 
+	},
+	cmd=>sub{ 
+	    sub{qq{ netflag --local --file='$_[0].FLAG' -cmd='$_[1]' | gzip > '$_[0].TMP' && mv '$_[0].TMP' '$_[0]' }}->(
+		$g->{target_file},
+		qq{ ./51_process_google '@{ $g->{need_files}{total}}' '@{$g->{need_files}{bids}}' },
+	    )	
+	},
+    },
+#    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
+#	need_files=>{
+#	    total=>sub{ "../RESULT/10/$+{day}/3/total.gz" },
+#	},
+#    },
+);
+
+
+my @wanted_files = ( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz",
+    "../RESULT/10/2014-09-02/google/3/sz_vars_30days.gz", 
+    "../RESULT/10/2014-09-02/google/3/bids.gz", 
+    );
+
+my $matched = $g->target(@wanted_files);
+#die Dumper $matched;
+
+$,=", ";
+$"=", ";
+$\="\n";
+
+for my $re ( keys %$matched ){
+ print $re;
+ for my $target ( keys %{ $matched->{$re} } ){
+    print $target;
+    if ( my $need_files = $matched->{$re}{$target}{need_files} ){
+	for my $type ( keys %$need_files ){
+	    print $type;
+	    for my $need_file ( @{ $need_files->{$type} } ){
+		print $need_file;
+	    }
+	}
+    }
+    if ( my $cmd = $matched->{$re}{$target}{cmd} ){
+	if ( ref $cmd eq "CODE" ){
+	    print "CMD RESULT:",$cmd->();
+	}    
+    }
+ }
+}
+
+
+
+
+#------------ Geek -----------
+package Geek;
+use Data::Dumper;
+use Date::Calc;
+
+sub new{
+ my $pkg = shift or die "Package! Usage: Geek->new()";
+ my %se = ();
+ return bless \%se;
+};
+
+sub uniq{
+ # give LIST  
+ # Return uniqued LIST
+ if ( ref $_[0] eq "Geek" ){
+    shift;
+ }
+ my %rv = map {$_,$_} @_;
+ return wantarray ? (values %rv) : [values %rv];
+ 
+}
+
+
+sub routes{
+ my $se = shift;
+ ref $se or die "First param must be a reference to Geek object";
+ $se->{routes} = \@_;
+ 
+ return $se;
+}
+
+sub target{ 
+ my $se = shift;
+ ref $se eq "Geek" or die "First param must be a reference to Geek object";
+ return $se->match( cond=>"target", args=>\@_ ); 
+}
+
+sub match{
+ my $se = shift;
+ ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
+ my %pa = @_;
+ my $cond = $pa{ cond };
+ my $args = $pa{ args };
+ my @matched_routes;
+ if ( !$se->{routes} ){ die "routes is empty." }
+ my %rv;
+
+ for my $r ( @{ $se->{routes}||[] } ){
+    if ( my $re = $r->{$cond} ){
+	for my $arg ( @$args ){
+	    if ( $arg=~$re ){
+		if ( my $need_files = $r->{need_files} ){
+		    if ( ref $need_files eq "HASH"){
+			for my $type ( keys %$need_files ){
+			    my $need = $need_files->{$type};
+			    if (ref $need eq "CODE"){
+				my @need_file_names = $need->();
+				$rv{ $re }{ $arg }{need_files}{ $type } = \@need_file_names; 
+			    }
+			}
+		    }
+		}
+		
+		if ( my $cmd = $r->{cmd} ){
+		    if ( ref $cmd eq "CODE" ){
+			$rv{ $re }{ $arg }{ cmd } = $cmd;
+		    }
+		}
+	    }
+	}
+    }
+ }
+
+ return \%rv;
+}
+
+
+sub days{
+ my $se = shift or die "First param must be a reference to Geek object";
+ #ref $se eq "Geek" or die "First param must be a reference to Geek object";
+ my %pa = @_;
+ my @rv;
+ if ($pa{from} and $pa{n}){
+    my $n = $pa{n};
+    my ($y,$m,$d)=$pa{from}=~/(\d\d\d\d)-(\d\d)-(\d\d)/;
+    $y and $m and $d or die "bad parameter from=$pa{from}";
+    my @ii = $n>0 ? (0..$n) : ($n..-1);
+    for my $i ( @ii ){
+	push @rv, [ Date::Calc::Add_Delta_Days($y,$m,$d, $i) ];
+    }
+ }
+ @rv = map {sprintf("%d-%02d-%02d",@$_)} @rv;
+ my $days = Geek::Days->new('days');
+ $days->days(\@rv);
+ return $days;
+}
+
+
+sub named_groups{
+ ref shift or die "First param must be a reference to Geek object";
+ my %pa = @_;
+ my %rv;
+ for my $name (keys %pa){
+    my $v = $pa{$name};
+    #$rv{ $name } = qr/(?<$name>$pa{$name})/; 
+    $rv{ $name } = "(?<$name>$pa{$name})"; 
+ }
+ return wantarray ? %rv : \%rv;
+}
+
+
+#-----------------------------------------------------------------
+package Geek::Days;
+use base qw|Object::Accessor|;
+
+sub files{
+ my $se = shift or die "se!";
+ my $tmpl = shift or die "tmpl!";
+ my @rv;
+ for my $d ( @{ $se->days() } ){
+    my $file = $tmpl;
+    $file=~s/\%F/$d/g;
+    push @rv, $file;
+ }
+ if (wantarray){
+    return @rv;
+ }else{
+    my $files = Geek::Files->new('files');
+    $files->files(\@rv);
+    return $files;
+ }
+}
+
+
+
+
+1;

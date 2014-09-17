@@ -1,7 +1,5 @@
 #!/usr/bin/env bash
 
-# добавить sid
-
 
 sids=${2:?sids!} #like a: 123|234|3254
 
@@ -16,3 +14,4 @@ print join("*",@F);
 ' | sort -T. -t\* -n -k1,1 -k2,2
 
 
+#>> OUT: uid second sid sz pz bt exposureprice ad dom path

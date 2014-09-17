@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 
-#обработать новое поле sid
 
 set -u
 set -e

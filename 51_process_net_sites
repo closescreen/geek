@@ -144,9 +144,9 @@ my %minimum_by_index = map { $_, 50 } 0..46; # ограничения по ум�
 my %traits;
 open FILE, shift or die $!;
 while(<FILE>){
- #>>@in_traits:        0      1     2      ...                                                                                ...       46
- #>> sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
- #>>  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
+ #@in_traits:        0      1     2      ...                                                                                ...       46
+ # sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+ #  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
   
  chomp;
  my ( $sid, $sz, $cnt_on_sid_sz, @in_traits ) = split /\*/;
@@ -253,7 +253,7 @@ _{
     "NA";    
 
  # процент бидов по sz,pz:  @{ $pz_bids{ $F[SID] }{ $F[SZ] } } / к бидам по sid,sz: $F[BIDS]
- my $explain=1;
+ my $explain=0;
  my @pz_bids = $F[BIDS] 
     ?
     map { 
@@ -325,8 +325,8 @@ _{
  # traits30days.gz:
  zcat "$traits_fn"
  # format: 
- #>> sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
- #>>  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
+ # sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+ #  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
  
 ) <(
  # В каких сетях присутствует домен: dom_net за 30 дней

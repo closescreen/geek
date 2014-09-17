@@ -17,7 +17,7 @@ force_start=${1:-""} # можно указать "force"
 
 [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
-jobs="google net_sites"
+jobs="google net_sites ssp_sites"
 typenums="0 1 3"
 
 # запуск только при низком loadaverage или при "force"
@@ -42,7 +42,7 @@ for proc in `seq 1 "$proc_num"`; do
 
 	do_it "$pf" "nice ./55_SZGR $job"
 	do_it "$pf" "nice ./51_SZVARS_30DAYS $job"
-	do_it "$pf" "nice ./33_TRAITS $job"
+	do_it "$pf" "nice ./33_TRAITS_30DAYS $job"
 	do_it "$pf" "nice ./27_URLGR_DIFF $job"
 	do_it "$pf" "nice ./25_URLGR $job"
 	do_it "$pf" "nice ./22_DOMGR7DAYS $job"
