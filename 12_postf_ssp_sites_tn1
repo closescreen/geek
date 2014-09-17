@@ -1,5 +1,23 @@
 #!/usr/bin/env bash
 
-#TODO: обрабатывать sid!
+set -u
+set -e
+set -o pipefail
+set +x
 
-./12_postf_google_tn1 $*
+#>> IN
+#>>  1   2  3
+#>> sid sz  ad
+
+summator -la=0 -fu=+cnt
+
+#>> OUT: 
+#>>  1  2  3        4
+#>> sid sz ad  cnt_clicks
+
+#>> | field | description |
+#>> | ----- | ----------- |
+#>> | sid   |
+#>> | sz    |
+#>> | ad    |
+#>> | cnt_clicks | количество кликов  |
