@@ -334,25 +334,28 @@ _{
  LANG=POSIX mergef -ff="$dom_net_ff" -k=1,1 -k=2,2n -m --stdout | uniq
  # Format: dom1*net1 (sorted)
 ) <(
- # pzbt: in: sid,sz,pz,bt,cnt - сортированы
+ # pzbt: in: sid,sz,pz,bt,cnt - сортированы, удаление (4-го поля не сбивает сортировку)
  mergef -ff="$pzbt_ff" -m -prefilter="cut -d* -f1,2,3,5" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sid sz pz cnt" '
   my $pz_list = shift or die "pz_list!";
   my @pz = grep {$_} split /\s+/, $pz_list or die "pz_list empty!"; 
     _{ 
 	return unless grep {$_==$F[PZ]} @pz; 
 	p @F[SID,SZ,PZ,CNT]
-    }
- ' "$pz_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum" # хотя здеть sort в конце не нужен, но в следующем фрагменте - нужен
+    } # на выходе должна сохраниться сортировака по 1.2.3
+    # хорошо бы в принимающем скрипте сделать проверку что строки не дублируются (сортированы правильно)
+ ' "$pz_list" | summator -fu="sum" # хотя здеть sort в конце не нужен, но в следующем фрагменте - нужен
  # format: sid sz pz cnt
 ) <(
  # pzbt: in: sid,sz,pz,bt,cnt - сортированы
- mergef -ff="$pzbt_ff" -m -prefilter="cut -d* -f1,2,4,5" -k=1,1n -k=2,2n -k=3,3n -stdout | lae -lb="sid sz bt cnt" '
+ # т.к. 3-го поля нет, то сортировка сбивается, 
+ # (делаем '-m' по первым 2-м полям, помня об этом)   
+ mergef -ff="$pzbt_ff" -prefilter="cut -d* -f1,2,4,5" -m -k=1,1n -k=2,2n -stdout | lae -lb="sid sz bt cnt" '
   my $bt_list = shift or die "bt_list!";
   my @bt = grep {$_} split /\s+/, "$bt_list" or die "bt_list empty!"; 
    _{ 
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SID,SZ,BT,CNT]
-   }
+   } # ... а на выходе скрипта - сортируем :
  ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
  # format: sid sz bt cnt
 ) <(
