@@ -30,7 +30,7 @@ fi
 lb=$(
  href -dict="
     net_sites => 'uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview',
-    ssp_sites => 'STOP, change processor before define me',
+    ssp_sites => 'uid second sid sz pz bt exposureprice ad dom path sestart isview',
     google => 'uid second sz pz  bt exposureprice ad dom path sestart isview',
  " -val="$job"
 )
