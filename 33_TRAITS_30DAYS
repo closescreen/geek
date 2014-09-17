@@ -21,17 +21,19 @@ processor=$(
  href -dict="
     net_sites => './33_process_net_sites',
     google => './33_process_google',
+    ssp_sites => './33_process_ssp_sites',
  " -val="$job"
 ) 
-
 [[ -z "$processor" ]] && exit 1
 
 typenum=$(
  href -dict="
-     net_sites => '0',
- " -default="3" -val="$job"
+     net_sites => 0,
+     google => 3,
+     ssp_sites => 3,
+ " -val="$job"
 )
-
+chk "$typenum" "typenum for $job" || exit 1
 
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/uidsz.gz" | only -s`
