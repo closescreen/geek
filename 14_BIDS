@@ -27,7 +27,7 @@ scriptname=$(
     href -dict="
 	net_sites => './14_process_net_sites',
 	google => './14_process_google',
-	ssp_sites => '',
+	ssp_sites => './14_process_ssp_sites',
     " -val="$job"
 )
 
