@@ -54,8 +54,8 @@ for my $ref ( keys %sessions_count ){
 #>>  
 #>> | field          | description |
 #>> | -------------- | ----------- |
-#>> | dom |
-#>> | ref |
+#>> | dom  |
+#>> | path |
 #>> | sessions_count | количество сессий, где dom+url участвовал |
 #>> | sessions_ends  | количество сессий, где он был последним.  |
 
