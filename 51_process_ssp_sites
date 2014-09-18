@@ -66,16 +66,13 @@ chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " ||
 #> 30 days bids.gz мержатся по первым 3 полям (sid,sz,ad), 4 поле (bids_count) суммируется, 5 (dom) - берется последнее значение по данному ключу:
 #> (ad нужна для posi_bids - ни равны 0 при ad==0)
 
-СТОП, остановился здесь
-форматы подаваемых файлов в параметрах проверил, идем по скрипту и правим добавляя поддержку sid
-
 mergef -ff="$bids_ff" -m -k=1,1n -k=2,2n -k=3,3n -stdout | summator -fu="sum,last" |
 awk -F* -v"OFS=*" '
 # здесь сворачиваем строки по sid,sz, добавляя positive_bids
 # INPUT:
 # sid sz ad bids dom
 {
- if( (($2 != sz) || ($1 != sid) && sid ) ) flush();
+ if( (($2 != sz) || ($1 != sid) ) ) flush();
  sid=$1;
  sz=$2;
  bids+=$4;
@@ -117,16 +114,16 @@ my %vars;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
- $vars{ $sz } = { exposures => $exposures, expprice => $expprice, winprice => $winprice, exp_div_win=>$exp_div_win };
+ my ($sid, $sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; # поле $exp_div_win = exposure_price, деленное на winprice
+ $vars{ $sid }{ $sz } = { exposures => $exposures, expprice => $expprice, winprice => $winprice, exp_div_win=>$exp_div_win };
 }
 
 # clicks:
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $clicks) = split /\*/, $_, -1;
- $vars{ $sz }{ clicks } = $clicks;
+ my ($sid, $sz, $clicks) = split /\*/, $_, -1;
+ $vars{ $sid }{ $sz }{ clicks } = $clicks;
 }
 
 # sessions:
@@ -142,31 +139,33 @@ while(<FILE>){
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sz, $pzbt_count) = split /\*/, $_, -1;
- $vars{ $sz }{ pzbt_count } = $pzbt_count;
+ my ($sid, $sz, $pzbt_count) = split /\*/, $_, -1;
+ $vars{ $sid }{ $sz }{ pzbt_count } = $pzbt_count;
 }
 
-my %minimum_by_index = map { $_, 50 } 0..45; # ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
+my %minimum_by_index = map { $_, 50 } 0..46; # 46=(49 полей - 3 поля sid,sz,all) ограничения по умолч. (=50) на мин. количво кук на сайтзоне для полей трейтов
 @minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
 
-# traits:
-#> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
-#> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
-#> после splita:0      1     2     3  .....  45(auditory30 ) 46(trash)
+# traits fields:
+# sid  sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+# 1     2     3     4      5     6      7       8     9       10    11          19      20           21      22            49        50
+
+# после splita ind: 0      1     2      3  ....                                                                      45(auditory30 ) 46(trash)
 
 my %traits;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ( $sz, $cnt_on_sz, @in_traits ) = split /\*/;
+ my ( $sid, $sz, $cnt_on_sz, @in_traits ) = split /\*/; # @in_traits = (0..46)
+
  next if !$cnt_on_sz;
 
- $traits{ $sz } = [ $cnt_on_sz ];
+ $traits{ $sid }{ $sz } = [ $cnt_on_sz ];
  # количество колонок в отчете д.б. постоянно, поэтому оперируем постоянным набором индексов: 
  # последнюю колонку (trash) - не включаем в отчет.
  for my $i ( 0 .. 45 ){
     my $cnt_in_trait = $in_traits[$i]; # кол-во кук в трейте
-    push @{ $traits{ $sz } }, 
+    push @{ $traits{ $sid }{ $sz } }, 
 	$cnt_on_sz >= $minimum_by_index{ $i } ?
 	    sprintf( "%.2f", $cnt_in_trait * 100 / $cnt_on_sz) :
 	    "NA";
@@ -191,8 +190,8 @@ open FILE, $pz_file or die "cant open $pz_file: $!";
 my %pz_bids;
 while(<FILE>){
  chomp;
- my ($sz, $pz, $cnt) = split /\*/, $_, -1;
- $pz_bids{ $sz }{ $pz } = $cnt;
+ my ($sid, $sz, $pz, $cnt) = split /\*/, $_, -1;
+ $pz_bids{ $sid }{ $sz }{ $pz } = $cnt;
 }
 
 
@@ -203,8 +202,8 @@ open FILE, $bt_file or die "cant open %bt_file: $:";
 my %bt_bids;
 while(<FILE>){
  chomp;
- my ($sz, $bt, $cnt) = split /\*/, $_, -1;
- $bt_bids{ $sz }{ $bt } = $cnt;
+ my ($sid, $sz, $bt, $cnt) = split /\*/, $_, -1;
+ $bt_bids{ $sid }{ $sz }{ $bt } = $cnt;
 }
 
 # группы доменов из dom_gr:
@@ -220,20 +219,20 @@ while(<FILE>){
 $|=1;
 _{
  # in:
- # sz, bids, posibids, dom
+ # sid, sz, bids, posibids, dom
  
- my $vars_sz = $vars{ $F[SZ] }||{};
+ my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
  my ( $ctr, $avg_winprice, $avg_exp_div_win );
- if ( my $exposures = $vars_sz->{exposures} ){
-    if ( $F[BIDS]>=1000 && $vars_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sz->{clicks}||0) / $exposures );
+ if ( my $exposures = $vars_sid_sz->{exposures} ){
+    if ( $F[BIDS]>=1000 && $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
     }else{ 
 	$ctr = "NA" 
     }	
     if ( $exposures>=50 ){
-	$avg_winprice = sprintf( "%.4f", ( $vars_sz->{ winprice }||0 ) / $exposures);
-	$avg_exp_div_win = sprintf( "%.4f", $vars_sz->{ exp_div_win } / $exposures );
+	$avg_winprice = sprintf( "%.4f", ( $vars_sid_sz->{ winprice }||0 ) / $exposures);
+	$avg_exp_div_win = sprintf( "%.4f", $vars_sid_sz->{ exp_div_win } / $exposures );
     }else{
 	$avg_winprice = "NA";
 	$avg_exp_div_win = "NA";
@@ -245,12 +244,12 @@ _{
  }
  
  my $winbids =  $F[BIDS]>=200 ?
-    sprintf("%.2f", ($vars_sz->{exposures}||0) / $F[BIDS] * 100 ) :
+    sprintf("%.2f", ($vars_sid_sz->{exposures}||0) / $F[BIDS] * 100 ) :
     "NA";
 
- my $traits_sz = $traits{ $F[SZ] }||[];
+ my $traits_sid_sz = $traits{ $F[SID] }{ $F[SZ] }||[];
 
- my $all_uids = $traits_sz->[0]||"NA";
+ my $all_uids = $traits_sid_sz->[0]||"NA";
 
  my $avg_session = $all_uids >= 30 && $F[BIDS] >= 500 && $sessions{ $F[DOM] } && $sessions{ $F[DOM] }{sessions_count} ?
     sprintf("%.2f" ,($sessions{ $F[DOM] }{views}||0) / $sessions{ $F[DOM] }{sessions_count} ) :
@@ -261,25 +260,25 @@ _{
     "NA";   
     
  my $win_posi_bids = $F[POSIBIDS] >= 100 ?
-    sprintf("%.4f", ( $vars_sz->{exposures}||0 ) / $F[POSIBIDS] ) :
+    sprintf("%.4f", ( $vars_sid_sz->{exposures}||0 ) / $F[POSIBIDS] ) :
     "NA"; 
  
- # список сетей, в кот входит сайтзона:
+ # список сетей, в кот входит сайтзона (на самом деле - домен):
  my @in_nets = $all_net_views{ $F[DOM] } ?
     map { $all_net_views{ $F[DOM] }{ $_ } || 0 } @net_list :
     map {0} @net_list;
 
  my $pzbt_count = $F[BIDS] >= 100 ?
-    $vars_sz->{pzbt_count} :
+    $vars_sid_sz->{pzbt_count} :
     "NA";    
 
- # процент бидов по sz,pz:  @{ $pz_bids{ $F[SZ] } } / к бидам по sz: $F[BIDS]
+ # процент бидов по sz,pz:  @{ $pz_bids{ $F[SID] }{ $F[SZ] } } / к бидам по sz: $F[BIDS]
  
  my @pz_bids = $F[BIDS] 
     ?
     map { 
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 ) 
-    } @{ $pz_bids{ $F[SZ] } }{ @pz_list } 
+    } @{ $pz_bids{ $F[SID] }{ $F[SZ] } }{ @pz_list } 
     :
     map {0} @pz_list;
 
@@ -287,36 +286,37 @@ _{
     ?
     map {
 	sprintf( "%.2f", ($_||0) / $F[BIDS] * 100 )
-    } @{ $bt_bids{ $F[SZ] } }{ @bt_list }
+    } @{ $bt_bids{ $F[SID] }{ $F[SZ] } }{ @bt_list }
     :
     map {0} @bt_list;
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
- #     1       2        3     4       5           6            7            8             9            10           11               12        13,14,15,16
- p0 $F[SZ], $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
- #    17..62               63,64     65..79
-  @{$traits_sz}[1..46], @pz_bids, @bt_bids;
+ #     1       2        3       4       5        6          7            8             9            10             11             12            13   
+ p0 $F[SID], $F[SZ], $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, 
+ # 14,15,16,17   18..63                   64,65     66..102
+ @in_nets,     @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids;
 
  #>> OUT:
  #>> | field               | description  |
  #>> | ------------------- | ------------ |
- #>> | 1  sz               | 
- #>> | 2  domain           | 
- #>> | 3  dom_gr	   | группа домена |
- #>> | 4  ctr              | клики/показы  |
- #>> | 5  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | 6  avg_session      | ср длина пользов. сессии на домене                 |
- #>> | 7  all_uids         | вего кук на сайтзоне                               |
- #>> | 8  avg_winprice     | средний winprice                                   |
- #>> | 9  avg_exp_div_win  | среднее отношение expprice/winprice                |
- #>> | 10  posibids        | отношение posibids/bids - доля бидов с положит ставкой  |
- #>> | 11  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
- #>> | 12 pzbt_count       | количество сочетаний bt-pz                              |
- #>> | 13..16 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
- #>> | 17..62 trait fields | 46 полей: 17.male,18.female,19.young,20.adult,21.old, 22.ctr1 ... 32.ctr11, 33.auditory1 ... 62.auditory30 (in %) | 
- #>> | 63..64 pz bids      | 2 поля: процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
- #>> | 65..101 bt bids      | 37 полей: процент бидов по bt / к бидам по sz в (%)                             |
+ #>> | 1  sid              |              |
+ #>> | 2  sz               | 
+ #>> | 3  domain           | 
+ #>> | 4  dom_gr	   | группа домена |
+ #>> | 5  ctr              | клики/показы  |
+ #>> | 6  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 7  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 8  all_uids         | вего кук на сайтзоне                               |
+ #>> | 9  avg_winprice     | средний winprice                                   |
+ #>> | 10  avg_exp_div_win | среднее отношение expprice/winprice                |
+ #>> | 11  posibids        | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 12  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 13 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 14..17 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
+ #>> | 18..63 trait fields | 46 полей: 17.male,18.female,19.young,20.adult,21.old, 22.ctr1 ... 32.ctr11, 33.auditory1 ... 62.auditory30 (in %) | 
+ #>> | 64..65 pz bids      | 2 поля: процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 66..102 bt bids     | 37 полей: процент бидов по bt / к бидам по sz в (%)                           |
  
 };
 

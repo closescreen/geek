@@ -62,5 +62,6 @@ for proc in `seq 1 "$proc_num"`; do
 	
     done
     ) &
+    sleep 30 # чтобы была задержка
 done
 )>>"$0.log" 2>&1
