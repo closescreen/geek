@@ -23,7 +23,7 @@ chk "$first_deep_day" "first_deep_day" || exit 1
 # Настраивать в зависимости 1)от места на диске, 2)от степени отставания отчетов от реального времени:
 safe_period="14days"
 
-# День, старее которого безопасно стирать источники: неделя + цесяц + страховочный_период:
+# День, старее которого безопасно стирать источники: source_deep + report_deep + safe_period:
 safe_deep_day=$( hours -d="$first_deep_day" -n=-"$safe_period" -days -first )
 chk "$safe_deep_day" "safe_deep_day" || exit 1
 

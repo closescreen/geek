@@ -6,3 +6,4 @@ sids=${2:?sids!} #like a: 123|234|3254
 job_history_log "$1" "sid=$sids,sz,ad,uid,typenum=1,statusnum=0" -fn -cut="statusnum,typenum,uid" -true="sz,uid" |
 sort -T. -t\* -n -k1,1 -k2,2 -k3,3
 
+#>> OUT: sid sz ad

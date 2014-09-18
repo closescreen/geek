@@ -2,8 +2,55 @@ shell_patterns=0
 + ! t t
 @	Who is work now
 	for file in `find ../RESULT -name "*.FLAG" | sort`; do 
-	    echo -n "$file  |"; (netflag --check -file=$file -print=STARTED && echo " " )||echo " ( NOT WORK )"  ; 
+	    (
+	    if netflag --check -file=$file -print="STARTED"    ; then
+		echo " $file"
+	    else
+		echo "  ( not work )( $file )"
+	    fi
+	    ) | grep -v 'not work'
 	done
+
+@	Report
+	perl -Mstrict -e'
+	my %h;
+	$\="\n";
+	while  (<>){
+	 chomp;
+	 my @F = split;
+	 my @fi = split /\//, $F[0];
+	 my ($cday) = $F[-2]=~/(\d\d\d\d-\d\d-\d\d)/;
+	 my ($day,$job,$tn,$file);
+	 if ( $F[-4]=~/\d\d\d\d-\d\d-\d\d/ ){
+	    ($day,$job,$tn,$file) = @fi[-4,-3,-2,-1];
+	    if ($file and $file=~/(\d\d\d\d-\d\d-\d\dT)/ ){
+		$file = "${1}hh";
+	    }
+	 }else{
+	    my $line = $F[-5];
+	    my @fi = split /\//, $line;
+	    ($day,$job,$tn,$file) = @fi[-4,-3,-2,-1];
+	    $file.="(merge)";
+	 }    
+	 $h{ $cday }{ $job }{ $file } ++;
+	} 
+	
+	END{
+	    for my $cday ( sort keys %h  ){
+		my $j_hr = $h{$cday};
+		for my $job (sort keys %$j_hr){
+		    my $f_hr = $j_hr->{$job};
+		    for my $file ( sort keys %$f_hr ){
+			my $cnt = $f_hr->{$file};
+			print "$cday $job $file $cnt";
+		    }
+		}
+		print "-----------------";
+	    }
+	    
+	}
+	' 00_all.time.log
+
 	
 @	01_STOP_ALL
 	./01_STOP_ALL		
@@ -18,3 +65,5 @@ shell_patterns=0
 
 @	*_new file copy
 	file=%t; cp $file ${file}_NEW	
+
+
