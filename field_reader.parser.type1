@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-#> формат ридер, для определенных переменных
-#>> типа: 
-OUT="uid second sid"
-set -u
-
-froms $1 -vars="OUT,OUT_FORMAT,out,out_format"
-

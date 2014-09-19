@@ -1,19 +1,8 @@
 #!/usr/bin/env perl
-
 use strict;
 use warnings;
 use Data::Dumper;
-use Getopt::Long;
 
-#my $usage = q{ Usage: };
-#GetOptions(
-#    
-#) or die "Bad opt!";
-
-#my %some = (
-# day => qr/(?<day>\d\d\d\d-\d\d-\d\d)/,
-# 
-#);
 
 my $g = Geek->new( );
 my %sm = $g->named_groups(
@@ -33,14 +22,19 @@ $g->routes(
 	    },
 	    total=>sub{
 		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/0/total.gz" );
-	    }, 
+	    },
 	},
-	cmd=>sub{ 
-	    sub{qq{ netflag --local --file='$_[0].FLAG' -cmd='$_[1]' | gzip > '$_[0].TMP' && mv '$_[0].TMP' '$_[0]' }}->(
-		$g->{target_file},
-		qq{ ./51_process_google '@{ $g->{need_files}{total}}' '@{$g->{need_files}{bids}}' },
-	    )	
-	},
+	
+	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
+	cmd => sub{"I return: day:$+{day}, target:$+{TARGET}, targets:$+{TARGETS}, total:'$+{total}', bids:'$+{bids}'"},
+	
+#	cmd=>sub{ 
+#	    sub{qq{ netflag --local --file='$_[0].FLAG' -cmd='$_[1]' | gzip > '$_[0].TMP' && mv '$_[0].TMP' '$_[0]' }}->(
+#		$g->{target_file},
+#		qq{ ./51_process_google '@{ $g->{need_files}{total}}' '@{$g->{need_files}{bids}}' },
+#	    )	
+#	},
+
     },
 #    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
 #	need_files=>{
@@ -64,19 +58,38 @@ $\="\n";
 
 for my $re ( keys %$matched ){
  print $re;
- for my $target ( keys %{ $matched->{$re} } ){
-    print $target;
-    if ( my $need_files = $matched->{$re}{$target}{need_files} ){
+ my @target_files = keys %{ $matched->{$re} };
+ for my $target_file ( @target_files ){
+    print $target_file;
+    my $target = $matched->{$re}{$target_file};
+    my $need_files;
+    if ( $need_files = $target->{need_files} ){
 	for my $type ( keys %$need_files ){
 	    print $type;
 	    for my $need_file ( @{ $need_files->{$type} } ){
 		print $need_file;
 	    }
 	}
+    }else{
+	$need_files = {};
     }
-    if ( my $cmd = $matched->{$re}{$target}{cmd} ){
+    if ( my $cmd = $target->{cmd} ){
 	if ( ref $cmd eq "CODE" ){
-	    print "CMD RESULT:",$cmd->();
+	    $"=" ";
+	    my $re2; my $str2;
+	    my %named_groups = ( TARGET=>[$target_file], TARGETS=>[@target_files], %$need_files );
+	    for my $name ( keys %named_groups ){
+		my $joined = join(" ", @{ $named_groups{$name} } );
+		$re2.="-$name-(?<$name>$joined)";
+		$str2.="-$name-$joined";
+	    }
+	    my $str1 = "$target_file$str2";
+	    my $re1 = qr/(?<target>.*?$re.*)$re2/;
+	    
+	    die "NOT MATCHED $str1 to $re1" if not "$str1"=~$re1;
+	    #print "str1=$str1, re1:$re1. CMD RESULT:",$cmd->();
+	    print $cmd->();
+	    print "-----------------------------------";
 	}    
     }
  }
