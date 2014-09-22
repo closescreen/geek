@@ -11,7 +11,8 @@
 sids=${2:?sids!} #like a: 123|234|3254
 
 job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,statusnum=0,ref" -fn -cut="sid,statusnum,typenum" -true="sz,uid" |
-perl -MDom -Mstrict -w -F'\*' -lane'
+ ./10_url_clean -url_field=8 | # <--преобразование ref
+ perl -MDom -Mstrict -w -F'\*' -lane'
 # IN: uid,second,sz,pz,bt,exposureprice,ad,ref
 #      0    1     2  3  4       5       6   7
 

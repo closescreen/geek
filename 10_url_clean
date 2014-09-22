@@ -8,10 +8,11 @@ use lib '/usr/local/rle/lib/perl';
 
 my $usage = q{ Usage: };
 
-my $field;
+my $field; my $warn;
 
 GetOptions(
     "url_field=i" => \$field,
+    "warn" => \$warn,
 ) or die "Bad opt!";
 
 $field or die "Must be defuned --url_field=N! (>0)";
@@ -20,14 +21,31 @@ my $ind = $field-1;
 
 use RLE::RetargetingClient;
 my $rc = RLE::RetargetingClient->new(1);
-$rc->{ERRHAND} = sub { die Dumper(@_) };
+
 
 my $url_clean;
 my @fields;
+my $error;
+
+if ($warn){
+    $rc->{ERRHAND} = sub{
+	$error = 1;
+	warn Dumper \@fields, \@_;
+    }
+}else{
+    $rc->{ERRHAND} = sub{
+	$error = 1;
+    }
+}
+
+
 while (<>){
     chomp;
     @fields = split /\*/,$_,-1;
-    $fields[ $ind ] = $rc->preprocessReferrer( $fields[ $ind ]||"" );
+    $url_clean = $rc->preprocessReferrer( $fields[ $ind ]||"" );
+    if ( not $error ){
+	$fields[ $ind ] = $url_clean;
+    }
     print join("*",@fields)."\n";
 }
 
