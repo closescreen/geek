@@ -27,7 +27,7 @@ my @fields;
 while (<>){
     chomp;
     @fields = split /\*/,$_,-1;
-    $fields[ $ind ] = $rc->preprocessReferrer( $fields[ $ind ] );
+    $fields[ $ind ] = $rc->preprocessReferrer( $fields[ $ind ]||"" );
     print join("*",@fields)."\n";
 }
 
