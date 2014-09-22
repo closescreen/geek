@@ -1,0 +1,34 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+use lib '/usr/local/rle/lib/perl';
+
+my $usage = q{ Usage: };
+
+my $field;
+
+GetOptions(
+    "url_field=i" => \$field,
+) or die "Bad opt!";
+
+$field or die "Must be defuned --url_field=N! (>0)";
+
+my $ind = $field-1;
+
+use RLE::RetargetingClient;
+my $rc = RLE::RetargetingClient->new(1);
+$rc->{ERRHAND} = sub { die Dumper(@_) };
+
+my $url_clean;
+my @fields;
+while (<>){
+    chomp;
+    @fields = split /\*/,$_,-1;
+    $fields[ $ind ] = $rc->preprocessReferrer( $fields[ $ind ] );
+    print join("*",@fields)."\n";
+}
+
+
