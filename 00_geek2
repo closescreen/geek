@@ -16,8 +16,9 @@ my %sm = $g->named_groups(
 
 $g->routes(
     { 	target=>"../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
-	need_files=>{ 
-	    bids=> sub{ 
+	need=>{ 
+	    bids=> sub{
+		# в данном случае возвращается arrayref, в котором список строк - значит это список файлов
 		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/3/bids.gz" );
 	    },
 	    total=>sub{
@@ -28,16 +29,16 @@ $g->routes(
 	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
 	cmd => sub{"I return: day:$+{day}, target:$+{TARGET}, targets:$+{TARGETS}, total:'$+{total}', bids:'$+{bids}'"},
 	
-#	cmd=>sub{ 
+#	cmd=>sub{
 #	    sub{qq{ netflag --local --file='$_[0].FLAG' -cmd='$_[1]' | gzip > '$_[0].TMP' && mv '$_[0].TMP' '$_[0]' }}->(
 #		$g->{target_file},
-#		qq{ ./51_process_google '@{ $g->{need_files}{total}}' '@{$g->{need_files}{bids}}' },
+#		qq{ ./51_process_google '@{ $g->{need}{total}}' '@{$g->{need}{bids}}' },
 #	    )	
 #	},
 
     },
 #    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
-#	need_files=>{
+#	need=>{
 #	    total=>sub{ "../RESULT/10/$+{day}/3/total.gz" },
 #	},
 #    },
@@ -50,7 +51,7 @@ my @wanted_files = ( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz",
     );
 
 my $matched = $g->target(@wanted_files);
-#die Dumper $matched;
+die Dumper $matched;
 
 $,=", ";
 $"=", ";
@@ -62,29 +63,29 @@ for my $re ( keys %$matched ){
  for my $target_file ( @target_files ){
     print $target_file;
     my $target = $matched->{$re}{$target_file};
-    my $need_files;
-    if ( $need_files = $target->{need_files} ){
-	for my $type ( keys %$need_files ){
+    my $need;
+    if ( $need = $target->{need} ){
+	for my $type ( keys %$need ){
 	    print $type;
-	    for my $need_file ( @{ $need_files->{$type} } ){
-		print $need_file;
+	    for my $need_smf ( @{ $need->{$type} } ){
+		print $need_smf;
 	    }
 	}
     }else{
-	$need_files = {};
+	$need = {};
     }
     if ( my $cmd = $target->{cmd} ){
 	if ( ref $cmd eq "CODE" ){
 	    $"=" ";
 	    my $re2; my $str2;
-	    my %named_groups = ( TARGET=>[$target_file], TARGETS=>[@target_files], %$need_files );
+	    my %named_groups = ( TARGET=>[$target_file], TARGETS=>[@target_files], %$need );
 	    for my $name ( keys %named_groups ){
 		my $joined = join(" ", @{ $named_groups{$name} } );
 		$re2.="-$name-(?<$name>$joined)";
 		$str2.="-$name-$joined";
 	    }
 	    my $str1 = "$target_file$str2";
-	    my $re1 = qr/(?<target>.*?$re.*)$re2/;
+	    my $re1 = qr/$re$re2/;
 	    
 	    die "NOT MATCHED $str1 to $re1" if not "$str1"=~$re1;
 	    #print "str1=$str1, re1:$re1. CMD RESULT:",$cmd->();
@@ -149,13 +150,13 @@ sub match{
     if ( my $re = $r->{$cond} ){
 	for my $arg ( @$args ){
 	    if ( $arg=~$re ){
-		if ( my $need_files = $r->{need_files} ){
-		    if ( ref $need_files eq "HASH"){
-			for my $type ( keys %$need_files ){
-			    my $need = $need_files->{$type};
-			    if (ref $need eq "CODE"){
-				my @need_file_names = $need->();
-				$rv{ $re }{ $arg }{need_files}{ $type } = \@need_file_names; 
+		if ( my $need = $r->{need} ){
+		    if ( ref $need eq "HASH"){
+			for my $type ( keys %$need ){
+			    my $need_smf = $need->{$type};
+			    if (ref $need_smf eq "CODE"){
+				my @need_smf = $need_smf->();
+				$rv{ $re }{ $arg }{ need }{ $type } = \@need_smf; 
 			    }
 			}
 		    }
