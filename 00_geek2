@@ -27,21 +27,19 @@ $g->routes(
 	},
 	
 	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
-	cmd => sub{"I return: day:$+{day}, target:$+{TARGET}, targets:$+{TARGETS}, total:'$+{total}', bids:'$+{bids}'"},
+#	cmd => sub{"I return: day:$+{day}, target:$+{TARGET}, total:'$+{total}', bids:'$+{bids}'"},
 	
-#	cmd=>sub{
-#	    sub{qq{ netflag --local --file='$_[0].FLAG' -cmd='$_[1]' | gzip > '$_[0].TMP' && mv '$_[0].TMP' '$_[0]' }}->(
-#		$g->{target_file},
-#		qq{ ./51_process_google '@{ $g->{need}{total}}' '@{$g->{need}{bids}}' },
-#	    )	
-#	},
+	cmd=>sub{
+	    sub{ print Dumper \@_ },
+	    $+{TARGET}, "'$+{total}'", "'$+{bids}'"
+	},
 
     },
-#    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
-#	need=>{
-#	    total=>sub{ "../RESULT/10/$+{day}/3/total.gz" },
-#	},
-#    },
+    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
+	need=>{
+	    total=>sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
+	},
+    },
 );
 
 #die Dumper $g;
@@ -51,21 +49,11 @@ my @wanted_files = ( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz",
     "../RESULT/10/2014-09-02/google/3/bids.gz", 
     );
 
-#my $matched = $g->match( wanted=>\@wanted_files );
-#die Dumper $matched;
-#my $jobs = $g->jobs( matched=>$matched );
-#die Dumper $jobs;
+my %matched = $g->match( wanted=>\@wanted_files, as=>"hash" );
+my @need = $g->need(matched=>\%matched, only=>"names");
 
-my $jobs = $g->jobs( wanted=>\@wanted_files );
-#die Dumper $jobs;
 
-my $result = $g->run( jobs=>$jobs );
-die Dumper $result;
-
-$,=", ";
-$"=", ";
-$\="\n";
-
+die Dumper \%matched, \@need;
 
 
 
@@ -102,33 +90,59 @@ sub routes{
 }
 
 sub match{
+ # gives "wanted", returns "jobs"
  my $se = shift;
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
  my $wanted = $pa{ wanted };
  my @matched_routes;
  if ( !$se->{routes} ){ die "routes is empty." }
- my %rv;
+ my %rv; 
 
  for my $r ( @{ $se->{routes}||[] } ){
     if ( my $re = $r->{target} ){
-	for my $wanted_elem ( @$wanted ){
+	for my $wanted_elem ( @$wanted ){ # level I
 	    if ( $wanted_elem=~$re ){
+		#$rv{ $wanted_elem }{ target } = $wanted_elem;
 		if ( my $need = $r->{need} ){
 		    if ( ref $need eq "HASH"){
 			for my $type ( keys %$need ){
 			    my $need_smf = $need->{$type};
 			    if (ref $need_smf eq "CODE"){
 				my @need_smf = $need_smf->();
-				$rv{ $re }{ $wanted_elem }{ need }{ $type } = \@need_smf; 
+				#$rv{ $re }{ $wanted_elem }{ need }{ $type } = \@need_smf; 
+				$rv{ $wanted_elem }{ need }{ $type } = \@need_smf;
+				#warn "need $type = @need_smf";
 			    }
 			}
 		    }
 		}
 		
 		if ( my $cmd = $r->{cmd} ){
-		    if ( ref $cmd eq "CODE" ){
-			$rv{ $re }{ $wanted_elem }{ cmd } = $cmd;
+		    my $re2; my $str2;
+		    my %named_groups = ( TARGET=>[$wanted_elem], %{ $rv{ $wanted_elem }{ need }||{} } );
+		    #die Dumper \%named_groups;
+		    for my $name ( keys %named_groups ){
+			my $value;
+			if ( ref $named_groups{$name} eq "ARRAY" ){
+			    $value = join(" ", @{ $named_groups{$name} } );
+			}else{
+			    $value = $named_groups{$name};
+			}
+			$re2.="-$name-(?<$name>$value)";
+			$str2.="-$name-$value";
+		    }
+		    my $str1 = "$wanted_elem$str2";
+		    my $re1 = qr/$re$re2/;
+	    	    die "---NOT MATCHED $str1 to $re1---" if not "$str1"=~$re1;
+		    my @job = $cmd->();
+		    if ( !@job ){
+			die "empty job returned.".Dumper( \$rv{ $wanted_elem } );
+		    #}elsif (@job==1){
+		    #	$target->{job} = $job[0];
+		    }else{
+			#$target->{job} = \@job;
+			$rv{$wanted_elem}{ job } = \@job;
 		    }
 		}
 	    }
@@ -139,114 +153,42 @@ sub match{
  return wantarray ? %rv : \%rv;
 }
 
-sub jobs{
- # gives "wanted"|"matched", returns "jobs"
+
+sub need {
  my $se = shift or die "SE!";
  ref $se eq "Geek" or die "First param must be a reference to Geek object";
  my %pa = @_;
- 
- my $matched;
-
- if ( $matched = $pa{ matched } ){
-    1
- }elsif( my $wanted = $pa{ wanted } ){
-    $matched = $se->match( wanted=>$wanted );
- }else{
-    die "matched or wanted ?".Dumper(\%pa);
- }
-
- 
-  for my $re ( keys %$matched ){
-  #print $re;
-  my @target = keys %{ $matched->{$re} };
-  for my $target_elem ( @target ){
-    #print $target_elem;
-    my $target = $matched->{$re}{$target_elem};
-    my $need;
-    if ( $need = $target->{need} ){
-	for my $type ( keys %$need ){
-	    #print $type;
-	    for my $need_smf ( @{ $need->{$type} } ){
-		#print $need_smf;
-	    }
-	}
-    }else{
-	$need = {};
-    }
-
-    if ( my $cmd = $target->{cmd} ){
-	if ( ref $cmd eq "CODE" ){
-	    #$"=" ";
-	    my $re2; my $str2;
-	    my %named_groups = ( TARGET=>[$target_elem], TARGETS=>[@target], %$need );
-	    for my $name ( keys %named_groups ){
-		my $value;
-		if ( ref $named_groups{$name} eq "ARRAY" ){
-		    $value = join(" ", @{ $named_groups{$name} } );
-		}else{
-		    $value = $named_groups{$name};
+# my $code =  
+ # gives 'matched' LIST, return - all needs
+ my $matched = $pa{matched};
+ my %rv;
+ for my $wanted ( keys %$matched ){
+    my $m = $matched->{$wanted};
+    if ( ref $m eq "HASH" ){
+	if ( my $need_i = $m->{need} ){
+	    if ( ref $need_i eq "HASH" ){
+		for my $type ( keys %$need_i ){
+		    if ( my $type_i = $need_i->{$type} ){
+			if ( ref $type_i eq "ARRAY" ){
+			    for my $name ( @$type_i ){
+				if ( $pa{only}||"" eq "names" ){
+				    $rv{ $name }++;
+				}else{
+				    $rv{ $type }{ $name } ++;
+				}    
+			    }			    
+			}
+		    }
 		}
-		$re2.="-$name-(?<$name>$value)";
-		$str2.="-$name-$value";
 	    }
-	    my $str1 = "$target_elem$str2";
-	    my $re1 = qr/$re$re2/;
-	    
-	    die "NOT MATCHED $str1 to $re1" if not "$str1"=~$re1;
-	    #print "str1=$str1, re1:$re1. CMD RESULT:",$cmd->();
-	    #print $cmd->();
-	    #print "-----------------------------------";
-	    my @job = $cmd->();
-	    if ( !@job ){
-		die "empty job returned.".Dumper($matched->{$re});
-	    }elsif (@job==1){
-		$target->{job} = $job[0];
-	    }else{
-		$target->{job} = \@job;
-	    }
-	}    
-    }
-  }
- }
- return $matched;
-}
-
-sub run{
- # gives "jobs"|"matched"|"wanted" , returns - "run result"
- my $se = shift or die "SE!";
- ref $se eq "Geek" or die "First param must be a reference to Geek object";
- my %pa = @_;
- 
- my $jobs;
- 
- if ( $jobs = $pa{ jobs } ){
-    1
- }elsif ( my $matched = $pa{ matched } ){
-    $jobs = $se->jobs( matched=>$matched );
- }elsif( my $wanted = $pa{ wanted } ){
-    $jobs = $se->jobs( wanted=>$wanted );
- }else{
-    die "jobs or matched or wanted ?".Dumper(\%pa);
- }
- 
- for my $re (keys %$jobs){
-    my @target = keys %{ $jobs->{$re} };
-    for my $target_elem ( @target ){
-	my $target = $jobs->{$re}{ $target_elem };
-	if ( my $job = $target->{job} ){
-	    warn  "Run $job...\n";
-#...STOP	    $se->execute( job=>$job, cover=> $jobs->{$re}|| );
 	}
-    }
+    } 
  }
- return $jobs;
-}
-
-sub execute{
- my $se = shift or die "SE!";
- ref $se eq "Geek" or die "First param must be a reference to Geek object";
- my %pa = @_;
- my $code =  
+ if ( $pa{only}||"" eq "names" ){
+    return wantarray ? sort keys %rv : [ sort keys %rv ];
+ }else{
+    return wantarray ? %rv : \%rv;
+ }    
 }
 
 sub days{
