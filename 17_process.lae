@@ -21,23 +21,35 @@ my %urls;
 
 _{
 
+ # кука по времени просматривает разные урлы (разные домены) и sestart для каждого домена - свой 
+ # 25443534*1411888002*54731*1*68*-1*0*prosto-ma-ma.ru*/*1411888002*1
+ # 25443534*1411888005*54474*3*29*-1*0*taruzina.ru*/blog/43343322378/nechto-chelovecheskoe..*1411888005*1
+ # 25443534*1411888006*23983*3*29*-1*0*gatchina24.ru*/gtn-pravda/gtn-pravda_10592.html*1411887999*0
+ # 25443534*1411888010*54731*3*36*-1*0*prosto-ma-ma.ru*/*1411888002*0
+
  return if not $F[ISVIEW];
  
- #> when uid+sestart was changed:
- increment_counters() if ( Uid!=prevUid or Sestart!=prevSestart ) and prevUid and prevSestart;
+ #> when uid was changed:
+ increment_counters() if Uid!=prevUid and prevUid;
  
- $urls{ join("*",Dom,Path||"") }||=1;
+ $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }||=1;
+ $urls{ $F[DOM] }{ $F[SESTART] }{ last } = $F[PATH];
 
 } -prev=>"uid=0,sestart=0,dom,path";
 
 increment_counters();
 
 sub increment_counters{
- #> sessions counters must be inremented:
- $_++ for @sessions_count{ keys %urls };
-    
- #> sessions_end counter for last url must be incremented:
- $sessions_ends{ join("*",prevDom,prevPath||"") }++;
+ #> sessions counters:
+ for my $dom ( keys %urls ){
+    for my $sestart ( keys %{ $urls{$dom} } ){
+	for my $path ( keys %{ $urls{$dom}{$sestart}{path} } ){
+	    $sessions_count{ $dom."*".$path }++;
+	}
+	#> sessions_end counter:
+	$sessions_ends{ $dom."*".$urls{$dom}{$sestart}{last} }++;
+    }
+ }
     
  undef %urls;
 }
