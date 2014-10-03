@@ -7,7 +7,8 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
-N=30 # days. За сколько дней суммировать файлы.
+minN=10 # minimum days. За сколько дней суммировать файлы. Minimum.
+maxN=30 # Maximim (wanted).
 job=${1:?Job!} # f.e. google
 deep=`conf 00_conf.txt report_deep` # "<--- считать этот отчет на расчетные даты не старше report_deep из конфа"
 days=${2:-""} # можно указать day
@@ -24,23 +25,38 @@ processor=./19_process
 [[ -n "$deb" ]] && set -x
 
 typenum=`href -dict="net_sites => '0'" -default="3" -val="$job"`
-      
+
+# возможные имена уже существующих файлов: (urls5days.gz urls6days.gz .. urls30days.gz)
+# и тогда не пересчитывать, если хотяб один уже есть.
+urlsNdays_possible_names=`perl -e'
+ ($min,$max)=@ARGV;
+ print join " ", map {"urls${_}days.gz"} $min..$max;
+' $minN $maxN`
+        
 
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/urls.gz" | only -s`
 else
-    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/urls.gz" | sort | 
-    only --without="urls${N}days.gz" |
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/urls.gz" | sort -r | 
+    only --without="$urlsNdays_possible_names" |
     only --without="url_groups.gz"`
 fi 
 
-ff=` echo "$ff" | only '[[ $(fn2days %f | hours -n=-'$N'days -days | files "../RESULT/10/%F/'"$job/$typenum"'/urls.gz" | only -s -all  ) ]]' `
+# минимальное кол-во urls.gz (minN) должно иметься для каждого:
+ff=` echo "$ff" | only '[[ $(fn2days %f | hours -n=-'$minN'days -shift=1day -days | files "../RESULT/10/%F/'"$job/$typenum"'/urls.gz" | only -s -all  ) ]]' `
 
 ff=$( echo "$ff" | only --upto="$deep" )
 
 [[ -n "$ff" ]] || exit 1
 
-echo "$ff" | washing -res="s|urls\.gz|urls${N}days.gz|" -v_flag="$processor %s $job $typenum $N" -comp=gzip -timelog=00_all.time.log
+echo "$ff" | washing -res="
+ my (\$path) = m|(.+)/urls\.gz|;
+ my \$N=qx(
+    fn2days \$_ | hours -shift=1day -n=-${maxN}days -days|files ../RESULT/10/\%F/$job/$typenum/urls.gz| only -s|words -count
+    # получая в $_ имя исходного ./.../.../urls.gz, получаем имя urlsNdays.gz для N существующих предыдущих файлов urls.gz
+ );
+ \$_=\"\$path/urls\${N}days.gz\"
+" -d -v_flag="$processor %s $job $typenum $minN $maxN" -comp=gzip -timelog=00_all.time.log
 
 
-)>>"$0.log" 2>&1
+)#>>"$0.log" 2>&1
