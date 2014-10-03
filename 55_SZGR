@@ -24,7 +24,7 @@ else
     find_path="../RESULT/10/"
 fi
 
-find "$find_path" -wholename "*/$job/3/sz_vars_${N}days.gz" | sort | only -upto="$deep" |
+find "$find_path" -wholename "*/$job/3/sz_vars_${N}days.gz" | sort -r | only -upto="$deep" |
 washing \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \

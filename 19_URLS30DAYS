@@ -59,4 +59,4 @@ echo "$ff" | washing -res="
 " -d -v_flag="$processor %s $job $typenum $minN $maxN" -comp=gzip -timelog=00_all.time.log
 
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

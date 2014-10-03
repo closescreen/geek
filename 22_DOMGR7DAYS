@@ -24,7 +24,8 @@ typenum=$(
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -s`
 else
-    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/dom_gr.txt" | sort | only --without="dom_gr7days.gz"`   
+    ff=`find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/dom_gr.txt" | sort -r |
+     only --without="dom_gr7days.gz dom_gr6days.gz dom_gr5days.gz dom_gr4days.gz dom_gr3days.gz dom_gr2days.gz dom_gr1days.gz"`   
 fi
 
       
@@ -32,10 +33,20 @@ days=`echo "$ff" | fn2days`
 
 [[ -z "$days" ]] && exit 0
 for day in $days; do
-    result_f="../RESULT/10/$day/$job/$typenum/dom_gr7days.gz"
-    echo "$result_f" | only -all -sizegt=20 -nop && continue
-    src_ff=`hours -t=${day}T00 -shift=1day -n=-7days -days | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
+
+    src_ff=`hours -t=${day}T00 -shift=1day -n=-7days -days | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -s` # сколько есть, желательно 7
     [[ -z "$src_ff" ]] && continue
+    
+    # сколько файлов dom_gr.txt 
+    realN=`echo $src_ff | words -count`
+    
+    result_f="../RESULT/10/$day/$job/$typenum/dom_gr${realN}days.gz"
+    
+    already_exists=`find "../RESULT/10/$day/$job/$typenum" -wholename 'dom_gr*days.gz'`
+    [[ -n "$already_exists" ]] && continue
+    #find "../RESULT/10/$day/$job/$typenum" -wholename 'dom_gr*days.gz'
+    #echo "$result_f" | only -all -sizegt=20 -nop && continue    
+    
     LANG=POSIX mergef -ff="$src_ff" -k=1,1 -k=2,2n -k=3,3 -prefilter="awk -F* -vOFS=* -vfile=\$(date -d\$( fn2days %file) +%s) '{print \$0,file}'" --stdout |
     lae -lb="dom cluster daysec" -comm="daysec - это дата файла-источника dom_gr.txt в секундах" '
     my %h;

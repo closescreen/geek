@@ -25,7 +25,7 @@ if [[ -n "$days" ]]; then
     ff=$( echo "$days" | files "../RESULT/10/%F/$job/$typenum/total.gz" | only -sizegt=20 )
 else
     ff=$(
-	find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort | only --without="views.gz" |
+	find ../RESULT/10 -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$typenum/total.gz" | sort -r | only --without="views.gz" |
 	only -sizegt=20
 	)
 fi

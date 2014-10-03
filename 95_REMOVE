@@ -54,7 +54,8 @@ ff=`find ../RESULT/10 -type f -wholename "*/$job/$tn/total.gz" |
     only -near=sessions.gz |
     only -near=pzbt.gz |
     only -near=urls.gz |
-    only -near=uidsz.gz`
+    only -near=uidsz.gz |
+    only -near=sz_vars_30days.gz`
 [[ -n "$ff" ]] && rm $ff
 
 
