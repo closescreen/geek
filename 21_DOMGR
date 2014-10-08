@@ -34,7 +34,7 @@ remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="1.sh"
 
 echo "$ff" | washing \
-    -res="s|doms${N}days\.gz|dom_gr.txt|" \
+    -res='s|doms\d+days\.gz|dom_gr.txt|' \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
     -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
     -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $job $remote_script\"" \

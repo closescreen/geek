@@ -79,7 +79,7 @@ emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
 [[ -n "$emptyff" ]] && echo -e "Found empty files: $emptyff \n -will removed." && rm $emptyff
 
 # ---- google/3/urls30days.gz --------
-old_urls30days_ff=`find ../RESULT -wholename "*/3/urls30days.gz" |
+old_urls30days_ff=`find ../RESULT -wholename "*/3/urls[0-9][0-9]days.gz" |
  only --older=1days |
  only -near=url_groups.gz`
 [[ -n "$old_urls30days_ff" ]] && rm $old_urls30days_ff

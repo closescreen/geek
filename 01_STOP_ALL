@@ -10,13 +10,13 @@ export PATH=$PATH:/home/d.belyaev/grep/bike
 
 echo "Stopped by $USER at $(date)" >> 01_STOP_ALL.stop
 
-ff=`find ../pids -name "*.pids"`
-for f in $ff; do 
-    fork -pf=$f -kila -d; 
-done
+for i in `seq 1 10`; do
 
-# когда кочается место на диске sort висит и не удаляет временные файлы. Такие файлы - признак того что висят просессы.
-#tsff=`find . -name 'sort??????'`
-#[[ -n "$tsff" ]] && echo "Removing temporary sort files: $tsff" && rm $tsff
+ ff=`find ../pids -name "*.pids"`
+ for f in $ff; do 
+    fork -pf=$f -kila -d; 
+ done
+
+done
 
 )#>>"$0.log" 2>&1
