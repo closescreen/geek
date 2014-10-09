@@ -7,7 +7,7 @@
 lae -lb="uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview" '
 my ( %bids, %positive_bids, %dom );
 _{
- $bids{ $F[SID] }{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0||0 }{ $F[NETWORK]>0||0 }++;
+ $bids{ $F[SID] }{ $F[SZ] }{ $F[AD] }{ $F[EXPOSUREPRICE]>0||0 }{ ($F[NETWORK]||0) > 0 or 0 }++;
  $dom{ $F[SID] }{ $F[SZ] } ||= $F[DOM];
 };
 
