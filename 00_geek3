@@ -15,13 +15,25 @@ my %sm = $g->named_groups(
 # 'set -o pipefail; mkdir -p %d && netflag --local --file="%f.FLAG" -cmd=\'' . $via_flag_cmd . '\'' . ( $compress ? " | $compress " : '' ). ' > %f.TMP && mv %f.TMP %f'	
 
 $g->routes(
+    {	target=>"../RESULT/10/$sm{day}/google/3/url_groups.gz",
+	need=>{
+	    # here sub return code:
+	    dom_grNdays => sub{ "glob://../RESULT/10/$+{day}/google/3/*.gz" },
+	    concrete1 => sub{ "../RESULT/10/$+{day}/google/3/dom_gr1days.gz"},
+	    concrete2 => sub{ "../RESULT/10/$+{day}/google/3/dom_gr2days.gz"},
+	},
+	cmd => sub{
+	    sub{  }
+	},
+    
+    },
     { 	target=>"../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
 	need=>{ 
-	    bids=> sub{
+	    bids => sub{
 		# в данном случае возвращается arrayref, в котором список строк - значит это список файлов
 		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/3/bids.gz" );
 	    },
-	    total=>sub{
+	    total => sub{
 		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/0/total.gz" );
 	    },
 	},
@@ -29,33 +41,38 @@ $g->routes(
 	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
 #	cmd => sub{"I return: day:$+{day}, target:$+{TARGET}, total:'$+{total}', bids:'$+{bids}'"},
 	
-	cmd=>sub{
+	cmd => sub{
 	    sub{ print Dumper \@_ },
 	    $+{TARGET}, "'$+{total}'", "'$+{bids}'"
 	},
 
     },
-    { target=>"../RESULT/10/$sm{day}/google/3/bids.gz",
-	need=>{
-	    total=>sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
-	},
+    { 	target => "../RESULT/10/$sm{day}/google/3/bids.gz",
+	    need => {
+		total => sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
+	    },
+	cmd => sub{
+	    "hello $+{TARGET}"
+	},	
     },
+    {
+	target => "../RESULT/10/$sm{day}/google/3/total.gz",
+    },
+
 );
 
 #die Dumper $g;
 
-my @wanted_files = ( "../RESULT/10/2014-09-15/google/3/sz_vars_30days.gz",
-    "../RESULT/10/2014-09-02/google/3/sz_vars_30days.gz", 
-    "../RESULT/10/2014-09-02/google/3/bids.gz", 
-    );
+my @wanted = ( "../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz",
+    "../RESULT/10/2014-10-02/google/3/url_groups.gz", 
+);
 
-my %matched = $g->match( wanted=>\@wanted_files, as=>"hash" );
-my @need = $g->need(matched=>\%matched, only=>"names");
+my %matched = $g->match( wanted=>\@wanted );
+warn Dumper \%matched;
+die;
 
-
-die Dumper \%matched, \@need;
-
-
+$g->have( matched=>\%matched );
+warn Dumper \%matched;
 
 
 
@@ -95,6 +112,7 @@ sub match{
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
  my $wanted = $pa{ wanted };
+ my $skip_test = $pa{ skip_test }; # (skip_test=>1 - не проверять наличие файлов)
  my @matched_routes;
  if ( !$se->{routes} ){ die "routes is empty." }
  my %rv; 
@@ -111,7 +129,7 @@ sub match{
 			    if (ref $need_smf eq "CODE"){
 				my @need_smf = $need_smf->();
 				#$rv{ $re }{ $wanted_elem }{ need }{ $type } = \@need_smf; 
-				$rv{ $wanted_elem }{ need }{ $type } = \@need_smf;
+				$rv{ $wanted_elem }{ need }{ $type } = { map { $_, $skip_test ? undef : scalar($se->test($_)) } @need_smf };
 				#warn "need $type = @need_smf";
 			    }
 			}
@@ -129,7 +147,11 @@ sub match{
 			}else{
 			    $value = $named_groups{$name};
 			}
-			$re2.="-$name-(?<$name>$value)";
+			
+			my $escaped = quotemeta $value;
+			#$escaped=~s/([?])/\\$1/g;
+			
+			$re2.="-$name-(?<$name>$escaped)";
 			$str2.="-$name-$value";
 		    }
 		    my $str1 = "$wanted_elem$str2";
@@ -153,42 +175,43 @@ sub match{
  return wantarray ? %rv : \%rv;
 }
 
+#sub escape{
+# my $se = shift or die "SE!";
+# my $str = shift or die "string!";
+#}
 
-sub need {
+sub test{
+ # testing files
  my $se = shift or die "SE!";
- ref $se eq "Geek" or die "First param must be a reference to Geek object";
- my %pa = @_;
-# my $code =  
- # gives 'matched' LIST, return - all needs
- my $matched = $pa{matched};
- my %rv;
- for my $wanted ( keys %$matched ){
-    my $m = $matched->{$wanted};
-    if ( ref $m eq "HASH" ){
-	if ( my $need_i = $m->{need} ){
-	    if ( ref $need_i eq "HASH" ){
-		for my $type ( keys %$need_i ){
-		    if ( my $type_i = $need_i->{$type} ){
-			if ( ref $type_i eq "ARRAY" ){
-			    for my $name ( @$type_i ){
-				if ( $pa{only}||"" eq "names" ){
-				    $rv{ $name }++;
-				}else{
-				    $rv{ $type }{ $name } ++;
-				}    
-			    }			    
-			}
-		    }
-		}
-	    }
-	}
-    } 
+ my %proto_testers = (
+    default => sub{ -s $_ && $_ },
+    dfs => sub{ system("bash","-c","hadoop fs -ls $_ | grep $_") },
+    "glob" => sub { join " ", <${_}> },
+ ); 
+ if ( ref $_[0] eq "HASH" ){
+    %proto_testers = %{ shift() };
  }
- if ( $pa{only}||"" eq "names" ){
-    return wantarray ? sort keys %rv : [ sort keys %rv ];
- }else{
-    return wantarray ? %rv : \%rv;
- }    
+
+ my @fnames = @_;
+ my %rv;
+
+ for my $name (grep {$_} @fnames){
+    $name=~s|((\w+)\:\/\/)||;
+    my $proto =$2||"default";
+    my $tester_code = $proto_testers{ $proto } or warn "Not found tester code for proto '$proto'. File:'$name'";
+    ref $tester_code eq "CODE" or die "Tester code must be a CODE ref ".Dumper(\%proto_testers);
+    for ( $name ){
+	$rv{ $name } = &$tester_code;
+    }
+ }
+
+ if ( @fnames==1 ){
+    if (! wantarray){
+	return [values %rv]->[0];	
+    }
+ }
+
+ return wantarray ? %rv : \%rv;
 }
 
 sub days{
