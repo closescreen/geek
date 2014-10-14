@@ -16,25 +16,61 @@ my %sm = $g->named_groups(
 my $res = "../RESULT/10";
 $g->routes(
     {	target=>"$res/$sm{day}/google/3/url_groups_diff.gz",
+	# need - требуется иметь:
 	need =>{
 	    url_groups => sub{ $g->days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") },
 	},
 	cmd => sub{ sub{warn "what to do?"} },
     },
-    {	target=>"../RESULT/10/$sm{day}/google/3/url_groups.gz",
-	need=>{
+    {	target=>"$res/$sm{day}/google/3/url_groups.gz",
+	# any - способ указать, что требуется хотябы один из указанного списка:
+	any=>{
 	    # here sub return code:
-	    dom_grNdays => sub{ map { "../RESULT/10/$+{day}/google/3/dom_gr${_}days.gz" } (1..7) },
+	    dom_grNdays => sub{  map { "$res/$+{day}/google/3/dom_gr${_}days.gz" } reverse (1..7) },
 	},
 	cmd => sub{
 	    sub{ warn "what to do?" }
 	},
-    
     },
-#    {	target=>"$res/$sm{day}/google/3/(<?dom_grNdays>dom_gr\\ddays.gz)",
-#	need => 
-#    
-#    },
+    {	target=>"$res/$sm{day}/google/3/dom_gr(?<N>\\d)days.gz",
+	# д.б х-м!
+	need => {
+	    dom_gr => sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{N} )->files("$res/\%F/google/3/dom_gr.txt") }
+	},     
+	cmd => sub{ sub { warn "what to do again?" } },    
+    },
+    {	target=>"$res/$sm{day}/google/3/dom_gr.txt",
+	any => {
+	    domsNNdays => sub{ map {"$res/$+{day}/google/3/doms${_}days.gz"} reverse (10..30) },
+	},
+	cmd =>sub{ sub{"aa"} },
+    },
+    {	target=>"$res/$sm{day}/google/3/doms(?<NN>\\d\\d)days.gz", 
+	need=>{
+	    urlsNNdays=>sub{ "$res/$+{day}/google/3/urls$+{NN}days.gz" },
+	},
+	cmd=>sub{sub{"oy-oy"}},
+    },
+    {	target=>"$res/$sm{day}/google/3/urls(?<NN>\\d\\d)days.gz",
+	need=>{
+	    urls=>sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{NN} )->files("$res/%F/google/3/urls.gz") },
+	},
+	cmd=>sub{ sub{ "ogo"} },
+    },
+    {
+	target=>"$res/$sm{day}/google/3/urls.gz",
+	need=>{
+	    total=>sub{ "$res/$+{day}/google/3/total.gz" }
+	},
+	cmd=>sub{sub{"sss"}},
+    },
+    {
+	target => "../RESULT/10/$sm{day}/google/3/total.gz",
+	need=>{
+	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/%F/google/3/%FT%H.gz") }
+	},
+    },
+    
 #    { 	target=>"../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
 #	need=>{ 
 #	    bids => sub{
@@ -63,9 +99,7 @@ $g->routes(
 	    "hello $+{TARGET}"
 	},	
     },
-#    {
-#	target => "../RESULT/10/$sm{day}/google/3/total.gz",
-#    },
+
 
 );
 
@@ -73,12 +107,16 @@ $g->routes(
 
 my @wanted = ( 
     #"../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz",
-    #"../RESULT/10/2014-10-02/google/3/url_groups.gz", 
-    "../RESULT/10/2014-10-02/google/3/url_groups_diff.gz",
+    #"../RESULT/10/2014-10-09/google/3/url_groups.gz", 
+    #"../RESULT/10/2014-10-09/google/3/url_groups_diff.gz",
+    #"../RESULT/10/2014-10-09/google/3/dom_gr3days.gz",
+    #"../RESULT/10/2014-10-02/google/3/total.gz",
+    #"../RESULT/10/2014-10-09/google/3/dom_gr.txt",
+    "../RESULT/10/2014-10-09/google/3/doms12days.gz",
 );
 
 my %testers = ( sizele20=>sub{-s $_ <= 0 and $_} );
-my %matched = $g->match( recursive => 1 ,wanted=>\@wanted );
+my %matched = $g->match( recursive => 0 ,wanted=>\@wanted );
 die Dumper \%matched;
 
 
@@ -125,37 +163,63 @@ sub match{
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
  my $wanted = $pa{ wanted };
- my $recursive = $pa{recursive};
+ my $recursive = $pa{recursive}||0; # 0|1|2
  my $testers = $pa{testers}||{}; # allow to set: testers=>{ proto1=>sub{ -s $_ > 20 }, } # and need_file like 'proto1://aa.gz' - will checked that sub
  my %recursive_wanted;
  my @matched_routes;
  if ( !$se->{routes} ){ die "routes is empty." }
  my %rv; 
-
+ 
+ my %allowed_route_keys = (target=>1, need=>1, any=>1, cmd=>1,);
+ 
  for my $r ( @{ $se->{routes}||[] } ){
+    ref $r eq "HASH" or die "route must be a hashref:".Dumper($r);
+    if ( my @bad_keys = grep { !$allowed_route_keys{$_} } keys %$r ){
+	die "bad keys:@bad_keys. Allowed only:".join(", ",keys %allowed_route_keys);
+    }
     if ( my $re = $r->{target} ){
 	for my $wanted_elem ( @$wanted ){ # level I
 	    if ( $wanted_elem=~$re ){
 		#$rv{ $wanted_elem }{ target } = $wanted_elem;
-		if ( my $need = $r->{need} ){
-		    if ( ref $need eq "HASH"){
-			for my $type ( keys %$need ){
-			    my $need_smf = $need->{$type};
-			    if (ref $need_smf eq "CODE"){
-				my @need_smf = $need_smf->();
-				#$rv{ $re }{ $wanted_elem }{ need }{ $type } = \@need_smf;
-				my %tested = map { $_, $se->test( $testers, $_) } @need_smf; 
-				$rv{ $wanted_elem }{ need }{ $type } = { %tested };
-				%recursive_wanted = ( %recursive_wanted, map {$_,1} map {split /\s+/ } grep {$_} values %tested );
-				#warn Dumper { recursive_wanted=>\%recursive_wanted }; 
+		for my $node_name (qw| need any |){
+		    if ( my $node = $r->{$node_name} ){
+			if ( ref $node eq "CODE" ){
+			    # need,any могут быть процедурой возвращающей хеш. (наверное, это будет полезно когда-нибудь). 
+			    $node = $node->(); #передавать параметры и какие?
+			}
+			if ( ref $node eq "HASH"){
+			    # need,any могут быть hashref-ом
+			    for my $type ( keys %$node ){
+				my $need_smf = $node->{$type};
+				if ( ref $need_smf eq "CODE" ){
+				    my @need_smf = $need_smf->();
+				    my @tested = map { [ $_, $se->test( $testers, $_) ] } @need_smf;
+				    $rv{ $wanted_elem }{ $node_name }{ $type } = [ @tested ];
+				    if ( $recursive==1 ){
+					if ( $node_name eq "need" ){
+					    # из узла need добавляются отсутствующие:
+					    %recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } grep { ! $_->[1] } @tested );
+					}elsif( $node_name eq "any" ){
+					    # из узла any добавляются все, если ни одного нет:
+					    my $any_exists = grep { $_->[1] } @tested; # if any from @tested is true
+					    %recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } @tested ) if not $any_exists;
+					}else{
+					    die "node name $node_name - is unknown";
+					}
+				    }elsif( $recursive==2 ){	
+					%recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } @tested );
+				    }	
+				}
 			    }
+			}else{
+			    die "$node_name is unknown type. Forgot wrap your code by '{}' or 'sub{...}' ?'".Dumper($node);
 			}
 		    }
 		}
 		
 		if ( my $cmd = $r->{cmd} ){
 		    my $re2; my $str2;
-		    my %named_groups = ( TARGET=>[$wanted_elem], %{ $rv{ $wanted_elem }{ need }||{} } );
+		    my %named_groups = ( TARGET=>[$wanted_elem], %{ $rv{ $wanted_elem }{ need }||{} }, %{ $rv{ $wanted_elem }{ any }||{} } );
 		    #die Dumper \%named_groups;
 		    for my $name ( keys %named_groups ){
 			my $value;
@@ -194,31 +258,21 @@ sub match{
     for my $k ( keys %recursive_wanted ){
 	delete $recursive_wanted{$k} if $wanted{$k};
     }
-#    warn Dumper {rw=>\%recursive_wanted};
     my %recursive_matched = %recursive_wanted ? $se->match( %pa, wanted=>[keys %recursive_wanted] ) : ();
-#    warn Dumper {rm=>\%recursive_matched};
     %rv = ( %rv, %recursive_matched );
  }
  return wantarray ? %rv : \%rv;
 }
 
-#sub escape{
-# my $se = shift or die "SE!";
-# my $str = shift or die "string!";
-#}
-
 sub test{
  # testing files
  my $se = shift or die "SE!";
  my %proto_testers = (
-    default => sub { 
+    default => sub {
 	# check any file for non-zero size, or *.gz files for 'size -gt 20'
-	grep { my $size=-s||0; m/\.gz$/ ? $size > 20 : $size } $_ 
+	my $size=-s||0; m/\.gz$/ ? $size > 20 : $size 
+	# Return true or false. 
     },
-#    empty => sub{
-#	# expand *,?,[] e.t.c and check for ZERO size, or size -le 20 for *.gz
-#	grep { my $size=-s; m/\.gz$/ ? $size <= 20 : $size==0 } <${_}>
-#    },
     dfs => sub{ system("bash","-c","hadoop fs -ls $_ | grep $_") },
  ); 
  if ( ref $_[0] eq "HASH" ){
@@ -228,10 +282,14 @@ sub test{
  my @fnames = @_;
  my @rv;
 
- for my $name ( @fnames ){
-    $name=~s|((\w+)\:\/\/)||;
-    my $proto =$2||"default";
-    my $tester_code = $proto_testers{ $proto } or warn "Not found tester code for proto '$proto'. File:'$name'";
+ for my $given_name ( @fnames ){
+    my ( $proto, $name );
+    if ( $given_name=~m|(\w+)(\:\/\/)(.+)| ){
+	( $proto, $name )=($1,$3);
+    }
+    $proto||="default";
+    $name||=$given_name;
+    my $tester_code = $proto_testers{ $proto } or warn "Not found tester code for proto '$proto'. File:'$given_name'";
     ref $tester_code eq "CODE" or die "Tester code must be a CODE ref ".Dumper(\%proto_testers);
     for ( $name ){
 	push @rv, $name ? join( " ", &$tester_code) : undef;
@@ -255,7 +313,7 @@ sub days{
     my $n = $pa{n};
     my ($y,$m,$d)=$pa{from}=~/(\d\d\d\d)-(\d\d)-(\d\d)/;
     $y and $m and $d or die "bad parameter from=$pa{from}";
-    my @ii = $n>0 ? ((0+$shift)..($n+$shift)) : (($n+$shift)..(-1+$shift));
+    my @ii = $n>0 ? ((0+$shift)..($n-1+$shift)) : (($n+$shift)..(-1+$shift));
     for my $i ( @ii ){
 	push @rv, [ Date::Calc::Add_Delta_Days($y,$m,$d, $i) ];
     }
@@ -264,6 +322,40 @@ sub days{
  my $days = Geek::Days->new('days');
  $days->days(\@rv);
  return $days;
+}
+
+sub hours{
+ my $se = shift or die "First param must be a reference to Geek object";
+ #ref $se eq "Geek" or die "First param must be a reference to Geek object";
+ my %pa = @_;
+ my %allow = (from=>1, to=>1, n=>1, shift=>1);
+ if ( my @bad_pars = grep { !$allow{$_} } keys %pa ){
+    die "Bad parameters: @bad_pars. Allowed only: ".(join ", ", keys %allow);
+ }
+ my @rv;
+ my $shift = $pa{"shift"}||0;
+ if ( $shift=~/(\-?\d+)\s*day/ ){
+    $shift = $1*24
+ }
+ if ( $pa{from} and $pa{n} ){
+    my $n = $pa{n};
+    if ( $n=~/(\-?\d+)\s*day/ ){
+	# param n may be set like: ... n=>"2days", ...
+	$n = $1*24
+    }
+    my ($y,$m,$d,$h)=$pa{from}=~/(\d\d\d\d)-(\d\d)-(\d\d)\D?(\d+)?/;
+    $h||="00";
+    $y and $m and $d or die "bad parameter from=$pa{from}. y=$y, m=$m, d=$d, h=$h";
+    my @ii = $n>0 ? ((0+$shift)..($n-1+$shift)) : (($n+$shift)..(-1+$shift));
+    for my $i ( @ii ){
+	#push @rv, [ Date::Calc::Add_Delta_Days($y,$m,$d, $i) ];
+	push @rv, [ Date::Calc::Add_Delta_DHMS($y,$m,$d,$h,0,0, 0,$i,0,0) ];
+    }
+ }
+ @rv = map {sprintf("%d-%02d-%02dT%02d",@$_)} @rv;
+ my $hours = Geek::Hours->new('hours');
+ $hours->hours(\@rv);
+ return $hours;
 }
 
 
@@ -296,12 +388,46 @@ sub files{
  if (wantarray){
     return @rv;
  }else{
-    my $files = Geek::Files->new('files');
-    $files->files(\@rv);
-    return $files;
+    #my $files = Geek::Files->new('files');
+    #$files->files(\@rv);
+    #return $files;
+    return \@rv;
  }
 }
 
+1;
+#---------------------------------------------------
+package Geek::Hours;
+use base qw|Object::Accessor|;
+
+sub files{
+ my $se = shift or die "se!";
+ my $tmpl = shift or die "tmpl!";
+ my @rv;
+ 
+ for my $hour ( @{ $se->hours() } ){
+    my ($d,$h) = $hour=~/(\d\d\d\d-\d\d-\d\d)\D(\d\d)/;
+    $d and $h or die "Bad hour!";
+    if (!ref $tmpl){	
+	my $file = $tmpl;
+	$file=~s/\%F/$d/g;
+	$file=~s/\%H/$h/;
+	push @rv, $file;
+    }elsif( ref $tmpl eq "CODE"){
+	for ( $hour ){
+	    push @rv, $tmpl->($hour, $d, $h); # можно вызывать files(sub{...}), $_=$hour @ARG=($hour,$d,$h)
+	}    
+    }else{
+	die "Bad param for files():".Dumper($tmpl);
+    }
+ }
+         
+ if (wantarray){
+    return @rv;
+ }else{
+    return \@rv;
+ }
+}
 
 
 
