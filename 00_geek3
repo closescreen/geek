@@ -14,13 +14,24 @@ my %sm = $g->named_groups(
 
 # 'set -o pipefail; mkdir -p %d && netflag --local --file="%f.FLAG" -cmd=\'' . $via_flag_cmd . '\'' . ( $compress ? " | $compress " : '' ). ' > %f.TMP && mv %f.TMP %f'	
 my $res = "../RESULT/10";
+#$g->routes->
+#    target("$res/$sm{day}/$sm{job}/3/url_groups_diff.gz")->
+#	need(url_groups => sub{ $g->days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") })->
+#	cmd(sub{ print "OK" })->
+#    target("$res/$sm{day}/google/3/url_groups.gz")->
+#	any(dom_grNdays => sub{  map { "$res/$+{day}/google/3/dom_gr${_}days.gz" } reverse (1..7) })->
+#	cmd(sub{ warn "what to do?" })->
+#    target("...")	
+
 $g->routes(
-    {	target=>"$res/$sm{day}/google/3/url_groups_diff.gz",
+    {	target=>"$res/$sm{day}/$sm{job}/3/url_groups_diff.gz",
 	# need - требуется иметь:
 	need =>{
 	    url_groups => sub{ $g->days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") },
 	},
-	cmd => sub{ sub{warn "what to do?"} },
+	#cmd => sub{ sub{ system( "bash",'-c',"echo './27_diff' '$_{job}' '$_{url_groups}'" ) } },
+	#cmd=>sub{ sub{ $g->washing() } },
+	$g->cmd( sub{ print "OK" } ),
     },
     {	target=>"$res/$sm{day}/google/3/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
@@ -91,14 +102,14 @@ $g->routes(
 #	},
 #
 #    },
-    { 	target => "../RESULT/10/$sm{day}/google/3/bids.gz",
-	need => {
-		total => sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
-	    },
-	cmd => sub{
-	    "hello $+{TARGET}"
-	},	
-    },
+#    { 	target => "../RESULT/10/$sm{day}/google/3/bids.gz",
+#	need => {
+#		total => sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
+#	    },
+#	cmd => sub{
+#	    "hello $+{TARGET}"
+#	},	
+#    },
 
 
 );
@@ -108,15 +119,24 @@ $g->routes(
 my @wanted = ( 
     #"../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz",
     #"../RESULT/10/2014-10-09/google/3/url_groups.gz", 
-    #"../RESULT/10/2014-10-09/google/3/url_groups_diff.gz",
+    "../RESULT/10/2014-10-09/google/3/url_groups_diff.gz", "../RESULT/10/2014-10-08/google/3/url_groups_diff.gz",
     #"../RESULT/10/2014-10-09/google/3/dom_gr3days.gz",
     #"../RESULT/10/2014-10-02/google/3/total.gz",
     #"../RESULT/10/2014-10-09/google/3/dom_gr.txt",
-    "../RESULT/10/2014-10-09/google/3/doms12days.gz",
+    #"../RESULT/10/2014-10-09/google/3/doms12days.gz",
 );
 
-my %testers = ( sizele20=>sub{-s $_ <= 0 and $_} );
 my %matched = $g->match( recursive => 0 ,wanted=>\@wanted );
+$\="\n";
+if (0){
+for my $target (keys %matched){
+    if ( my $job = $matched{ $target }{job} ){
+	print "Run job...";
+	$job->();
+	print "ok";
+    }
+}
+}
 die Dumper \%matched;
 
 
@@ -224,13 +244,12 @@ sub match{
 		    for my $name ( keys %named_groups ){
 			my $value;
 			if ( ref $named_groups{$name} eq "ARRAY" ){
-			    $value = join(" ", @{ $named_groups{$name} } );
+			    $value = join(" ", map {ref $_ eq "ARRAY" ? $_->[0] : $_ } @{ $named_groups{$name} } );
 			}else{
 			    $value = $named_groups{$name};
 			}
 			
 			my $escaped = quotemeta $value;
-			#$escaped=~s/([?])/\\$1/g;
 			
 			$re2.="-$name-(?<$name>$escaped)";
 			$str2.="-$name-$value";
@@ -238,14 +257,14 @@ sub match{
 		    my $str1 = "$wanted_elem$str2";
 		    my $re1 = qr/$re$re2/;
 	    	    die "---NOT MATCHED $str1 to $re1---" if not "$str1"=~$re1;
-		    my @job = $cmd->();
-		    if ( !@job ){
+		    #warn "$re1 match with $re1".Dumper(\%+);
+		    %_ = %+;
+		    my $job = &$cmd;
+		    if ( !$job ){
 			die "empty job returned.".Dumper( \$rv{ $wanted_elem } );
-		    #}elsif (@job==1){
-		    #	$target->{job} = $job[0];
 		    }else{
-			#$target->{job} = \@job;
-			$rv{$wanted_elem}{ job } = \@job;
+			$rv{$wanted_elem}{ job } = $job;
+			$rv{$wanted_elem}{ vars } = {%_};
 		    }
 		}
 	    }
