@@ -31,7 +31,7 @@ $g->routes(
 	},
 	#cmd => sub{ sub{ system( "bash",'-c',"echo './27_diff' '$_{job}' '$_{url_groups}'" ) } },
 	#cmd=>sub{ sub{ $g->washing() } },
-	$g->cmd( sub{ print "OK" } ),
+	cmd => sub{ sub{ print "OK" } },
     },
     {	target=>"$res/$sm{day}/google/3/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
