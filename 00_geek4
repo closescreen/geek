@@ -80,6 +80,7 @@ $g->routes(
 	need=>{
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/google/3/%FT%H.gz") }
 	},
+	cmd=>sub{sub{"merge"}},
     },
     {
 	target => "$res/$sm{day}/google/3/$sm{hour}.gz",
@@ -184,7 +185,7 @@ sub match{
  my $se = shift;
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
- my %allowed = (wanted=>1, recursive=>1, testers=>1, nodeep=>1, );
+ my %allowed = (wanted=>1, recursive=>1, testers=>1, nodeep=>1, _recurse_level=>1 );
  if ( my @bad_params = grep { !$allowed{$_} } keys %pa ){
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
@@ -195,7 +196,8 @@ sub match{
  my @recursive_wanted;
  my @matched_routes;
  if ( !$se->{routes} ){ die "routes is empty." }
- my %rv; 
+ my %rv;
+ $pa{ _recurse_level }++; # current recurse level
  
  my %allowed_route_keys = (target=>1, need=>1, any=>1, cmd=>1,);
  
@@ -278,6 +280,7 @@ sub match{
 		    if ( !$job ){
 			die "empty job returned.".Dumper( \$rv{ $wanted_elem } );
 		    }else{
+			$rv{$wanted_elem}{recurse_level} = $pa{_recurse_level};
 			$rv{$wanted_elem}{ job } = $job;
 			$rv{$wanted_elem}{ vars } = {%_};
 		    }
