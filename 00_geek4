@@ -76,10 +76,15 @@ $g->routes(
 	cmd=>sub{sub{"sss"}},
     },
     {
-	target => "../RESULT/10/$sm{day}/google/3/total.gz",
+	target => "$res/$sm{day}/google/3/total.gz",
 	need=>{
-	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/%F/google/3/%FT%H.gz") }
+	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/google/3/%FT%H.gz") }
 	},
+    },
+    {
+	target => "$res/$sm{day}/google/3/$sm{hour}.gz",
+	cmd=>sub{sub{"hist"}},
+    
     },
     
 #    { 	target=>"../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
@@ -119,14 +124,15 @@ $g->routes(
 my @wanted = ( 
     #"../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz",
     #"../RESULT/10/2014-10-09/google/3/url_groups.gz", 
-    "../RESULT/10/2014-10-09/google/3/url_groups_diff.gz", "../RESULT/10/2014-10-08/google/3/url_groups_diff.gz",
+    #"../RESULT/10/2014-11-09/google/3/url_groups_diff.gz", "../RESULT/10/2014-11-08/google/3/url_groups_diff.gz",
     #"../RESULT/10/2014-10-09/google/3/dom_gr3days.gz",
     #"../RESULT/10/2014-10-02/google/3/total.gz",
     #"../RESULT/10/2014-10-09/google/3/dom_gr.txt",
     #"../RESULT/10/2014-10-09/google/3/doms12days.gz",
+    "../RESULT/10/2014-10-09/google/3/urls02days.gz","../RESULT/10/2014-10-10/google/3/urls02days.gz", "../RESULT/10/2014-10-09/google/3/urls.gz",
 );
 
-my %matched = $g->match( recursive => 0 ,wanted=>\@wanted );
+my %matched = $g->match( recursive =>2 ,wanted=>\@wanted, nodeep=>0 );
 $\="\n";
 if (0){
 for my $target (keys %matched){
@@ -178,14 +184,15 @@ sub match{
  my $se = shift;
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
- my %allowed = (wanted=>1, recursive=>1, testers=>1, );
+ my %allowed = (wanted=>1, recursive=>1, testers=>1, nodeep=>1, );
  if ( my @bad_params = grep { !$allowed{$_} } keys %pa ){
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
  my $wanted = $pa{ wanted };
+ my %want_levels;
  my $recursive = $pa{recursive}||0; # 0|1|2
  my $testers = $pa{testers}||{}; # allow to set: testers=>{ proto1=>sub{ -s $_ > 20 }, } # and need_file like 'proto1://aa.gz' - will checked that sub
- my %recursive_wanted;
+ my @recursive_wanted;
  my @matched_routes;
  if ( !$se->{routes} ){ die "routes is empty." }
  my %rv; 
@@ -199,8 +206,13 @@ sub match{
     }
     if ( my $re = $r->{target} ){
 	for my $wanted_elem ( @$wanted ){ # level I
+
 	    if ( $wanted_elem=~$re ){
-		#$rv{ $wanted_elem }{ target } = $wanted_elem;
+	    	
+	    	next if $want_levels{ $wanted_elem }; # дублирующиеся wanted - пропускаем если uniq
+		$want_levels{ $wanted_elem }++;
+		
+		#$rv{ $wanted_elem }{ target } = $wanted_elem; # это мысль
 		for my $node_name (qw| need any |){
 		    if ( my $node = $r->{$node_name} ){
 			if ( ref $node eq "CODE" ){
@@ -213,21 +225,22 @@ sub match{
 				my $need_smf = $node->{$type};
 				if ( ref $need_smf eq "CODE" ){
 				    my @need_smf = $need_smf->();
-				    my @tested = map { [ $_, $se->test( $testers, $_) ] } @need_smf;
+				    my @tested = map { { name=>$_, test_ok=>$se->test( $testers, $_) } } @need_smf;
 				    $rv{ $wanted_elem }{ $node_name }{ $type } = [ @tested ];
 				    if ( $recursive==1 ){
 					if ( $node_name eq "need" ){
 					    # из узла need добавляются отсутствующие:
-					    %recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } grep { ! $_->[1] } @tested );
+					    push @recursive_wanted, map { $_->{name} } grep { ! $_->{test_ok} } @tested;
 					}elsif( $node_name eq "any" ){
 					    # из узла any добавляются все, если ни одного нет:
-					    my $any_exists = grep { $_->[1] } @tested; # if any from @tested is true
-					    %recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } @tested ) if not $any_exists;
+					    my $any_exists = grep { $_->{test_ok} } @tested; # if any from @tested is true
+					    push @recursive_wanted, map { $_->{name} } @tested if not $any_exists;
 					}else{
 					    die "node name $node_name - is unknown";
 					}
 				    }elsif( $recursive==2 ){	
-					%recursive_wanted = ( %recursive_wanted, map { $_->[0], 1 } @tested );
+					push @recursive_wanted, map { $_->{name} } @tested;
+					#warn Dumper \@recursive_wanted;
 				    }	
 				}
 			    }
@@ -244,9 +257,11 @@ sub match{
 		    for my $name ( keys %named_groups ){
 			my $value;
 			if ( ref $named_groups{$name} eq "ARRAY" ){
-			    $value = join(" ", map {ref $_ eq "ARRAY" ? $_->[0] : $_ } @{ $named_groups{$name} } );
-			}else{
+			    $value = join(" ", map {ref $_ eq "HASH" ? $_->{name} : $_ } @{ $named_groups{$name} } );
+			}elsif(!ref $named_groups{$name}){
 			    $value = $named_groups{$name};
+			}else{
+			    die "Unknown type!";
 			}
 			
 			my $escaped = quotemeta $value;
@@ -272,14 +287,28 @@ sub match{
     }
  }
  
- if ($recursive){
-    my %wanted = map {$_,1} @$wanted;
-    for my $k ( keys %recursive_wanted ){
-	delete $recursive_wanted{$k} if $wanted{$k};
+ if ( $recursive ){
+#    warn "before:".Dumper \@recursive_wanted;
+    for my $name ( @recursive_wanted ){
+	if ( $want_levels{ $name } ){
+	    if ( $pa{ nodeep } ){
+		$want_levels{ $name }++;
+		$name = undef;
+	    }	
+	}
     }
-    my %recursive_matched = %recursive_wanted ? $se->match( %pa, wanted=>[keys %recursive_wanted] ) : ();
+    @recursive_wanted = grep {$_} @recursive_wanted;
+#    warn "after:".Dumper \@recursive_wanted;
+    
+    my %recursive_matched = @recursive_wanted ? $se->match( %pa, wanted=>[ @recursive_wanted ] ) : ();
+    
+    map { $want_levels{$_}+=$recursive_matched{$_}{want_level} } keys %recursive_matched;
     %rv = ( %rv, %recursive_matched );
+    
+    
  }
+ 
+ map { $rv{$_}{ want_level } = $want_levels{ $_ } } keys %rv;
  return wantarray ? %rv : \%rv;
 }
 
