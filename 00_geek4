@@ -2,7 +2,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-
+#use Geek qw/:all/;
 
 my $g = Geek->new( );
 my %sm = $g->named_groups(
