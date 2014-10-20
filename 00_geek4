@@ -324,10 +324,13 @@ sub match{
 
     if ( $pa{return} eq 'subs' ){
 	# подготовка списка subs для return:
-	my @targets = map { { %{ $rv{$_} }, target=>$_ } } sort { 
-	    СТОП . Хотелось сортировки по supertarget но не предусмотрено передавать supertarget в @recursive_wanted
-	    sprintf("%05d",$rv{$b}{recurse_level})."*".  cmp ($rv{$a}{recurse_level}||0)*1000 + ($rv{$a}{want_lewel}||0)
-	} keys %rv;
+#	my @targets = map { { %{ $rv{$_} }, target=>$_ } } sort { 
+#	    СТОП . Хотелось сортировки по supertarget но не предусмотрено передавать supertarget в @recursive_wanted
+#	    sprintf("%05d",$rv{$b}{recurse_level})."*".  cmp ($rv{$a}{recurse_level}||0)*1000 + ($rv{$a}{want_lewel}||0)
+#	} keys %rv;
+#	return wantarray ? @targets : \@targets;
+
+	my @targets = map { { %{ $rv{$_} }, target=>$_ } }  keys %rv;
 	return wantarray ? @targets : \@targets;
     }
  }    
