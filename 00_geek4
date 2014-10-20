@@ -133,18 +133,18 @@ my @wanted = (
     "../RESULT/10/2014-10-09/google/3/urls02days.gz","../RESULT/10/2014-10-10/google/3/urls02days.gz", "../RESULT/10/2014-10-09/google/3/urls.gz",
 );
 
-my %matched = $g->match( recursive =>2 ,wanted=>\@wanted, nodeep=>0 );
+die Dumper $g->match( recursive =>2 ,wanted=>\@wanted, nodeep=>0 );
 $\="\n";
-if (0){
-for my $target (keys %matched){
-    if ( my $job = $matched{ $target }{job} ){
-	print "Run job...";
-	$job->();
-	print "ok";
-    }
-}
-}
-die Dumper \%matched;
+#if (0){
+#for my $target (keys %matched){
+#    if ( my $job = $matched{ $target }{job} ){
+#	print "Run job...";
+#	$job->();
+#	print "ok";
+#    }
+#}
+#}
+#die Dumper $matched;
 
 
 
@@ -185,7 +185,13 @@ sub match{
  my $se = shift;
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
- my %allowed = (wanted=>1, recursive=>1, testers=>1, nodeep=>1, _recurse_level=>1 );
+ my %allowed = ( wanted=>1, #ARRAYREF of wanted filenames to calculate
+		 recursive=>1, # 0|1|2. By default = 0. 0-norecursive, 1-recursive for files with filed tests, 2-recursive for all files
+		 testers=>1, # HASHREF {"name"=>sub{ testing $_ }, ...} - way to define/override test subs. See sourse of ->test() for details.
+		 nodeep=>1, # 0|1. By default = 0. set to 1 to avoid deep recursion. Note, what 'want_level' and 'resurse_level' will wrong.
+		 return=>1, # 'subs'|'dump'. By default - 'subs'. 'dump' - return HASH or HASHREF with result structure.
+		 _recurse_level =>1 , # internal parameter for count recursion level.  
+		 );
  if ( my @bad_params = grep { !$allowed{$_} } keys %pa ){
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
@@ -198,6 +204,7 @@ sub match{
  if ( !$se->{routes} ){ die "routes is empty." }
  my %rv;
  $pa{ _recurse_level }++; # current recurse level
+ $pa{return}||='subs';
  
  my %allowed_route_keys = (target=>1, need=>1, any=>1, cmd=>1,);
  
@@ -312,7 +319,21 @@ sub match{
  }
  
  map { $rv{$_}{ want_level } = $want_levels{ $_ } } keys %rv;
+ 
+ if ( $pa{ _recurse_level }==1 ){
+
+    if ( $pa{return} eq 'subs' ){
+	# подготовка списка subs для return:
+	my @targets = map { { %{ $rv{$_} }, target=>$_ } } sort { 
+	    СТОП . Хотелось сортировки по supertarget но не предусмотрено передавать supertarget в @recursive_wanted
+	    sprintf("%05d",$rv{$b}{recurse_level})."*".  cmp ($rv{$a}{recurse_level}||0)*1000 + ($rv{$a}{want_lewel}||0)
+	} keys %rv;
+	return wantarray ? @targets : \@targets;
+    }
+ }    
+ 
  return wantarray ? %rv : \%rv;
+  
 }
 
 sub test{
