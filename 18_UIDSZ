@@ -39,9 +39,9 @@ process_cmd=$(
  "   -val="$job" 
 )
 
-    
+maxf=`conf 00_conf.txt maxf`    
 echo "$ff" |
- washing -res="s|total\.gz|uidsz.gz|" -v_flag="$process_cmd" -comp=gzip -timelog="00_all.time.log"
+ washing -maxf="$maxf" -res="s|total\.gz|uidsz.gz|" -v_flag="$process_cmd" -comp=gzip -timelog="00_all.time.log"
 
 
 #>>OUT:

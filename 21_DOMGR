@@ -32,8 +32,11 @@ fi
 server="crawler.adriver.x"
 remote_project="/work/share/d.belyaev/1460_1421"
 remote_script="1.sh"
+maxf=`conf 00_conf.txt maxf`
+
 
 echo "$ff" | washing \
+    -maxf="$maxf" \
     -res='s|doms\d+days\.gz|dom_gr.txt|' \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
     -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \

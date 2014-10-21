@@ -8,7 +8,7 @@ cd `dirname $0`
 src=${1:?src!}
 job=${2:?job!}
 typenum=${3:?typenum!}
-N=${4:?N!}
+#N=${4:?N!}
 
 #echo "$src" | fn2days | hours -n=-30days -shift=1day -days | files "./RESULT/10/%F/$job/$typenum/total.gz"
 

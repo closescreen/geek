@@ -77,8 +77,8 @@ chk "$ff" "uidsz files with auditory.gz " || exit 2
 #ff=`echo $ff | words -first` # закомментировать потом
 #chk "$ff" "files. " || exit 2
 
-
-echo "$ff" | washing -res="s|uidsz\.gz|traits30days.gz|" -v_flag="$processor %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \
- -comp=gzip -time=00_all.time.log
+maxf=`conf 00_conf.txt maxf`
+echo "$ff" | washing  -res="s|uidsz\.gz|traits30days.gz|" -v_flag="$processor %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \
+ -comp=gzip -time=00_all.time.log -maxf="$maxf"
 
 )>>"$0.log" 2>&1

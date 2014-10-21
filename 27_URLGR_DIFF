@@ -31,6 +31,7 @@ fi
 
 ff=$( echo "$ff" | only --upto="$deep" )
 
-echo "$ff" | washing -result="s|$src|$result|" -v_flag="./27_process $job %s" -compr=gzip -timelog="00_all.time.log" -nolog=3
+maxf=`conf 00_conf.txt maxf`
+echo "$ff" | washing -maxf="$maxf" -result="s|$src|$result|" -v_flag="./27_process $job %s" -compr=gzip -timelog="00_all.time.log" -nolog=3
 
 )>>"$0.log" 2>&1

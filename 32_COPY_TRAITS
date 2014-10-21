@@ -14,7 +14,14 @@ filled () {
 }
 # ----------------------------------------
 
-upto="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
+days=${1:-""} # можно указать days
+
+report_deep="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
+source_deep="$(conf 00_conf.txt source_deep)" 
+
+report_first_day="$( hours -t=today -n=-"$report_deep" -days -first)"
+upto_day="$( hours -t="$report_first_day" -n=-"$source_deep" -days -first )"
+
 remote_host="hist7.adriver.x"
 
 remote_gender_dir="/usr/local/rle/var/grep/"d.belyaev/Traits/gender/RESULT
@@ -24,9 +31,11 @@ remote_kris_dir="/usr/local/rle/var/grep/"k.fedorenko/1126
 local_dir="../RESULT/traits_copy"
 
 # список дней, за которые желаем иметь локальные копии:
-find_for_days=`hours -t=today -n=-"$upto" -days`
+find_for_days=`hours -t=today -shift=1day -tod="$upto_day" -days`
+[[ -z "$days" ]] && days="$find_for_days"
 
-for day in $find_for_days; do
+
+for day in $days; do
     # gender:
     # имена локальных копий немного меняем, приводя к какой-то системе имен:
     # gender - здесь txt-файлы копируются и потом сжимаются.

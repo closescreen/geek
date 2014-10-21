@@ -32,8 +32,10 @@ else
 fi
 
 ff=$( echo "$ff" | only --upto="$deep" )
+
+maxf=`conf 00_conf.txt maxf`
       
 echo "$ff" |
-washing -res="s|dom_gr\d+days.gz|url_groups.gz|" -v_flag="./25_process %s $job $typenum $minN $maxN" -comp=gzip -time=00_all.time.log
+washing -maxf="$maxf" -res="s|dom_gr\d+days.gz|url_groups.gz|" -v_flag="./25_process %s $job $typenum $minN $maxN" -comp=gzip -time=00_all.time.log
 
 )>>"$0.log" 2>&1

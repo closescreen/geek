@@ -49,7 +49,8 @@ ff=$( echo "$ff" | only --upto="$deep" )
 
 [[ -n "$ff" ]] || exit 1
 
-echo "$ff" | washing -res="
+maxf=`conf 00_conf.txt maxf`
+echo "$ff" | washing -maxf="$maxf" -res="
  my (\$path) = m|(.+)/urls\.gz|;
  my \$N=qx(
     fn2days \$_ | hours -shift=1day -n=-${maxN}days -days|files ../RESULT/10/\%F/$job/$typenum/urls.gz| only -s|words -count

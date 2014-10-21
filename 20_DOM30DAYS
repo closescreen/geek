@@ -34,7 +34,8 @@ else
      only --without="url_groups.gz"`
 fi
 
-      
-echo "$ff" | washing -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=00_all.time.log
+
+maxf=`conf 00_conf.txt maxf`      
+echo "$ff" | washing -maxf="$maxf" -res='s|urls(\d+)days.gz|doms$1days.gz|' -v_flag="zcat %s | cut -d* -f1,3,4" -comp=gzip -timelog=00_all.time.log
 
 )>>"$0.log" 2>&1
