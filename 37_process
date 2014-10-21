@@ -8,7 +8,7 @@ cd `dirname $0`
 src=${1:?src!}
 job=${2:?job!}
 typenum=${3:?typenum!}
-N=${4:?N!}
+#N=${4:?N!}
 
 # format net_sites tn0 total 
 # IN:
