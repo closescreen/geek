@@ -22,14 +22,18 @@ $g->routes(
 	},
 #LANG=POSIX sort -T. -t\* -m -k1,1 -k2,2 <(zcat "$prev_src" | awk -v"OFS=*" '{print $0,"prev"}') <(zcat "$src" | awk -v"OFS=*" '{print $0,"curr"}') | ./27_diff
 
-	cmd { print $g->sbashf( qq( 
+	cmd { my $cmd = $g->sbashf( qq( 
 	    LANG=POSIX sort -T. -t\\* -m -k1,1 -k2,2 <\( 
 		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
 		\) <\(
 		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
 		\) | ./27_diff 
-	    ), @{$_{url_groups_ARRAY}}  
-	)},
+	    ), @{$_{url_groups_ARRAY}});
+	    print $cmd;
+	    netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
+	 
+	
+	},
     },
     {	target "$res/$sm{day}/google/3/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
@@ -84,14 +88,14 @@ $g->routes(
     
     },
     
-#    { 	target "../RESULT/10/$sm{day}/google/3/sz_vars_30days.gz", 
+#    { 	target "$res/$sm{day}/google/3/sz_vars_30days.gz", 
 #	need { 
 #	    bids => sub{
 #		# в данном случае возвращается arrayref, в котором список строк - значит это список файлов
-#		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/3/bids.gz" );
+#		$g->days( from=>$+{day}, n=>-3 )->files( "$res/\%F/google/3/bids.gz" );
 #	    },
 #	    total => sub{
-#		$g->days( from=>$+{day}, n=>-3 )->files( "../RESULT/10/\%F/google/0/total.gz" );
+#		$g->days( from=>$+{day}, n=>-3 )->files( "$res/\%F/google/0/total.gz" );
 #	    },
 #	},
 #	
@@ -104,42 +108,51 @@ $g->routes(
 #	},
 #
 #    },
-#    { 	target "../RESULT/10/$sm{day}/google/3/bids.gz",
+#    { 	target "$res/$sm{day}/google/3/bids.gz",
 #	need {
-#		total => sub{ "../RESULT/10/$+{day}/google/3/total.gz" },
+#		total => sub{ "$res/$+{day}/google/3/total.gz" },
 #	    },
 #	cmd { "hello $_{TARGET}" },	
 #    }
-
+    {
+	target "../RESULT/TEST/$sm{day}/test.gz",
+	cmd {
+	    "date"
+	}, 
+    }
 
 );
 
 #die Dumper $g;
 
 my @wanted = ( 
-    #"../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz",
-    #"../RESULT/10/2014-10-09/google/3/url_groups.gz", 
-    "../RESULT/10/2014-10-18/google/3/url_groups_diff.gz", #"../RESULT/10/2014-11-08/google/3/url_groups_diff.gz",
-    #"../RESULT/10/2014-10-09/google/3/dom_gr3days.gz",
+    "../RESULT/TEST/2014-10-24/test.gz", 
+    #"../RESULT/10/2014-10-02/google/3/sz_vars_30days.gz"
+    #"../RESULT/10/2014-11-09/google/3/url_groups.gz", 
+    #"../RESULT/10/2014-11-18/google/3/url_groups_diff.gz", #"../RESULT/10/2014-11-08/google/3/url_groups_diff.gz",
+    #"../RESULT/10/2014-11-09/google/3/dom_gr3days.gz",
     #"../RESULT/10/2014-10-02/google/3/total.gz",
     #"../RESULT/10/2014-10-09/google/3/dom_gr.txt",
     #"../RESULT/10/2014-10-09/google/3/doms12days.gz",
     #"../RESULT/10/2014-10-09/google/3/urls02days.gz" ,"../RESULT/10/2014-10-10/google/3/urls02days.gz",# "../RESULT/10/2014-10-09/google/3/urls.gz",
 );
 
-my @jobs = $g->match( recursive=>1 ,wanted=>\@wanted  );
+my @jobs = $g->match( need=>"all" ,any=>"max", deep=>4, wanted=>\@wanted  );
 
 #die Dumper \@jobs;
 $\="\n";
 if (1){
  for my $job (@jobs){
-    if ( my $j = $job->{job} ){
-	print "Run job for target $job->{target} ...";
-	$j->();
-	print "ok";
-    }else{
-	warn "Not found job in ".Dumper($job);
-    }
+    print "$job->{target}:\n      ";
+    print "\tText:".$job->{job}->()."\n===========================";
+    netflag( $job->{job}->(), viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", );
+#    if ( my $j = $job->{job} ){
+#	print "Run job for target $job->{target} ...";
+#	$j->();
+#	print "ok";
+#    }else{
+#	warn "Not found job in ".Dumper($job);
+#    }
  }
 }
 #die Dumper $matched;

@@ -4,8 +4,12 @@ use warnings;
 use Data::Dumper;
 use Date::Calc;
 use Exporter 'import';
-our @EXPORT_OK = qw( cmd need any target );
-our %EXPORT_TAGS = ( all=>[qw( cmd need any target )] );
+use Netflag;
+use File::Path qw(make_path);
+use File::Basename qw(dirname);
+
+our @EXPORT_OK = qw( cmd need any target netflag );
+our %EXPORT_TAGS = ( all=>[qw( cmd need any target netflag )] );
 
 my $geek_object = Geek->new();
 
@@ -40,7 +44,10 @@ sub match{
  ref $se eq "Geek" or die "First param must be a reference to Geek object"; 
  my %pa = @_;
  my %allowed = ( wanted=>1, #ARRAYREF of wanted filenames to calculate
-		 recursive=>1, # 0|1|2. By default = 0. 0-norecursive, 1-recursive for files with filed tests, 2-recursive for all files
+		 #recursive=>1, # 0|1|2. By default = 0. 0-norecursive, 1-recursive for files with filed tests, 2-recursive for all files
+		 need=>1, # "", "all", "todo",sub{ ..work with @_=@tested  }
+		 any=>1, # "", "max","min",sub{ ..work with @_=@tested }
+		 deep=>1, # ""||0, 1..* - stop when recursion level equal 'deep'. 1=top, 2=top and its need|any
 		 testers=>1, # HASHREF {"name"=>sub{ testing $_ }, ...} - way to define/override test subs. See sourse of ->test() for details.
 		 return=>1, # 'subs'|'dump'. By default - 'subs'. 'dump' - return HASH or HASHREF with result structure.
 		 _recurse_level =>1 , # internal parameter for count recursion level. 
@@ -51,7 +58,42 @@ sub match{
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
  my $wanted = $pa{ wanted };
- my $recursive = $pa{recursive}||0; # 0|1|2
+
+ my %possible_need = (
+    "" => sub{()}, # nothing to add
+    "todo" => sub { map { $_->{name} } grep { ! $_->{test_ok} } @_ },
+    "all" => sub{ map { $_->{name} } @_ }, # all "need" files to recursive tree
+ ); 
+ 
+ my %possible_any = (
+    "" => sub{()}, # nothing to add
+    "max" => sub{ # max name from 'any' list
+	my $any_exists = grep { $_->{test_ok} } @_;
+	[ sort map { $_->{name} } @_ ]->[-1] if not $any_exists
+    }, 
+    "min" => sub{ # min name from 'any' list
+	my $any_exists = grep { $_->{test_ok} } @_;
+	[ sort map { $_->{name} } @_ ]->[0] 
+    }, 
+    "all" => sub{ map { $_->{name} } @_ }, # all "need" files to recursive tree
+ );  
+ 
+ my %recursive_code;
+ if (!ref $pa{need}){
+    $recursive_code{need} = $possible_need{$pa{need}||""} or die "not possible need=>'$pa{need}'. Possible:".Dumper(\%possible_need);
+ }else{
+    $recursive_code{need} = $pa{need};
+ }    
+ 
+ if (!ref $pa{any}){
+    $recursive_code{any} = $possible_any{ $pa{any}||"" } or die "not possible any=>'$pa{any}'";
+ }else{
+    $recursive_code{any} = $pa{any};
+ }
+ 
+ $pa{deep}+=0;
+ 
+ 
  my $testers = $pa{testers}||{}; # allow to set: testers=>{ proto1=>sub{ -s $_ > 20 }, } # and need_file like 'proto1://aa.gz' - will checked that sub
  my @recursive_wanted;
  my @matched_routes;
@@ -98,32 +140,13 @@ sub match{
 				    my @need_smf = $need_smf->();
 				    my @tested = map { { name=>$_, test_ok=>$se->test( $testers, $_) } } @need_smf;
 				    $rv->{ $wanted_elem }{ $node_name }{ $type } = [ @tested ];
-				    if ( $recursive==1 ){
-					if ( $node_name eq "need" ){
-					    # из узла need добавляются отсутствующие:
-					    push @recursive_wanted, map { $_->{name} } grep { ! $_->{test_ok} } @tested;
-					}elsif( $node_name eq "any" ){
-					    # из узла any добавляется минимальное имя (лучше способа не придумал), если ни одного нет:
-					    # (если добавлять все - дерево разрастется)
-					    my $any_exists = grep { $_->{test_ok} } @tested; # if any from @tested is true
-					    push @recursive_wanted, [ sort map { $_->{name} } @tested ]->[0] if not $any_exists;
-					}else{
-					    die "node name $node_name - is unknown";
-					}
-				    }elsif( $recursive==2 ){	
-					#warn Dumper \@recursive_wanted;
-					if ( $node_name eq "need" ){
-					    # из узла need добавляются все:
-					    push @recursive_wanted, map { $_->{name} } @tested;
-					    #push @recursive_wanted, map { $_->{name} } grep { ! $_->{test_ok} } @tested;
-					}elsif( $node_name eq "any" ){
-					    # из узла any добавляется минимальное имя (если добавлять все - дерево разрастется)
-					    push @recursive_wanted, [ sort map { $_->{name} } @tested ]->[0];						    
-					    
-					}else{
-					    die "node name $node_name - is unknown";
-					}					
+				    #if ( $recursive==1 ){
+				    
+				    ref $recursive_code{$node_name} or die "recursive_code for node name '$node_name' is not a CODEREF !"; 
+				    if ( !$pa{deep} or $pa{deep}>$pa{ _recurse_level } ){
+					push @recursive_wanted, $recursive_code{$node_name}->(@tested);
 				    }	
+				    
 				}
 			    }
 			}else{
@@ -174,23 +197,22 @@ sub match{
 	}
     }#<-------( end of $r )----------
 
-    if ( $recursive ){
-	for my $name ( @recursive_wanted ){
+    for my $name ( @recursive_wanted ){
 	    if ( $rv->{ $name } ){
 		$rv->{ $name }{ parents }{ $wanted_elem }++;
 		$name = undef;
 	    }
-	}
-	@recursive_wanted = grep {$_} @recursive_wanted;
+    }
+    @recursive_wanted = grep {$_} @recursive_wanted;
     
-	if ( @recursive_wanted ){
+    if ( @recursive_wanted ){
 	    #warn "call match..";
 	    $se->match( %pa, wanted=>[ @recursive_wanted ], _parent_wanted=>$wanted_elem, _rv=>$rv );
 	    #warn "OK";
-	}    
+    }    
     
 
-    } #<--------( end or wanted_elem )------
+     #<--------( end or wanted_elem )------
  
  }
  
@@ -344,7 +366,8 @@ sub named_groups{
 }
 
 sub sbashf{
- my $se = shift or die "First param must be a reference to Geek object";
+ my $se = shift;
+ ref $se or die "First param must be a reference to Geek object";
  my ($str, @pars) = @_;
  $str=~s/^\s+//mg; # remove tabs
  $str=~s/\n/\\\n/mg; # backslash ends of lines
@@ -360,6 +383,7 @@ sub cmd(&){
  # shortcut for: 'cmd=>sub{ sub{ code } }'
  # принимfет блок кода
  # возвращает два эл-та: строку "cmd" и sub (для выполнения в момент сопоставления маршрута), внутри которого sub (для отложенного вызова $job->() )
+ if (ref $_[0] ne "CODE"){ die "cmd() - First param must be a CODEREF.".caller() }
  my $cmd = shift;
  return ("cmd",sub { $cmd });
 }
@@ -368,6 +392,7 @@ sub need(&){
  # usage need {code}
  # принимает блок которые вернет попарный список для хеш-массива
  # возвр: список из двух ел-тов: "need",{hash content}
+ if (ref $_[0] ne "CODE"){ die "need() - First param must be a CODEREF.".caller() } 
  return ( need=>{ $_[0]->() } )
 }
 
@@ -375,6 +400,7 @@ sub any(&){
  # usage any {code}
  # принимает блок который вернет попарный список для хеш-массива
  # возвр: список из двух ел-тов: "any",{hash content}
+ if (ref $_[0] ne "CODE"){ die "any() - First param must be a CODEREF.".caller() }
  return ( any=>{ $_[0]->() } )
 }
 
@@ -382,10 +408,85 @@ sub target($){
  # usage: target "string"
  # принимает строку
  # возвр: список из двух эл-тов: "target","string"
+ if (ref $_[0]){ die "target() - is not for object-oriented calling.".caller() }
  return ("target",$_[0])
 }
 
+sub netflag{
+ # usage netflag sub{code}, flag=>$flagname, viatmp=>$file, deb=>1
+ #       netflag "bash code", ....
+ # выполняет code, проверяя и устанавливая flag
+ require Netflag;
+ my $perlcode;
+ my $cmd = shift;
+ $cmd or die "netflag() : first param must be a CODEREF or bash code STRING";
+ my %pa = @_;
+ my @default_set = ('set -o pipefail');
+ my $deb = $pa{debug}||$pa{deb};
+ 
+ my $f_ext = "FLAG";
+ my $t_ext = "TMP";
+ 
+ my $viatmp = $pa{viatmp};
+ my $flag = $pa{flag}||$pa{fl}||$pa{f};
+ 
+ $flag ||= $viatmp if $viatmp;
+ $flag or die "param 'flag'|'viatmp' must be defined!";
+ s/(\.$f_ext|\.$t_ext)$//i for grep {$_} ($flag, $viatmp); 
+ 
+ { 
+    if ($pa{stderr}){
+	my $err_dir = dirname( $pa{stderr} );
+	make_path( $err_dir ) or die "$! ($err_dir)" if $pa{stderr};
+    }	
+    open my $err_fh, ">>", $pa{stderr} or die "Can't dup STDERR: $!" if $pa{stderr};
+    local *STDERR = $err_fh if $pa{stderr};
+ 
+    if ( !ref $cmd ){ # as bash string: ------------------
 
+	my $set = defined $pa{set} ? $pa{set}||"" : \@default_set;
+	if (ref $set eq "ARRAY"){ $set = join("; ",@$set) }
+	elsif( ref $set eq "CODE" ){ $set = join "; ", &$set }
+	elsif( ref $set eq "HASH" ){ $set = join "; ", map {"set $_ $set->{$_}"} keys %$set }
+	else{ die "Param 'set' - is wrong type!".Dumper($set) }
+    
+	my $full_cmd = "$set; $cmd";
+	if ( $viatmp ){
+	    if ( $viatmp=~m/\.gz/ ){ $full_cmd .= " | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
+	    else{ $full_cmd .= " > $viatmp;" }
+	}
+	$perlcode = sub{ system( 'bash', '-c', $full_cmd ) }; # now 'cmd' is a CODEREF
+
+    }elsif( ref $cmd eq "CODE" ){ # as perl code ---------------
+	$perlcode = $cmd 
+    }else{ # wrong
+	"Bad type of first param. ".Dumper($cmd).caller;
+    }
+ 
+    my $flag_full = "$flag.$f_ext";
+    if ( -s $flag_full ){
+	my ($info, $info_err) = Netflag::info( $flag_full );
+	die "Can't do cmd '$cmd' becouse was errors while reading $flag_full: $info_err" if $info_err;
+	my ($works, $works_err) = Netflag::works( $info );
+	die "Can't check process working ($flag_full): $works_err" if $works_err;
+	if ( $works ){
+    	    warn "$flag_full exists and process is works." if $deb;
+    	    exit 1;
+	}
+    }
+    {
+	my $flag_dir = dirname( $flag_full );
+	make_path( $flag_dir ) or die "$! ($flag_dir)" if ! -d $flag_dir;
+    }	
+    Netflag::set( $flag_full );
+
+    $perlcode->();
+
+    Netflag::unset( $flag_full );
+    #warn "exit code: $?, \$?>>8=".($?>>8) if $deb;
+    #exit $?>>8; 
+ }
+}
 
 #-----------------------------------------------------------------
 package Geek::Days;
