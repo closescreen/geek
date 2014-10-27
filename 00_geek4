@@ -15,76 +15,76 @@ my %sm = $g->named_groups(
 my $res = "../RESULT/10";
 
 $g->routes(
-    {	target "$res/$sm{day}/$sm{job}/3/url_groups_diff.gz",
-	# need - требуется иметь:
-	need {
-	    url_groups => sub{ $g->days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") },
-	},
+#    {	target "$res/$sm{day}/$sm{job}/3/url_groups_diff.gz",
+#	# need - требуется иметь:
+#	need {
+#	    url_groups => sub{ $g->days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") },
+#	},
 #LANG=POSIX sort -T. -t\* -m -k1,1 -k2,2 <(zcat "$prev_src" | awk -v"OFS=*" '{print $0,"prev"}') <(zcat "$src" | awk -v"OFS=*" '{print $0,"curr"}') | ./27_diff
 
-	cmd { my $cmd = $g->sbashf( qq( 
-	    LANG=POSIX sort -T. -t\\* -m -k1,1 -k2,2 <\( 
-		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
-		\) <\(
-		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
-		\) | ./27_diff 
-	    ), @{$_{url_groups_ARRAY}});
-	    print $cmd;
-	    netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
-	 
-	
-	},
-    },
+#	perl { my $cmd = $g->qb( qq( 
+#	    LANG=POSIX sort -T. -t\\* -m -k1,1 -k2,2 <\( 
+#		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
+#		\) <\(
+#		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
+#		\) | ./27_diff 
+#	    ), @{$_{url_groups_ARRAY}});
+#	    print $cmd;
+#	    netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
+#	 
+#	
+#	},
+#    },
     {	target "$res/$sm{day}/google/3/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
 	any {
 	    # here sub return code:
 	    dom_grNdays => sub{  map { "$res/$+{day}/google/3/dom_gr${_}days.gz" } reverse (1..7) },
 	},
-	cmd { warn "what to do?" },
+	perl { warn "what to do?" },
     },
     {	target "$res/$sm{day}/google/3/dom_gr(?<N>\\d)days.gz",
 	# д.б х-м!
 	need {
 	    dom_gr => sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{N} )->files("$res/\%F/google/3/dom_gr.txt") }
 	},     
-	cmd { warn "what to do again?" },    
+	perl { warn "what to do again?" },    
     },
     {	target "$res/$sm{day}/google/3/dom_gr.txt",
 	any {
 	    domsNNdays => sub{ map {"$res/$+{day}/google/3/doms${_}days.gz"} reverse (10..30) },
 	},
-	cmd {"aa"},
+	perl {"aa"},
     },
     {	target "$res/$sm{day}/google/3/doms(?<NN>\\d\\d)days.gz", 
 	need {
 	    urlsNNdays=>sub{ "$res/$+{day}/google/3/urls$+{NN}days.gz" },
 	},
-	cmd {"oy-oy"},
+	perl {"oy-oy"},
     },
     {	target "$res/$sm{day}/google/3/urls(?<NN>\\d\\d)days.gz",
 	need {
 	    urls=>sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{NN} )->files("$res/%F/google/3/urls.gz") },
 	},
-	cmd { print $_{day} },
+	perl { print $_{day} },
     },
     {
 	target "$res/$sm{day}/google/3/urls.gz",
 	need {
 	    total=>sub{ "$res/$+{day}/google/3/total.gz" }
 	},
-	cmd {"sss"},
+	perl {"sss"},
     },
     {
 	target "$res/$sm{day}/google/3/total.gz",
 	need {
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/google/3/%FT%H.gz") }
 	},
-	cmd {"merge"},
+	perl {"merge"},
     },
     {
 	target "$res/$sm{day}/google/3/$sm{hour}.gz",
-	cmd {"hist"},
+	perl {"hist"},
     
     },
     
@@ -100,7 +100,7 @@ $g->routes(
 #	},
 #	
 #	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
-#	cmd {"I return: day:$+{day}, target:$+{TARGET}, total:'$+{total}', bids:'$+{bids}'"},
+#	perl {"I return: day:$+{day}, target:$+{TARGET}, total:'$+{total}', bids:'$+{bids}'"},
 #	
 #	cmd => sub{
 #	    sub{ print Dumper \@_ },
@@ -112,13 +112,18 @@ $g->routes(
 #	need {
 #		total => sub{ "$res/$+{day}/google/3/total.gz" },
 #	    },
-#	cmd { "hello $_{TARGET}" },	
+#	perl { "hello $_{TARGET}" },	
 #    }
     {
 	target "../RESULT/TEST/$sm{day}/test.gz",
-	cmd {
-	    "date"
-	}, 
+#	perl {
+#	    qb( "
+#	    date;
+#	    date;
+#	    date;
+#	    ")
+#	}, 
+	bash { qb "echo %s", qx(date) },
     }
 
 );
@@ -143,16 +148,10 @@ my @jobs = $g->match( need=>"all" ,any=>"max", deep=>4, wanted=>\@wanted  );
 $\="\n";
 if (1){
  for my $job (@jobs){
-    print "$job->{target}:\n      ";
-    print "\tText:".$job->{job}->()."\n===========================";
-    netflag( $job->{job}->(), viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", );
-#    if ( my $j = $job->{job} ){
-#	print "Run job for target $job->{target} ...";
-#	$j->();
-#	print "ok";
-#    }else{
-#	warn "Not found job in ".Dumper($job);
-#    }
+    print Dumper $job;
+#    print "$job->{target}:\n      ";
+#    print "\tText:".$job->{job}."\n===========================";
+    netflag( $job->{job}, viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", );
  }
 }
 #die Dumper $matched;

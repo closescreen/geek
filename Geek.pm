@@ -8,8 +8,8 @@ use Netflag;
 use File::Path qw(make_path);
 use File::Basename qw(dirname);
 
-our @EXPORT_OK = qw( cmd need any target netflag );
-our %EXPORT_TAGS = ( all=>[qw( cmd need any target netflag )] );
+our @EXPORT_OK = qw( cmd need any target netflag qb bash perl );
+our %EXPORT_TAGS = ( all=>[qw( cmd need any target netflag qb bash perl )] );
 
 my $geek_object = Geek->new();
 
@@ -365,11 +365,14 @@ sub named_groups{
  return wantarray ? %rv : \%rv;
 }
 
-sub sbashf{
- my $se = shift;
- ref $se or die "First param must be a reference to Geek object";
+sub qb{
+ my $se;
+ if ( ref $_[0] eq "Geek" ){
+    $se = shift;
+ }
  my ($str, @pars) = @_;
  $str=~s/^\s+//mg; # remove tabs
+ $str=~s/\s*$//mg; # remove empty strings
  $str=~s/\n/\\\n/mg; # backslash ends of lines
  $str=~s/\\$//; # ... exept last line
  if ( @pars ){
@@ -378,8 +381,19 @@ sub sbashf{
  return $str;
 }
 
-sub cmd(&){
- # usage cmd { code }
+sub bash(&){
+ # usage bash { code }, где code - возвращает строку (команду для bash)
+ # shortcut for: 'cmd=>sub{ code }'
+ # принимfет блок кода
+ # возвращает 2 эл-та: "cmd",sub (для выполнения в момент сопоставления маршрута)
+ if (ref $_[0] ne "CODE"){ die "cmd() - First param must be a CODEREF.".caller() }
+ my $cmd = shift;
+ return ("cmd",$cmd);
+}
+
+
+sub perl(&){
+ # usage perl { code }
  # shortcut for: 'cmd=>sub{ sub{ code } }'
  # принимfет блок кода
  # возвращает два эл-та: строку "cmd" и sub (для выполнения в момент сопоставления маршрута), внутри которого sub (для отложенного вызова $job->() )
@@ -443,6 +457,9 @@ sub netflag{
     local *STDERR = $err_fh if $pa{stderr};
  
     if ( !ref $cmd ){ # as bash string: ------------------
+    
+	# может поступить команда с переносом строки:
+	$cmd=~s/\s*$//mg; # remove empty string
 
 	my $set = defined $pa{set} ? $pa{set}||"" : \@default_set;
 	if (ref $set eq "ARRAY"){ $set = join("; ",@$set) }
@@ -452,8 +469,8 @@ sub netflag{
     
 	my $full_cmd = "$set; $cmd";
 	if ( $viatmp ){
-	    if ( $viatmp=~m/\.gz/ ){ $full_cmd .= " | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
-	    else{ $full_cmd .= " > $viatmp;" }
+	    if ( $viatmp=~m/\.gz/ ){ $full_cmd = "( $full_cmd ) | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
+	    else{ $full_cmd = "( $full_cmd )> $viatmp;" }
 	}
 	$perlcode = sub{ system( 'bash', '-c', $full_cmd ) }; # now 'cmd' is a CODEREF
 
