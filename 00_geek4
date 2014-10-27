@@ -123,7 +123,7 @@ $g->routes(
 #	    date;
 #	    ")
 #	}, 
-	bash { qb "echo %s", qx(date) },
+	bash { qb "echoss %s", qx(date) },
     }
 
 );
@@ -151,7 +151,11 @@ if (1){
     print Dumper $job;
 #    print "$job->{target}:\n      ";
 #    print "\tText:".$job->{job}."\n===========================";
-    netflag( $job->{job}, viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", );
+    netflag( 
+	$job->{job}, 
+	viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", 
+	force=>1, deb=>1, set=>"set -x", stdall=>"../RESULT/TEST/$job->{vars}{day}/test.log"
+	);
  }
 }
 #die Dumper $matched;

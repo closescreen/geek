@@ -427,16 +427,37 @@ sub target($){
 }
 
 sub netflag{
- # usage netflag sub{code}, flag=>$flagname, viatmp=>$file, deb=>1
+ # usage netflag sub{code}, flag=>$flagname, viatmp=>$file, deb=>1, force=>1,
  #       netflag "bash code", ....
  # выполняет code, проверяя и устанавливая flag
+ my %allow_pars = (
+ deb=>"some warnings for debug",
+ debug=>"same as 'deb'",
+ set=>"STRING like 'set -x' or ARRAYREF like ['set -x','set -v'] or HASHREF like {'-o'=>'pipefail', } or CODEREF like sub{'set -x'}",
+ viatmp=>"target filename like ./.../myresult.gz",
+ flag=>"OPTIONAL. Flag file name like: ../result/myresult.gz.FLAG (BY DEFAULT = viatmp)",
+ fl=>"like as flag",f=>"like as flag",
+ force=>"force to rewrite 'viatmp' file",
+# stderr=>"file name to redirect shell STDERR to it",
+# stdout=>"like stderr but STDOUT",
+ stdall=>"STDERR and STDOUT",
+ );
+ 
  require Netflag;
  my $perlcode;
  my $cmd = shift;
  $cmd or die "netflag() : first param must be a CODEREF or bash code STRING";
  my %pa = @_;
+ 
+ for my $p (keys %pa){
+    if ( !$allow_pars{$p} ){
+	die "Bad param '$p'. Allowed only:  ".Dumper(\%allow_pars);
+    }
+ }
+ 
  my @default_set = ('set -o pipefail');
  my $deb = $pa{debug}||$pa{deb};
+# warn "debug=$deb" if $deb;
  
  my $f_ext = "FLAG";
  my $t_ext = "TMP";
@@ -448,14 +469,31 @@ sub netflag{
  $flag or die "param 'flag'|'viatmp' must be defined!";
  s/(\.$f_ext|\.$t_ext)$//i for grep {$_} ($flag, $viatmp); 
  
- { 
-    if ($pa{stderr}){
-	my $err_dir = dirname( $pa{stderr} );
-	make_path( $err_dir ) or die "$! ($err_dir)" if $pa{stderr};
-    }	
-    open my $err_fh, ">>", $pa{stderr} or die "Can't dup STDERR: $!" if $pa{stderr};
-    local *STDERR = $err_fh if $pa{stderr};
+ my $force_rewrite;
+ if ( !ref $pa{force} ){
+    $force_rewrite = $pa{force}; # like: force=>1
+ }elsif( ref $pa{force} eq "CODE" ){
+    $force_rewrite = $pa{force}->( $viatmp ); # # like: force=>sub{ -s $_[0] < 20 }
+    if ($deb){
+	warn "force=$force_rewrite";
+    }
+ }
  
+ { 
+#    if ($pa{stdall}){
+#	@pa{qw|stdout stderr|} = @pa{qw|stdall stdall|};
+#    }
+    for my $file ( grep {$_} $pa{stdall} ){
+	my $dir = dirname( $file );
+	if (!-s $dir){
+	    make_path( $dir ) or die "Can't make_dir: $! ($dir)"
+	}    
+    }	
+    
+    #open my $err_fh, ">>", $pa{stderr} or die "Can't dup STDERR: $!" if $pa{stderr};
+    #local *STDERR = $err_fh if $pa{stderr};
+    
+    
     if ( !ref $cmd ){ # as bash string: ------------------
     
 	# может поступить команда с переносом строки:
@@ -465,13 +503,21 @@ sub netflag{
 	if (ref $set eq "ARRAY"){ $set = join("; ",@$set) }
 	elsif( ref $set eq "CODE" ){ $set = join "; ", &$set }
 	elsif( ref $set eq "HASH" ){ $set = join "; ", map {"set $_ $set->{$_}"} keys %$set }
+	elsif(!ref $set){ 1 }
 	else{ die "Param 'set' - is wrong type!".Dumper($set) }
     
 	my $full_cmd = "$set; $cmd";
+	
 	if ( $viatmp ){
 	    if ( $viatmp=~m/\.gz/ ){ $full_cmd = "( $full_cmd ) | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
 	    else{ $full_cmd = "( $full_cmd )> $viatmp;" }
 	}
+	
+	if ( $pa{stdall} ){
+	    $full_cmd = "( $full_cmd )>>$pa{stdall} 2>&1";
+	}
+	
+	warn "CMD: $full_cmd" if $deb;
 	$perlcode = sub{ system( 'bash', '-c', $full_cmd ) }; # now 'cmd' is a CODEREF
 
     }elsif( ref $cmd eq "CODE" ){ # as perl code ---------------
@@ -495,13 +541,18 @@ sub netflag{
 	my $flag_dir = dirname( $flag_full );
 	make_path( $flag_dir ) or die "$! ($flag_dir)" if ! -d $flag_dir;
     }	
-    Netflag::set( $flag_full );
-
-    $perlcode->();
-
-    Netflag::unset( $flag_full );
-    #warn "exit code: $?, \$?>>8=".($?>>8) if $deb;
-    #exit $?>>8; 
+    
+    my $will_do_it;
+    $will_do_it = 1 if !-s $viatmp or $force_rewrite;
+    if ( $will_do_it ){
+	Netflag::set( $flag_full );
+        $perlcode->();
+        Netflag::unset( $flag_full );
+	#warn "exit code: $?, \$?>>8=".($?>>8) if $deb;
+	#exit $?>>8; 
+    }else{
+	# file exists. Not to do job.
+    }	
  }
 }
 
