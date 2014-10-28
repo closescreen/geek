@@ -34,8 +34,36 @@ sub routes{
  my $se = shift;
  ref $se or die "First param must be a reference to Geek object";
  $se->{routes} = \@_;
- 
+ $se->check( $se->{routes} );
  return $se;
+}
+
+sub check{
+ # предварительная проверка структуры routes на валидность
+ my $se = shift;
+ my $rs = shift;
+ ref $rs eq "ARRAY" or die "routes must be a ARRAY! ".Dumper($rs);
+ if ( my @missing_cmd = grep {! $_->{cmd} } @$rs ){
+    die "Missing 'cmd' for routes: ".Dumper(@missing_cmd);
+ }
+ if ( my @missing_target = grep {! $_->{target} } @$rs ){
+    die "Missing 'target' for routes: ".Dumper(@missing_target);
+ } 
+ 
+ my %possible = (
+    target=>"Route template for matching with wanted file name(s)",
+    cmd =>"Command to run for matched route",
+    need =>"List of need files for wanted file",
+    any =>"One of this list is need for wanted file",
+    desc =>"Description for cmd",
+ );
+ 
+ for my $r ( @$rs ){
+    if ( my @bad_keys = grep {!$possible{$_}} keys %$r ){
+	die "Bad keys: @bad_keys in route ".Dumper($r)." Allowed only: ".Dumper(\%possible)
+    }
+ }
+ 
 }
 
 sub match{
@@ -57,7 +85,16 @@ sub match{
  if ( my @bad_params = grep { !$allowed{$_} } keys %pa ){
     die "Bad params: @bad_params. Allowed: ".(join(", ", keys %allowed));
  }
- my $wanted = $pa{ wanted };
+ my $wanted;
+ defined $pa{ wanted } or die "param wanted must be defined! (STRING or ARRAYREF or CODEREF)";
+ if ( !ref $pa{ wanted } ){ $wanted = [ split /\s+/, $pa{ wanted } ] }
+ elsif( ref $pa{ wanted } eq "ARRAY" ){ $wanted = $pa{ wanted } }
+ elsif( ref $pa{ wanted } eq "CODE" ){
+  $wanted = $pa{ wanted }->();
+  ref $wanted eq "ARRAY" or die "wanted=>sub{...} must return ARRAYREF!"; 
+ }else{
+    die "Unknown type of 'wanted' param. ".Dumper($pa{ wanted });
+ }
 
  my %possible_need = (
     "" => sub{()}, # nothing to add
@@ -192,6 +229,8 @@ sub match{
 			$rv->{$wanted_elem}{ job } = $job;
 			$rv->{$wanted_elem}{ vars } = {%_};
 		    }
+		}else{
+		    die "cmd must be defined for route! ".Dumper($r);
 		}
 	    }
 	}
@@ -381,6 +420,16 @@ sub qb{
  return $str;
 }
 
+sub desc(&){
+ # Usage: desc {"my text"}
+ # shortcut for desc => sub{"my text"}
+ # описание смысла выполняемой команды ( cmd=>sub{} )
+ # переданный код выполняется в момент сопоставления маршрута и должен возвращать строку.
+ if (ref $_[0] ne "CODE"){ die "desc() - First param must be a CODEREF.".caller() }
+ my $code = shift;
+ return ("desc",$code);
+}
+
 sub bash(&){
  # usage bash { code }, где code - возвращает строку (команду для bash)
  # shortcut for: 'cmd=>sub{ code }'
@@ -480,9 +529,6 @@ sub netflag{
  }
  
  { 
-#    if ($pa{stdall}){
-#	@pa{qw|stdout stderr|} = @pa{qw|stdall stdall|};
-#    }
     for my $file ( grep {$_} $pa{stdall} ){
 	my $dir = dirname( $file );
 	if (!-s $dir){
@@ -509,7 +555,7 @@ sub netflag{
 	my $full_cmd = "$set; $cmd";
 	
 	if ( $viatmp ){
-	    if ( $viatmp=~m/\.gz/ ){ $full_cmd = "( $full_cmd ) | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
+	    if ( $viatmp=~m/\.gz/ ){ $full_cmd = "set -o pipefail; ( $full_cmd ) | gzip > $viatmp.$t_ext && mv $viatmp.$t_ext $viatmp;" }
 	    else{ $full_cmd = "( $full_cmd )> $viatmp;" }
 	}
 	
@@ -518,12 +564,18 @@ sub netflag{
 	}
 	
 	warn "CMD: $full_cmd" if $deb;
-	$perlcode = sub{ system( 'bash', '-c', $full_cmd ) }; # now 'cmd' is a CODEREF
+	$perlcode = sub{ 
+	    system( 'bash', '-c', $full_cmd );
+	    warn "exit code: $?, \$?>>8=".($?>>8) if $deb;
+	    my $shell_ex_code = $?>>8;
+	    my $rv = !$shell_ex_code + 0;
+	    return wantarray ? ( $rv, "Shell exit code: $shell_ex_code" ) : $rv; 	
+	}; # now 'cmd' is a CODEREF
 
     }elsif( ref $cmd eq "CODE" ){ # as perl code ---------------
 	$perlcode = $cmd 
     }else{ # wrong
-	"Bad type of first param. ".Dumper($cmd).caller;
+	die "Bad type of first param. ".Dumper($cmd).caller;
     }
  
     my $flag_full = "$flag.$f_ext";
@@ -533,8 +585,9 @@ sub netflag{
 	my ($works, $works_err) = Netflag::works( $info );
 	die "Can't check process working ($flag_full): $works_err" if $works_err;
 	if ( $works ){
-    	    warn "$flag_full exists and process is works." if $deb;
-    	    exit 1;
+	    my $msg = "$flag_full exists and process is works.";
+    	    warn $msg if $deb;
+    	    return wantarray ? (-1, $msg) : -1;
 	}
     }
     {
@@ -546,12 +599,13 @@ sub netflag{
     $will_do_it = 1 if !-s $viatmp or $force_rewrite;
     if ( $will_do_it ){
 	Netflag::set( $flag_full );
-        $perlcode->();
+        my ($rv, $msg) = $perlcode->();
         Netflag::unset( $flag_full );
-	#warn "exit code: $?, \$?>>8=".($?>>8) if $deb;
-	#exit $?>>8; 
+
+	return wantarray ? ($rv, $msg) : $rv;
     }else{
 	# file exists. Not to do job.
+	return wantarray ? (-2, "File $viatmp already exists.") : -2;
     }	
  }
 }
