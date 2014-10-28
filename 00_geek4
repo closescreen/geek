@@ -124,7 +124,7 @@ $g->routes(
 #	    date;
 #	    ")
 #	}, 
-	bash { qb "sleep 20; echo $_{day} %s", qx(date) },
+	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
 #	cmc => sub{},
     }
 
@@ -144,26 +144,25 @@ my @wanted = (
     #"../RESULT/10/2014-10-09/google/3/urls02days.gz" ,"../RESULT/10/2014-10-10/google/3/urls02days.gz",# "../RESULT/10/2014-10-09/google/3/urls.gz",
 );
 
-my $wanted = sub{ \@wanted };
+my $want_sub = sub{ \@wanted };
 
-my @jobs = $g->match( need=>"all" ,any=>"max", deep=>4, wanted=>$wanted  );
-
-#die Dumper \@jobs;
 $\="\n";
-if (1){
- for my $job (@jobs){
-#    print Dumper $job;
-#    print "$job->{target}:\n      ";
-#    print "\tText:".$job->{job}."\n===========================";
+while ( my $wanted = $want_sub->() ){
+    my @jobs = $g->match( need=>"todo" ,any=>"max", deep=>4, wanted=>$wanted );
+#    die Dumper \@jobs;
+    if ( !@jobs ){
+	print "---End of jobs---";
+	last;
+    }
+    my $job = $jobs[0];
+    print Dumper $job;
     my ($rv, $msg) = netflag( 
 	$job->{job}, 
 	viatmp=>"../RESULT/TEST/$job->{vars}{day}/test.gz", 
-	force=>1, deb=>0, set=>"set -x", stdall=>"../RESULT/TEST/$job->{vars}{day}/test.log"
-	);
-    print "Return value: $rv, msg=$msg";	
- }
-}
-#die Dumper $matched;
+	force=>0, deb=>0, set=>"set -x", stdall=>"../RESULT/TEST/$job->{vars}{day}/test.log"
+    );
+    print "Return value: $rv, msg=$msg";
+}    
 
 
 

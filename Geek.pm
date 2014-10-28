@@ -91,6 +91,9 @@ sub match{
  elsif( ref $pa{ wanted } eq "ARRAY" ){ $wanted = $pa{ wanted } }
  elsif( ref $pa{ wanted } eq "CODE" ){
   $wanted = $pa{ wanted }->();
+  if ( !ref $wanted ){
+    $wanted = [$wanted]; # may be a single filename returned.
+  }
   ref $wanted eq "ARRAY" or die "wanted=>sub{...} must return ARRAYREF!"; 
  }else{
     die "Unknown type of 'wanted' param. ".Dumper($pa{ wanted });
@@ -101,7 +104,7 @@ sub match{
     "todo" => sub { map { $_->{name} } grep { ! $_->{test_ok} } @_ },
     "all" => sub{ map { $_->{name} } @_ }, # all "need" files to recursive tree
  ); 
- 
+
  my %possible_any = (
     "" => sub{()}, # nothing to add
     "max" => sub{ # max name from 'any' list
@@ -115,18 +118,22 @@ sub match{
     "all" => sub{ map { $_->{name} } @_ }, # all "need" files to recursive tree
  );  
  
- my %recursive_code;
+ my %filter_code;
  if (!ref $pa{need}){
-    $recursive_code{need} = $possible_need{$pa{need}||""} or die "not possible need=>'$pa{need}'. Possible:".Dumper(\%possible_need);
+    $filter_code{need} = $possible_need{$pa{need}||""} or die "not possible need=>'$pa{need}'. Possible:".Dumper(\%possible_need);
+    $filter_code{wanted} = $pa{need} ? $filter_code{need} : $possible_need{todo};
  }else{
-    $recursive_code{need} = $pa{need};
+    $filter_code{need} = $pa{need};
+    $filter_code{wanted} = $filter_code{need};
  }    
  
  if (!ref $pa{any}){
-    $recursive_code{any} = $possible_any{ $pa{any}||"" } or die "not possible any=>'$pa{any}'";
+    $filter_code{any} = $possible_any{ $pa{any}||"" } or die "not possible any=>'$pa{any}'";
  }else{
-    $recursive_code{any} = $pa{any};
+    $filter_code{any} = $pa{any};
  }
+ 
+
  
  $pa{deep}+=0;
  
@@ -145,6 +152,9 @@ sub match{
  my %allowed_route_keys = (target=>1, need=>1, any=>1, cmd=>1,);
  
  for my $wanted_elem ( @$wanted ){ # level I
+    
+    my @tested_elem = map { { name=>$_, test_ok=>$se->test( $testers, $_) } } $wanted_elem;
+    next if not $filter_code{wanted}->(@tested_elem);
   
     for my $r ( @{ $se->{routes}||[] } ){
 	ref $r eq "HASH" or die "route must be a hashref:".Dumper($r);
@@ -179,9 +189,9 @@ sub match{
 				    $rv->{ $wanted_elem }{ $node_name }{ $type } = [ @tested ];
 				    #if ( $recursive==1 ){
 				    
-				    ref $recursive_code{$node_name} or die "recursive_code for node name '$node_name' is not a CODEREF !"; 
+				    ref $filter_code{$node_name} or die "filter_code for node name '$node_name' is not a CODEREF !"; 
 				    if ( !$pa{deep} or $pa{deep}>$pa{ _recurse_level } ){
-					push @recursive_wanted, $recursive_code{$node_name}->(@tested);
+					push @recursive_wanted, $filter_code{$node_name}->(@tested);
 				    }	
 				    
 				}
