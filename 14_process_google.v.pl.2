@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#> версия чистого перла N2
+#> Making table "bids" (tn3).
+#>> For google, ssp_sites.
+#>> in (from tn3 total.gz):
+#>>  1   2     3   4  5       6        7   8   9     10      11
+#>> uid second sz pz  bt exposureprice ad dom path sestart isview
+
+cut -d* -f3,7,8 |
+perl -w -F'\*' -lane'
+# now input:
+# sz,ad,dom
+$bids{ $F[0] }{ $F[1] }++;
+$dom{ $F[0] } ||= $F[2];
+
+END{
+ $,="*";
+ for $sz ( keys %bids ){
+     for $ad ( keys %{$bids{$sz}} ){
+        print $sz, $ad, $bids{ $sz }{ $ad }, $dom{ $sz };
+     }
+ }
+}
+' | sort -T. -t\* -S 333M -n -k1,1 -k2,2
+
+
+#>> OUT: sz, ad, bids, domain.
+#>> 
+#>> | field  | description |
+#>> | ------ | ----------- |
+#>> | sz     |
+#>> | ad     |
+#>> | bids   | количество бидов |
+#>> | domain | домен (как внешний ключ для объединения с данными, сгруппированными по доменам ) |
+#>>     Прим. 
+#>>      Поле "количество бидов при exposureprice>0" (posibids) отсутствует, потому что
+#>>      оно равно значению поля bids, за исключением случаев, когда ad=0. В этом случае оно равно 0.
+
+
+
