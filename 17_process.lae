@@ -1,20 +1,28 @@
 #!/usr/bin/env bash
 #> urls.
 
-#>>IN:
-#>> google:
-#>>  1   2     3   4  5       6        7   8   9     10      11
-#>> uid second sz pz  bt exposureprice ad dom path sestart isview
-#>> OR
-#>> net_sites:
-#>> uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
-
+#>IN:
+#> google:
+#>  1   2     3   4  5       6        7   8   9     10      11
+#> uid second sz pz  bt exposureprice ad dom path sestart isview
+#> OR
+#> net_sites:
+#> uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+#> OR:
+#> ssp_sites:
+#> uid second sid sz pz bt exposureprice ad dom path sestart isview
 
 #>> sorted by UID,SECOND:
 
 lb=${1:?labels!}
 
-lae -lb="$lb" '
+fields_numbers=`perl -e'
+ @F=split /\s+/, shift; 
+ %L = map { $F[$_],$_+1 } (0..$#F); 
+ print join ",", @L{qw| uid dom path sestart isview |}' "$lb"`
+
+cut -d* -f$fields_numbers |
+lae -lb="uid dom path sestart isview" '
 my %sessions_count;
 my %sessions_ends;
 my %urls;
