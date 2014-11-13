@@ -11,7 +11,7 @@ perl -w -F'\*' -lane'
 # now input:
 # sz,ad,dom
 $bids{ $F[0] }{ $F[1] }++;
-$dom{ $F[0] } ||= $F[2];
+$dom{ $F[0] } ||= $F[2]||"";
 
 END{
  $,="*";

@@ -4,9 +4,17 @@
 #>> in:
 #>> ожидаются поля: dom, uid, sestart
 # входной формат дается в этом параметре:
+
 lb=${1:?labels!}
 
-lae -lb="$lb" '
+fields_numbers=`perl -e'
+ @F=split /\s+/, shift; 
+ %L = map { $F[$_],$_+1 } (0..$#F); 
+ print join ",", @L{qw| uid dom sestart isview |}' "$lb"`
+
+cut -d* -f$fields_numbers |
+lae -lb="uid dom sestart isview" '
+# теперь на входе только три поля.
 my ( %sessions, %views );
 _{
   return if not Isview;

@@ -17,7 +17,7 @@ force_start=${1:-""} # можно указать "force"
 
 [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
-jobs="google net_sites"
+jobs="google net_sites ssp_sites"
 #jobs="google net_sites ssp_sites"
 typenums="0 1 3"
 
@@ -25,21 +25,23 @@ typenums="0 1 3"
 [[ -z "$force_start" ]] && loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
-proc_num=3 # count of parallel processes at time
+proc_num=2 # count of parallel processes at time
 
 do_it ()  { local pf=$1; local cmd=$2; fork -pf=$pf -single "$cmd" -wait; }
+
+# single jobs:
+do_it "../pids/singleton.pids" "nice ./32_COPY_TRAITS"
+do_it "../pids/singleton.pids" "nice ./95_REMOVE"
 
 for proc in `seq 1 "$proc_num"`; do
     (
     
     pf="../pids/$proc.pids"
     
-    do_it "../pids/singleton.pids" "nice ./32_COPY_TRAITS"
     do_it "$pf" "nice ./35_DOM_NET" # для списка сетей, в т.ч. и для google/szvars30days
     do_it "$pf" "nice ./12_MERGE net_sites 0" # для списка сетей, в т.ч. и для google/szvars30days
     do_it "$pf" "nice ./10_HOURS net_sites 0" # для списка сетей, в т.ч. и для google/szvars30days
-    do_it "../pids/singleton.pids" "nice ./95_REMOVE"
-    
+
     for job in $jobs;do
 
 	do_it "$pf" "nice ./55_SZGR $job"

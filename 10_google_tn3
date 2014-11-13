@@ -18,7 +18,7 @@ job_history_log "$1" "uid,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,s
 
 @F[ 7,8 ] = $F[7] ? map {$_||""} Dom::split_ref( $F[7] ) : ("",""); # справа добавляется еще одна колонка
 
-print join("*",@F);
+print join("*",map {$_||""} @F);
 ' | sort -T. -t\* -n -k1,1 -k2,2
 
 

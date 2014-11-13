@@ -70,7 +70,7 @@ oldff=`find ../RESULT/10/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -ty
 # Удаление traits_copy
 oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" -type d | 
  only -having='s|traits_copy/(\d\d\d\d-\d\d-\d\d)|10/$1/google/3/sz_vars_30days.gz|' | 
- only -older=10days`
+ only -older="$safe_deep_day"`
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 

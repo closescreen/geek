@@ -11,7 +11,7 @@
 
 
 #>> sorted by UID,SECOND:
-set -x
+set +x
 lb=${1:?labels!}
 
 fields_numbers=`perl -e'
