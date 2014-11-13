@@ -74,8 +74,8 @@ oldff=`find ../RESULT/traits_copy/ -name "[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][
 [[ -n "$oldff" ]] && rm -rf $oldff
 
 
-#----------- пустые *.gz == 20байт ----------
-emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20`
+#----------- пустые *.gz == 20байт ( моложе 3 дней ) ----------
+emptyff=`find ../RESULT/ -type f -name "*.gz" | only -sizele=20 | only -younger=3days`
 [[ -n "$emptyff" ]] && echo -e "Found empty files: $emptyff \n -will removed." && rm $emptyff
 
 # ---- google/3/urls30days.gz --------
