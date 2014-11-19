@@ -16,6 +16,8 @@ my $force;
 my $deb;
 my $set="";
 my $first_job;
+my $desc;
+my $norun;
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -28,6 +30,8 @@ GetOptions(
     'debug' => \$deb,
     'set=s' => \$set,
     'first_job' => \$first_job,
+    'desc' => \$desc, # print descriptions
+    'norun' => \$norun, # not run jobs (skip they)
 ) or die "Bad opt!";
 
 @wanted = split /\s+/, join " ", @wanted;
@@ -43,16 +47,50 @@ my %sm = $g->named_groups(
     day => '\d\d\d\d-\d\d-\d\d',
     hour => '\d\d\d\d-\d\d-\d\dT\d\d',
     job => '\w+',
-    typenum => '\d+',
+    tn => '\d+', # typenum
 );
 
 my $res = "../RESULT/10";
 
 $g->routes(
-    {	target "$res/$sm{day}/$sm{job}/3/url_groups_diff.gz",
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
+	desc {"кластеризация $_{day}/$_{job}/$sm{tn}"},
+	need {
+	    bids => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/bids.gz") },
+	    views => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/views.gz") },
+	    tn1_totals => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/1/total.gz") },
+	    sessions => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/sessions.gz") },
+	    pzbt => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
+	    traits30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/traits30days.gz" },
+	    dom_net => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
+	    dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr.txt" },
+	},
+	cmd => sub{ "nothing"},
+    },
+    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/bids.gz",
+	need {
+	    total => sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" },
+	    },
+	perl { "hello $_{TARGET}" },	
+    },
+    {	target "$res/$sm{day}/$sm{job}/0/views.gz",
+	need {
+	    total => sub{ "$res/$+{day}/$+{job}/0/total.gz" },
+	},
+	cmd => sub{ "nothing"},
+    },
+    {	target "$res/$sm{day}/$sm{job}/1/total.gz",
+	need {
+	    total => sub{ "$res/$+{day}/$+{job}/0/total.gz" },
+	},
+	cmd => sub{ "nothing"},
+    },    
+
+#-----------URLS----------
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups_diff.gz",
 	# need - требуется иметь:
 	need {
-	    url_groups => sub{ days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/google/3/url_groups.gz") },
+	    url_groups => sub{ days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/$+{job}/$+{tn}/url_groups.gz") },
 	},
 #LANG=POSIX sort -T. -t\* -m -k1,1 -k2,2 <(zcat "$prev_src" | awk -v"OFS=*" '{print $0,"prev"}') <(zcat "$src" | awk -v"OFS=*" '{print $0,"curr"}') | ./27_diff
 
@@ -67,85 +105,59 @@ $g->routes(
 	    #netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
 	},
     },
-    {	target "$res/$sm{day}/google/3/url_groups.gz",
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
 	any {
 	    # here sub return code:
-	    dom_grNdays => sub{  map { "$res/$+{day}/google/3/dom_gr${_}days.gz" } reverse (1..7) },
+	    dom_grNdays => sub{  map { "$res/$+{day}/$+{job}/$+{tn}/dom_gr${_}days.gz" } reverse (1..7) },
 	},
 	perl { warn "what to do?" },
     },
-    {	target "$res/$sm{day}/google/3/dom_gr(?<N>\\d)days.gz",
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr(?<N>\\d)days.gz",
 	# д.б х-м!
 	need {
-	    dom_gr => sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{N} )->files("$res/\%F/google/3/dom_gr.txt") }
+	    dom_gr => sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{N} )->files("$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
 	},     
 	perl { warn "what to do again?" },    
     },
-    {	target "$res/$sm{day}/google/3/dom_gr.txt",
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr.txt",
 	any {
-	    domsNNdays => sub{ map {"$res/$+{day}/google/3/doms${_}days.gz"} reverse (10..30) },
+	    domsNNdays => sub{ map {"$res/$+{day}/$+{job}/$+{tn}/doms${_}days.gz"} reverse (10..30) },
 	},
 	perl {"aa"},
     },
-    {	target "$res/$sm{day}/google/3/doms(?<NN>\\d\\d)days.gz", 
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/doms(?<NN>\\d\\d)days.gz", 
 	need {
-	    urlsNNdays=>sub{ "$res/$+{day}/google/3/urls$+{NN}days.gz" },
+	    urlsNNdays=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls$+{NN}days.gz" },
 	},
 	perl {"oy-oy"},
     },
-    {	target "$res/$sm{day}/google/3/urls(?<NN>\\d\\d)days.gz",
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls(?<NN>\\d\\d)days.gz",
 	need {
-	    urls=>sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{NN} )->files("$res/%F/google/3/urls.gz") },
+	    urls=>sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{NN} )->files("$res/%F/$+{job}/$+{tn}/urls.gz") },
 	},
 	perl { print $_{day} },
     },
     {
-	target "$res/$sm{day}/google/3/urls.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls.gz",
 	need {
-	    total=>sub{ "$res/$+{day}/google/3/total.gz" }
+	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" }
 	},
 	perl {"sss"},
     },
     {
-	target "$res/$sm{day}/google/3/total.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/total.gz",
 	need {
-	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/google/3/%FT%H.gz") }
+	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
 	perl {"merge"},
     },
     {
-	target "$res/$sm{day}/google/3/$sm{hour}.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
 	perl {"hist"},
     
     },
     
-#    { 	target "$res/$sm{day}/google/3/sz_vars_30days.gz", 
-#	need { 
-#	    bids => sub{
-#		# в данном случае возвращается arrayref, в котором список строк - значит это список файлов
-#		$g->days( from=>$+{day}, n=>-3 )->files( "$res/\%F/google/3/bids.gz" );
-#	    },
-#	    total => sub{
-#		$g->days( from=>$+{day}, n=>-3 )->files( "$res/\%F/google/0/total.gz" );
-#	    },
-#	},
-#	
-#	# определенные пользователем переменные - ,желательно, в нижнем регистре, предопределенные - в верхнем.
-#	perl {"I return: day:$+{day}, target:$+{TARGET}, total:'$+{total}', bids:'$+{bids}'"},
-#	
-#	cmd => sub{
-#	    sub{ print Dumper \@_ },
-#	    $+{TARGET}, "'$+{total}'", "'$+{bids}'"
-#	},
-#
-#    },
-#    { 	target "$res/$sm{day}/google/3/bids.gz",
-#	need {
-#		total => sub{ "$res/$+{day}/google/3/total.gz" },
-#	    },
-#	perl { "hello $_{TARGET}" },	
-#    }
     {
 	target "../RESULT/TEST/$sm{day}/test.gz",
 	desc {"тестовый файл $_{day}"},
@@ -167,6 +179,9 @@ if ( $dump_jobs ){	warn Dumper \@jobs and exit 0  }
 if ( !@jobs and $deb ){ warn "---End of jobs---" and last }
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
 for my $job ( @jobs_to_do ){
+    my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
+    print $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
+    next if $norun;
     my ($rv, $msg) = netflag( 
 	$job->{job}, 
 	viatmp=>$job->{target}, 
