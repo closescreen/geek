@@ -27,7 +27,7 @@ if ( my $sid_ind = $LI{ sid } ){
     };
     for my $sid ( sort {$a<=>$b} keys %hash ){
 	for my $sz ( sort {$a<=>$b} keys %{$hash{$sid}} ){
-	    for my $pz ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}} ){
+	    for my $pz ( sort {$a<=>$b} map {$_||0} keys %{$hash{$sid}{$sz}} ){
 		for my $bt ( sort {$a<=>$b} keys %{$hash{$sid}{$sz}{$pz}} ){
 		    p $sid, $sz, $pz, $bt, $hash{ $sid }{ $sz }{ $pz }{ $bt };
 		}
@@ -40,7 +40,7 @@ if ( my $sid_ind = $LI{ sid } ){
 	$hash{ $F[SZ] }{ $F[PZ] }{ $F[BT] }++;
     };
     for my $sz ( sort {$a<=>$b} keys %hash ){
-	for my $pz ( sort {$a<=>$b} keys %{$hash{$sz}} ){
+	for my $pz ( sort {$a<=>$b} map {$_||0} keys %{$hash{$sz}} ){
 	    for my $bt ( sort {$a<=>$b} keys %{$hash{$sz}{$pz}} ){
 		p $sz, $pz, $bt, $hash{ $sz }{ $pz }{ $bt };
 	    }

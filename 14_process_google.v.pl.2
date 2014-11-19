@@ -10,7 +10,7 @@ cut -d* -f3,7,8 |
 perl -w -F'\*' -lane'
 # now input:
 # sz,ad,dom
-$bids{ $F[0] }{ $F[1] }++;
+$bids{ $F[0] }{ $F[1]||0 }++;
 $dom{ $F[0] } ||= $F[2]||"";
 
 END{
