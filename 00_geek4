@@ -51,46 +51,70 @@ my %sm = $g->named_groups(
 );
 
 my $res = "../RESULT/10";
+my $traits_copy = "../RESULT/traits_copy";
+
+sub Files($$){  } # Files($days,TMPL) - файлы за 30 дней назад включая текущий $+{day}. Для сокращения кода.
+sub ExistsFilesMinimum($$$){
+ # вычисляет и просит только имеющиеся файлы из перечисленных
+ # введена как принятие неизбежности того, что некоторые файлы пересчитать не могу, приходится брать что есть
+ my ($days, $tmpl, $minimum ) = @_;
+ my @need = days(from=>$+{day}, n=>-$days, shift=>1 )->files($tmpl);
+ my @exists = grep { $g->test($_) } @need;
+ if ( @exists < $minimum ){
+    return @need
+ }else{
+    return @exists
+ }    
+}
 
 $g->routes(
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	desc {"кластеризация $_{day}/$_{job}/$sm{tn}"},
 	need {
-	    bids => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/bids.gz") },
-	    views => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/views.gz") },
-	    tn1_totals => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/1/total.gz") },
-	    sessions => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/sessions.gz") },
-	    pzbt => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
+	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
+	    views => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/views.gz") },
+	    tn1_totals => sub{ Files(30, "$res/\%F/$+{job}/1/total.gz") },
+	    sessions => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/sessions.gz") },
+	    pzbt => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
 	    traits30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/traits30days.gz" },
-	    dom_net => sub{ days(from=>$+{day}, n=>-30, shift=>1 )->files("$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
+	    dom_net => sub{ Files(30, "$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
 	    dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr.txt" },
 	},
 	cmd => sub{ "nothing"},
     },
-    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/bids.gz",
+    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<basename>bids\.gz|views\.gz|sessions\.gz|pzbt\.gz|uidsz.gz)",
 	need {
 	    total => sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" },
 	    },
-	perl { "hello $_{TARGET}" },	
+	perl { "hello $_{TARGET}. There must use hash for select real script because target is regexp" },	
     },
-    {	target "$res/$sm{day}/$sm{job}/0/views.gz",
+    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/traits30days.gz",
 	need {
-	    total => sub{ "$res/$+{day}/$+{job}/0/total.gz" },
-	},
-	cmd => sub{ "nothing"},
+	    uidsz => sub{ ExistsFilesMinimum(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz",20) }, 
+	    predicted => sub { ExistsFilesMinimum(30, "$traits_copy/%F/predict_gr_v2.gz",20) },
+	    predicted_add => sub { ExistsFilesMinimum(30, "$traits_copy/%F/predicted_add.gz",20) },
+	    auditory => sub { ExistsFilesMinimum(30, "$traits_copy/%F/auditory.gz",20) },
+	    ctr10gr => sub { ExistsFilesMinimum(30, "$traits_copy/%F/ctr10gr.gz",20) },
+	    ctr11gr => sub { ExistsFilesMinimum(30, "$traits_copy/%F/ctr11gr.gz",20) },
+	    },
+	perl { "hello $_{TARGET}." },	
     },
-    {	target "$res/$sm{day}/$sm{job}/1/total.gz",
+    {	target "$res/$sm{day}/net_sites/0/dom_net.gz", # только .../net_sites/0/...
 	need {
-	    total => sub{ "$res/$+{day}/$+{job}/0/total.gz" },
+	    total => sub{ "$res/$+{day}/net_sites/0/total.gz" },
 	},
-	cmd => sub{ "nothing"},
-    },    
+	bash { qb "./35_DOM_NET %s deb", $_{day} },
+	note { viatmp => 0, flag=>0 },
+    },
+    { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz|ctr11gr.gz)",
+	perl { "hello $_{TARGET}." },	
+    },
 
 #-----------URLS----------
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups_diff.gz",
 	# need - требуется иметь:
 	need {
-	    url_groups => sub{ days( from=>$+{day}, shift=>1, n=>-2 )->files("$res/\%F/$+{job}/$+{tn}/url_groups.gz") },
+	    url_groups => sub{ Files(2, "$res/\%F/$+{job}/$+{tn}/url_groups.gz") },
 	},
 #LANG=POSIX sort -T. -t\* -m -k1,1 -k2,2 <(zcat "$prev_src" | awk -v"OFS=*" '{print $0,"prev"}') <(zcat "$src" | awk -v"OFS=*" '{print $0,"curr"}') | ./27_diff
 
@@ -116,7 +140,7 @@ $g->routes(
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr(?<N>\\d)days.gz",
 	# д.б х-м!
 	need {
-	    dom_gr => sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{N} )->files("$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
+	    dom_gr => sub{ Files( $+{N}, "$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
 	},     
 	perl { warn "what to do again?" },    
     },
@@ -134,7 +158,7 @@ $g->routes(
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls(?<NN>\\d\\d)days.gz",
 	need {
-	    urls=>sub{ $g->days( from=>$+{day}, shift=>1, n=>-$+{NN} )->files("$res/%F/$+{job}/$+{tn}/urls.gz") },
+	    urls=>sub{ Files( $+{NN}, "$res/%F/$+{job}/$+{tn}/urls.gz") },
 	},
 	perl { print $_{day} },
     },
@@ -160,10 +184,19 @@ $g->routes(
     
     {
 	target "../RESULT/TEST/$sm{day}/test.gz",
+	need { aa=>sub{"aa"} },
 	desc {"тестовый файл $_{day}"},
 	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
 #	cmc => sub{},
-    }
+    },
+#    {
+#	target "../RESULT/TEST/$sm{day}/test.gz",
+#	need { bb=>sub{"bb"}},
+#	desc {"тестовый файл - redefined $_{day}"},
+#	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
+#	cmc => sub{},
+#    }
+    
 
 );
 
@@ -175,16 +208,27 @@ if ($show_targets){
 
 $\="\n";
 my @jobs = $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
-if ( $dump_jobs ){	warn Dumper \@jobs and exit 0  }	
-if ( !@jobs and $deb ){ warn "---End of jobs---" and last }
+if ( $dump_jobs ){	print Dumper \@jobs and exit 0  }	
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
 for my $job ( @jobs_to_do ){
     my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
-    print $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
+    if ($desc){
+	my @desc;
+	push @desc, $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
+	push @desc, "# $job->{job}" if !ref $job->{job};
+	print join " ", @desc;
+    }	
+    
     next if $norun;
+    
+    my %defaults = (viatmp=>$job->{target}, flag=>$job->{target} );
+    my %notes = %{ $job->{note}||{} };
+    print join ",", map {"$_=$notes{$_}"} keys %notes if %notes and $deb;
+    
     my ($rv, $msg) = netflag( 
-	$job->{job}, 
-	viatmp=>$job->{target}, 
+	$job->{job},
+	%defaults,
+	%notes, 
 	force=>$force, 
 	deb=>$deb, 
 	set=>$set, 
