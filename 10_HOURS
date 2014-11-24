@@ -29,7 +29,7 @@ action=$( href -dict="
 
 sids=$( href -dict="
     ssp_sites=>\"` cat ssp_sites.txt | words -fu=sortnu -ot='|' `\",
-    google=>187537,
+    google=>\"`conf 00_conf.txt google_sid`\", # see 00_conf.txt
     net_sites=>\"` cat network_sites.txt | words -fu=sortnu -ot='|' `\",
     " -val="$job"
 )
