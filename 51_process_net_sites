@@ -273,10 +273,10 @@ _{
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
 
- #    1        2        3       4      5(winbids)  6           7            8               9         10                11(posibids)       12(win_posi_bids)   
- p0 $F[SID], $F[SZ], $F[DOM], $dom_gr,   $ctr,    "NA",     $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win,    "NA",               "NA",       
+ #          1            2        3         4       5             6           7            8               9              10         11       
+ p0 "$F[SID]:$F[SZ]", $F[DOM], $dom_gr,   $ctr,    "NA",     $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win,    "NA",     "NA",       
  
- #  13         14..17       18..63                 64..65     66..102
+ #  12          13..16       17..62                 63..64    65..101
  $pzbt_count, @in_nets, @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids;
 
      
@@ -285,23 +285,22 @@ _{
  #>> OUT:
  #>> | field               | description  |
  #>> | ------------------- | ------------ |
- #>> | 1  sid              |
- #>> | 2  sz               | 
- #>> | 3  domain           | 
- #>> | 4  dom_gr           | доменная группа |
- #>> | 5  ctr              | клики/показы |
- #>> | 6  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | 7  avg_session      | ср длина пользов. сессии на домене                 |
- #>> | 8  all_uids         | вего кук на сайтзоне                               |
- #>> | 9  avg_winprice     | средний winprice                                   |
- #>> | 10  avg_exp_div_win | среднее отношение expprice/winprice                |
- #>> | 11 posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
- #>> | 12  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
- #>> | 13 pzbt_count       | количество сочетаний bt-pz                              |
- #>> | 14..17 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
- #>> | 18..63 trait fields | 46 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
- #>> | 64..65 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
- #>> | 66..102 bt bids     | 37 полей процент бидов по bt / к бидам по sz в (%)                    |
+ #>> | 1  sid:sz           |
+ #>> | 2  domain           | 
+ #>> | 3  dom_gr           | доменная группа |
+ #>> | 4  ctr              | клики/показы |
+ #>> | 5  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
+ #>> | 6  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 7  all_uids         | вего кук на сайтзоне                               |
+ #>> | 8  avg_winprice     | средний winprice                                   |
+ #>> | 9  avg_exp_div_win  | среднее отношение expprice/winprice                |
+ #>> | 10 posibids         | отношение posibids/bids - доля бидов с положит ставкой  |
+ #>> | 11  win_posi_bids   | доля выигранных бидов от тех, где ставка>0              |
+ #>> | 12 pzbt_count       | количество сочетаний bt-pz                              |
+ #>> | 13..16 in_nets      | 4 поля признаков сетей, в кот. входит сайтзона 1/0      |
+ #>> | 17..62 trait fields | 46 полей: male,female,young,adult,old,ctr1,...ctr11 (%) | 
+ #>> | 63..64 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
+ #>> | 65..101 bt bids     | 37 полей процент бидов по bt / к бидам по sz в (%)                    |
  
 };
 
