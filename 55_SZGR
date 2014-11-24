@@ -12,6 +12,14 @@ day=${2:-""}
 deb=${3:-""}
 [[ -n "$deb" ]] && set -x
 
+typenum=$(
+ href -dict="
+    net_sites => 0,
+    google => 3,
+    ssp_sites => 3,
+    " -val="$job"
+)
+
 N=30
 server="crawler.adriver.x"
 remote_project="/work/share/d.belyaev/1460_1421"
@@ -20,14 +28,22 @@ deep=`conf 00_conf.txt report_deep`
 
 if [[ -n "$day" ]]; then
     find_path="../RESULT/10/$day/"
+    deep=366 # отключаем deep когда day
 else
     find_path="../RESULT/10/"
 fi
 
 maxf=`conf 00_conf.txt maxf`
 
-find "$find_path" -wholename "*/$job/3/sz_vars_${N}days.gz" | sort -r | only -upto="$deep" |
-washing \
+emptyff=`find "$find_path" -wholename "*/$job/$typenum/clust_sz_1.txt | only -sezele=0`
+if [[ -n "$emptyff" ]]; then
+    echo "Find and remove empty files: $emptyff. Look bugs in R-script or his source data" >&2
+    rm $emptyff
+fi    
+
+find "$find_path" -wholename "*/$job/$typenum/sz_vars_${N}days.gz" | sort -r | only -upto="$deep"days |
+ washing \
+    -d \
     -maxf="$maxf" \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
