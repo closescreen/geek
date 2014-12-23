@@ -94,6 +94,8 @@ function flush(){
 
 my %co = do "00_conf.txt";
 
+my $google_sid = $co{google_sid} or die "google sid!";
+
 my $net_list = shift or die "nets!";
 my @net_list = grep {$_} split /\s+/, $net_list;
 
@@ -287,20 +289,20 @@ _{
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
- #     1       2        3     4       5           6            7            8             9            10           11               12        13,14,15,16
- p0 $F[SZ], $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
+ #              1            2        3     4       5           6            7            8             9            10           11               12        13,14,15,16
+ p0 "$google_sid:$F[SZ]", $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, @in_nets,
  #    17..62               63,64     65..79
   @{$traits_sz}[1..46], @pz_bids, @bt_bids;
 
  #>> OUT:
  #>> | field               | description  |
  #>> | ------------------- | ------------ |
- #>> | 1  sz               | 
+ #>> | 1  google_sid:sz    | (google_sid всегда одинаковый) |
  #>> | 2  domain           | 
- #>> | 3  dom_gr	   | группа домена |
+ #>> | 3  dom_gr	   | группа домена  |
  #>> | 4  ctr              | клики/показы  |
  #>> | 5  winbids          | процент выигранных нами бидов (просмотры/биды) (%) |
- #>> | 6  avg_session      | ср длина пользов. сессии на домене                 |
+ #>> | 6  avg_session      | ср длина пользов. сессии на домене (по домену)     |
  #>> | 7  all_uids         | вего кук на сайтзоне                               |
  #>> | 8  avg_winprice     | средний winprice                                   |
  #>> | 9  avg_exp_div_win  | среднее отношение expprice/winprice                |

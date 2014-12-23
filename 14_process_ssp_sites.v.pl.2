@@ -20,7 +20,7 @@ END{
  for $sid ( keys %bids ){
     for $sz ( keys %{ $bids{$sid} } ){
         for $ad ( keys %{ $bids{$sid}{$sz} } ){
-    	    print $sid, $sz, $ad, $bids{ $sid }{ $sz }{ $ad }, $dom{ $sid }{ $sz };
+    	    print $sid, $sz, $ad, $bids{ $sid }{ $sz }{ $ad }, $dom{ $sid }{ $sz }||"";
         }
     }
  }    

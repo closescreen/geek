@@ -45,7 +45,7 @@ fi
 # минимальное кол-во urls.gz (minN) должно иметься для каждого:
 ff=` echo "$ff" | only '[[ $(fn2days %f | hours -n=-'$minN'days -shift=1day -days | files "../RESULT/10/%F/'"$job/$typenum"'/urls.gz" | only -s -all  ) ]]' `
 
-ff=$( echo "$ff" | only --upto="$deep" )
+#ff=$( echo "$ff" | only --upto="$deep" )
 
 [[ -n "$ff" ]] || exit 1
 

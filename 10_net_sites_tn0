@@ -10,8 +10,8 @@ set -u
 
 sids=${2:? sids !} # like a 111|2222|33333|...
 
-job_history_log "$1" "uid,second,sid=${sids},sz,pz,bt,exposureprice,secondprice,ad,network,ref,typenum=0,statusnum=0"\
-    -fn -cut="typenum,statusnum" -true="uid" -fn |
+job_history_log "$1" "uid!=0,second,sid=${sids},sz,pz,bt,exposureprice,secondprice,ad,network,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref"\
+    -fn -cut="typenum,statusnum,usergroup" -fn |
  ./10_url_clean -url_field=10 | # <----преобр ref
  perl -Mstrict -MDom -w -e'
  # IN: uid,second,sid,sz,pz,bt,exposureprice,secondprice,ad,network,ref

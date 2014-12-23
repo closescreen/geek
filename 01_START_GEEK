@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+#> Запуск всех скриптов.
+
+export PATH=$PATH:/usr/local/rle/var/bike
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5
+export PATH=$PATH:/usr/local/rle/bin
+export SCALA_HOME=$HOME/scala-2.11.2
+export PATH=$SCALA_HOME/bin:$PATH
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+# запуск только при низком loadaverage или при "force"
+loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
+echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
+
+target_date="2014-12-10"
+
+# 01_START_REMOVE - запускается перед всеми, чтобы не удалять во время работы, а то зависает
+
+job="google"
+target="../RESULT/10/$target_date/$job/3/clust_sz_1.txt"
+proc=3 # count of parallel processes at time
+fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./01_START_REMOVE $job ; nice ./00_geek4 -desc -want=$target"
+
+job="net_sites"
+target="../RESULT/10/$target_date/$job/0/clust_sz_1.txt"
+proc=1
+fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./01_START_REMOVE $job; nice ./00_geek4 -desc -want=$target"
+
+job="ssp_sites"
+target="../RESULT/10/$target_date/$job/3/clust_sz_1.txt"
+proc=1
+fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./01_START_REMOVE $job; nice ./00_geek4 -desc -want=$target" -kill
+
+
+)>>"$0.log" 2>&1

@@ -33,7 +33,7 @@ typenum=$(
      ssp_sites => 3,
  " -val="$job"
 )
-chk "$typenum" "typenum for $job" || exit 1
+[[ -z "$typenum" ]] && exit 0
 
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/uidsz.gz" | only -s`

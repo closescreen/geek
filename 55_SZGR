@@ -35,7 +35,7 @@ fi
 
 maxf=`conf 00_conf.txt maxf`
 
-emptyff=`find "$find_path" -wholename "*/$job/$typenum/clust_sz_1.txt" | only -sezele=0`
+emptyff=`find "$find_path" -wholename "*/$job/$typenum/clust_sz_1.txt" | only -sizele=0`
 
 if [[ -n "$emptyff" ]]; then
     echo "Find and remove empty files: $emptyff. Look bugs in R-script or his source data" >&2
@@ -44,7 +44,6 @@ fi
 
 find "$find_path" -wholename "*/$job/$typenum/sz_vars_${N}days.gz" | sort -r | only -upto="$deep"days |
  washing \
-    -d \
     -maxf="$maxf" \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \

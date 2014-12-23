@@ -111,4 +111,4 @@ for day in $days; do
 done
 
 
-)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

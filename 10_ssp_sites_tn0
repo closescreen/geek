@@ -2,6 +2,7 @@
 
 sids=${2:?sids!} #like a: 123|234|3254
 
-job_history_log "$1" "sid=$sids,sz,ad,exposureprice,winprice,uid,typenum=0,statusnum=0" -fn -cut="statusnum,typenum,uid" -true="sz,uid" |
+job_history_log "$1" "sid=$sids,sz,ad,exposureprice,winprice,uid!=0,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups)" -fn \
+ -cut="statusnum,typenum,uid,usergroup" -true="sz" |
 sort -T. -t\* -n -k1,1 -k2,2 -k3,3
 

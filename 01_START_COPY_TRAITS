@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+export PATH=$PATH:/usr/local/rle/var/bike
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5
+export PATH=$PATH:/usr/local/rle/bin
+export SCALA_HOME=$HOME/scala-2.11.2
+export PATH=$SCALA_HOME/bin:$PATH
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+force_start=${1:-""} # можно указать "force"
+wanted_day=${2:-""}
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+# запуск только при низком loadaverage или при "force"
+#[[ -z "$force_start" ]] && loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
+#echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
+
+fork -pf=../pids/copy_traits.pids --single "nice ./32_COPY_TRAITS" "$wanted_day"
+
+)>>"$0.log" 2>&1

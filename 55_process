@@ -31,10 +31,19 @@ rem_out2="$rem_result/clust_sz_2.txt"
 rem_out3="$rem_result/clust_sz_3.png"
 
 
-if ( ssh "${USER}@${server}" "[[ -s $rem_out1 && -s $rem_out2 ]] || $rem_project/bin/clust_sz.sh $rem_src $rem_out1 $rem_out2 $rem_out3" )
+#if ( ssh "${USER}@${server}" "[[ -s $rem_out1 && -s $rem_out2 ]] || $rem_project/bin/clust_sz.sh $rem_src $rem_out1 $rem_out2 $rem_out3" )
+if ( ssh "${USER}@${server}" "$rem_project/bin/clust_sz.sh $rem_src $rem_out1 $rem_out2 $rem_out3" )
 then
     scp "${USER}@${server}:$rem_result/*.txt" "$(dirname $local_resf)"
 fi    
 
 # clear old data on $server:
 ssh "${USER}@${server}" "$rem_project/bin/90_clear"
+
+result_f=`find "$(dirname $local_resf)" -name 'clust_sz_1.txt'`
+if [[ -n "$result_f" ]]; then
+    exit 0
+else
+    echo "I'm not create clust_sz_1.txt."
+    exit 1
+fi        

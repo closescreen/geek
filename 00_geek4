@@ -2,14 +2,14 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use lib '/home/d.belyaev/bike';
+use lib '/usr/local/rle/var/bike';
 use Geek qw/ :all /;
 use Getopt::Long;
 
 my @wanted;
 my $need = 'todo';
 my $any = 'max';
-my $deep = 4;
+my $deep = 0;
 my $show_targets;
 my $dump_jobs;
 my $force;
@@ -18,6 +18,7 @@ my $set="";
 my $first_job;
 my $desc;
 my $norun;
+my $avg;
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -32,6 +33,7 @@ GetOptions(
     'first_job' => \$first_job,
     'desc' => \$desc, # print descriptions
     'norun' => \$norun, # not run jobs (skip they)
+    'avg' => \$avg,
 ) or die "Bad opt!";
 
 @wanted = split /\s+/, join " ", @wanted;
@@ -53,7 +55,7 @@ my %sm = $g->named_groups(
 my $res = "../RESULT/10";
 my $traits_copy = "../RESULT/traits_copy";
 
-sub Files($$){  } # Files($days,TMPL) - файлы за 30 дней назад включая текущий $+{day}. Для сокращения кода.
+sub Files($$){ days(from=>$+{day}, n=>-$_[0], shift=>1 )->files($_[1]) } # Files($days,TMPL) - файлы за 30 дней назад включая текущий $+{day}. Для сокращения кода.
 sub ExistsFilesMinimum($$$){
  # вычисляет и просит только имеющиеся файлы из перечисленных
  # введена как принятие неизбежности того, что некоторые файлы пересчитать не могу, приходится брать что есть
@@ -68,56 +70,73 @@ sub ExistsFilesMinimum($$$){
 }
 
 $g->routes(
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/clust_sz_1.txt",
+	need {
+	    sz_vars => sub {"$res/$+{day}/$+{job}/$+{tn}/sz_vars_30days.gz"}
+	},
+	bash {qb "nice ./55_SZGR \"$_{job}\" \"$_{day}\""},
+	note { viatmp=>0, flag=>0 },
+    },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
-	desc {"кластеризация $_{day}/$_{job}/$sm{tn}"},
 	need {
 	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
-	    views => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/views.gz") },
+	    views => sub{ Files(30, "$res/\%F/net_sites/0/views.gz") },
 	    tn1_totals => sub{ Files(30, "$res/\%F/$+{job}/1/total.gz") },
+	    tn0_totals => sub{ Files(30, "$res/\%F/$+{job}/0/total.gz") },
 	    sessions => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/sessions.gz") },
 	    pzbt => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
 	    traits30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/traits30days.gz" },
 	    dom_net => sub{ Files(30, "$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
 	    dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr.txt" },
 	},
-	cmd => sub{ "nothing"},
+	bash { qb "nice ./51_SZVARS_30DAYS \"$_{job}\" \"$_{day}\"" },
+	note { viatmp=>0, flag=>0 },
     },
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<basename>bids\.gz|views\.gz|sessions\.gz|pzbt\.gz|uidsz.gz)",
 	need {
 	    total => sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" },
 	    },
-	perl { "hello $_{TARGET}. There must use hash for select real script because target is regexp" },	
+	cmd => sub { 
+	    my %commands = (
+		"views.gz" => "nice ./37_VIEWS \"$_{job}\" \"$_{day}\"",
+		"sessions.gz" => "nice ./15_SESSIONS \"$_{job}\" \"$_{day}\"",
+		"bids.gz" => "nice ./14_BIDS \"$_{job}\" \"$_{day}\"",
+		"uidsz.gz" => "nice ./18_UIDSZ \"$_{job}\" \"$_{day}\"",
+		"pzbt.gz" => "nice ./16_PZBT \"$_{job}\" \"$_{day}\"",
+		
+	    );
+	    $commands{ $_{basename} } or warn "Not found command for $_{basename}".Dumper(\%commands) and return 0;
+	},
+	note { viatmp=>0, flag=>0 },	
     },
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/traits30days.gz",
 	need {
-	    uidsz => sub{ ExistsFilesMinimum(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz",20) }, 
-	    predicted => sub { ExistsFilesMinimum(30, "$traits_copy/%F/predict_gr_v2.gz",20) },
-	    predicted_add => sub { ExistsFilesMinimum(30, "$traits_copy/%F/predicted_add.gz",20) },
-	    auditory => sub { ExistsFilesMinimum(30, "$traits_copy/%F/auditory.gz",20) },
-	    ctr10gr => sub { ExistsFilesMinimum(30, "$traits_copy/%F/ctr10gr.gz",20) },
-	    ctr11gr => sub { ExistsFilesMinimum(30, "$traits_copy/%F/ctr11gr.gz",20) },
+	    uidsz => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz") }, 
+	    predicted => sub { "$traits_copy/$+{day}/predict_gr_v2.gz" },
+	    predicted_add => sub { "$traits_copy/$+{day}/predicted_add.gz" },
+	    auditory => sub { "$traits_copy/$+{day}/auditory.gz" },
+	    ctr10gr => sub { "$traits_copy/$+{day}/ctr10gr.gz" },
+	    ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" },
 	    },
-	perl { "hello $_{TARGET}." },	
+	bash {qb "nice ./33_TRAITS_30DAYS \"$_{job}\" \"$_{day}\""},	
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/net_sites/0/dom_net.gz", # только .../net_sites/0/...
 	need {
 	    total => sub{ "$res/$+{day}/net_sites/0/total.gz" },
 	},
-	bash { qb "./35_DOM_NET %s deb", $_{day} },
+	bash { qb "./35_DOM_NET %s", $_{day} },
 	note { viatmp => 0, flag=>0 },
     },
     { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz|ctr11gr.gz)",
 	perl { "hello $_{TARGET}." },	
     },
 
-#-----------URLS----------
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups_diff.gz",
 	# need - требуется иметь:
 	need {
 	    url_groups => sub{ Files(2, "$res/\%F/$+{job}/$+{tn}/url_groups.gz") },
 	},
-#LANG=POSIX sort -T. -t\* -m -k1,1 -k2,2 <(zcat "$prev_src" | awk -v"OFS=*" '{print $0,"prev"}') <(zcat "$src" | awk -v"OFS=*" '{print $0,"curr"}') | ./27_diff
-
 	bash { qb( qq( 
 	    LANG=POSIX sort -T. -t\\* -m -k1,1 -k2,2 <\( 
 		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
@@ -128,12 +147,14 @@ $g->routes(
 	    #print $cmd;
 	    #netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
 	},
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
+	# пока только два дня (2..2), было (1..7), потом если надо - переделать на 7
 	any {
 	    # here sub return code:
-	    dom_grNdays => sub{  map { "$res/$+{day}/$+{job}/$+{tn}/dom_gr${_}days.gz" } reverse (1..7) },
+	    dom_grNdays => sub{  map { "$res/$+{day}/$+{job}/$+{tn}/dom_gr${_}days.gz" } reverse (2..2) },
 	},
 	perl { warn "what to do?" },
     },
@@ -142,44 +163,50 @@ $g->routes(
 	need {
 	    dom_gr => sub{ Files( $+{N}, "$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
 	},     
-	perl { warn "what to do again?" },    
+	bash { qb "nice ./22_DOMGR7DAYS \"$_{job}\" \"$_{day}\"" },    
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr.txt",
 	any {
 	    domsNNdays => sub{ map {"$res/$+{day}/$+{job}/$+{tn}/doms${_}days.gz"} reverse (10..30) },
 	},
-	perl {"aa"},
+	bash { qb "nice ./21_DOMGR \"$_{job}\" \"$_{day}\"" },
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/doms(?<NN>\\d\\d)days.gz", 
 	need {
 	    urlsNNdays=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls$+{NN}days.gz" },
 	},
-	perl {"oy-oy"},
+	bash { qb "nice ./20_DOM30DAYS \"$_{job}\" \"$_{day}\""},
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls(?<NN>\\d\\d)days.gz",
 	need {
 	    urls=>sub{ Files( $+{NN}, "$res/%F/$+{job}/$+{tn}/urls.gz") },
 	},
-	perl { print $_{day} },
+	bash { qb "nice ./19_URLS30DAYS \"$_{job}\" \"$_{day}\"" },
+	note { viatmp=>0, flag=>0 },
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls.gz",
 	need {
 	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" }
 	},
-	perl {"sss"},
+	bash { qb "nice ./17_URLS \"$_{job}\" \"$_{day}\"" },
+	note { viatmp=>0, flag=>0 },
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/total.gz",
 	need {
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
-	perl {"merge"},
+	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
+	note { viatmp => 0, flag=>0 },    
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
-	perl {"hist"},
-    
+	bash { qb "nice ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
+	note { viatmp => 0, flag=>0 },    
     },
     
     {
@@ -210,12 +237,49 @@ $\="\n";
 my @jobs = $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
 if ( $dump_jobs ){	print Dumper \@jobs and exit 0  }	
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
+
+my %avg_total;
+my $skipped = 0;
+my $all = 0;
+
 for my $job ( @jobs_to_do ){
     my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
     if ($desc){
+	use List::Util qw/min max/;
 	my @desc;
+	push @desc, mytime();
 	push @desc, $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
-	push @desc, "# $job->{job}" if !ref $job->{job};
+	# работает только для данного проекта:
+	if ($avg){
+	    my ($t) = $job->{target}=~m|../RESULT/10/\d\d\d\d-\d\d-\d\d/(.+)|;
+	    $t||="NOT FOUND";
+	    $t=~s/\d\d\d\d-\d\d-\d\dT\d\d/\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d/; # в файлах часов замена имени
+	    my $gr = "grep -P \"$t\" 00_all.time* | grep -v ')'";
+	    #warn "GREP: $gr";
+	    open my $grep, "$gr |" or die "can't open pipe!";
+	    my @t;
+	    while (<$grep>){
+		#warn "FOUND $_";
+		my @F = split /\s+/, $_;
+		$F[3]=~s/m//; 
+		push @t, $F[3];
+	    }
+	    my $min=min(@t); my $max=max(@t); my $avg=(($min||0) + ($max||0) )/2; 
+	    
+	    #die $min if $min;
+	    #$rv=~s/^\s+|\s+$//g;
+	    #die $rv if $rv;
+	    push @desc, $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
+	    if ($avg){
+		$avg_total{avg} +=$avg;
+		$avg_total{min} +=$min;
+		$avg_total{max} +=$max;
+	    }	
+	    $skipped+=1 if !$max;
+	    $all+=1;
+	}
+
+	push @desc, ref $job->{job} ? "perl-code" : $job->{job}; # if !ref $job->{job};
 	print join " ", @desc;
     }	
     
@@ -225,7 +289,7 @@ for my $job ( @jobs_to_do ){
     my %notes = %{ $job->{note}||{} };
     print join ",", map {"$_=$notes{$_}"} keys %notes if %notes and $deb;
     
-    my ($rv, $msg) = netflag( 
+    my ($rv, $msg) = execute( 
 	$job->{job},
 	%defaults,
 	%notes, 
@@ -236,9 +300,13 @@ for my $job ( @jobs_to_do ){
     );
     warn "Return value: $rv, msg=$msg" if $deb;
 }    
-    
 
+my $minh = ($avg_total{min}||=0) ? sprintf("%.1f", $avg_total{min}/60) : "NA";
+my $avgh = ($avg_total{avg}||=0) ? sprintf("%.1f", $avg_total{avg}/60) : "NA";
+my $maxh = ($avg_total{max}||=0) ? sprintf("%.1f", $avg_total{max}/60) : "NA";
+print "Aproximate: min:$minh hours ($avg_total{min} m), avg:$avgh hours ($avg_total{avg} m), max:$maxh ($avg_total{max} m). Skipped: $skipped / $all" if $avg;    
 
+sub mytime{ my (undef,$mi,$h,$d,$m,$y) = localtime; $y+=1900; $m+=1; sprintf( "%d-%02d-%02d %02d:%02d", $y,$m,$d,$h,$mi) }
 
 
 
