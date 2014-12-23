@@ -3,7 +3,7 @@
 
 sids=${2:?sids!} #like a: 123|234|3254
 
-job_history_log "$1" "uid!=0,second,sid=$sids,sz,pz,bt,exposureprice,ad,typenum=3,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" -fn \
+job_history_log -c=./history.conf "$1" "uid!=0,second,sid=$sids,sz,pz,bt,exposureprice,ad,typenum=3,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" -fn \
  -cut="statusnum,typenum,usergroup" -true="sz" |
  ./10_url_clean -url_field=8 | #<--преобразование ref
  perl -MDom -Mstrict -w -F'\*' -lane'
