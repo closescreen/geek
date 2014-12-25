@@ -18,7 +18,7 @@ cd `dirname $0`
 
 [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
-remove_ff=`find ../RESULT/10 -wholename '*/$job/[0-3]/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz' | only --sizele=20`
+remove_ff=`find ../RESULT/10 -wholename "*/$job/[0-3]/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" | only --sizele=20`
 
 [[ -n "$remove_ff" ]] && echo `date +"%F %H:%M"`" Remove empty (zisele=20) files: $remove_ff">&2 && rm $remove_ff
 
