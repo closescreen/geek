@@ -31,7 +31,7 @@ proc_num=2 # count of parallel processes at time
 do_it ()  { local pf=$1; local cmd=$2; fork -pf=$pf -single "$cmd" -wait; }
 
 # single jobs:
-do_it "../pids/singleton.pids" "nice ./32_COPY_TRAITS" "$wanted_day"
+#do_it "../pids/singleton.pids" "nice ./32_COPY_TRAITS" "$wanted_day"
 #do_it "../pids/singleton.pids" "nice ./95_REMOVE"
 
 for proc in `seq 1 "$proc_num"`; do

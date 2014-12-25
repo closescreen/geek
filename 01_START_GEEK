@@ -20,23 +20,17 @@ loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadav
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
 target_date="2015-01-12"
+proc=3 # count of parallel processes at time
+cmd=""
 
-# 01_START_REMOVE - запускается перед всеми, чтобы не удалять во время работы, а то зависает
 
-job="google"
-target="../RESULT/10/$target_date/$job/3/clust_sz_1.txt"
-proc=1 # count of parallel processes at time
-fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./95_REMOVE_EMPTY $job ; nice ./00_geek4 -desc -want=$target"
+for job in net_sites google ssp_sites; do
+    tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
+    target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt
 
-job="net_sites"
-target="../RESULT/10/$target_date/$job/0/clust_sz_1.txt"
-proc=1
-fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./95_REMOVE_EMPTY $job; nice ./00_geek4 -desc -want=$target"
+    cmd=$cmd"./95_REMOVE_EMPTY $job; ./95_REMOVE_OLD_HOURS $job; nice ./00_geek4 --no_warn_deep --want=$target; "
+done
 
-job="ssp_sites"
-target="../RESULT/10/$target_date/$job/3/clust_sz_1.txt"
-proc=1
-fork -pf=../pids/$job.pids -n="$proc" -dela=1 "./95_REMOVE_EMPTY $job; nice ./00_geek4 -desc -want=$target" -kill
-
+fork -pf=../pids/common.pids -n=$proc "$cmd"
 
 )>>"$0.log" 2>&1
