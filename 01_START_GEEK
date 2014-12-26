@@ -20,17 +20,17 @@ loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadav
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
 target_date="2015-01-12"
+
 proc=3 # count of parallel processes at time
-cmd=""
-
-
 for job in net_sites google ssp_sites; do
     tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
     target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt
 
-    cmd=$cmd"./95_REMOVE_EMPTY $job; ./95_REMOVE_OLD_HOURS $job; nice ./00_geek4 --no_warn_deep --want=$target; "
+    ./95_REMOVE_EMPTY $job;
+    ./95_REMOVE_OLD_HOURS $job;
+    cmd="nice ./00_geek4 --no_warn_deep --want=$target; "
+    fork -pf=../pids/common.pids -n=$proc "$cmd"
 done
 
-fork -pf=../pids/common.pids -n=$proc "$cmd"
 
 )>>"$0.log" 2>&1

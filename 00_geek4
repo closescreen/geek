@@ -9,7 +9,7 @@ use Getopt::Long;
 my @wanted;
 my $need = 'todo';
 my $any = 'max';
-my $deep = 0;
+my $deep = 1000;
 my $show_targets;
 my $dump_jobs;
 my $force;
@@ -19,6 +19,7 @@ my $first_job;
 my $desc;
 my $norun;
 my $avg;
+#my $no_warn_deep;
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -34,6 +35,7 @@ GetOptions(
     'desc' => \$desc, # print descriptions
     'norun' => \$norun, # not run jobs (skip they)
     'avg' => \$avg,
+#    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
 ) or die "Bad opt!";
 
 @wanted = split /\s+/, join " ", @wanted;
@@ -68,6 +70,7 @@ sub ExistsFilesMinimum($$$){
     return @exists
  }    
 }
+
 
 $g->routes(
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/clust_sz_1.txt",
@@ -156,7 +159,8 @@ $g->routes(
 	    # here sub return code:
 	    dom_grNdays => sub{  map { "$res/$+{day}/$+{job}/$+{tn}/dom_gr${_}days.gz" } reverse (2..2) },
 	},
-	perl { warn "what to do?" },
+	bash {qb "nice ./25_URLGR \"$_{job}\" \"$_{day}\""},
+	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr(?<N>\\d)days.gz",
 	# д.б х-м!
@@ -243,6 +247,7 @@ my $skipped = 0;
 my $all = 0;
 
 for my $job ( @jobs_to_do ){
+    #die Dumper $job;
     my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
     if ($desc){
 	use List::Util qw/min max/;
@@ -280,6 +285,8 @@ for my $job ( @jobs_to_do ){
 	}
 
 	push @desc, ref $job->{job} ? "perl-code" : $job->{job}; # if !ref $job->{job};
+#	push @desc, "level=$job->{level}";
+#	push @desc, "parents=".join( ",", grep {$_} keys %{$job->{parents}} );
 	print join " ", @desc;
     }	
     
