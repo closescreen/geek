@@ -1,4 +1,5 @@
 #!/usr/bin/env perl
+# допилить чтоб в будуще не лезло с запросами к хистори  и тогда можно вернуть кронтаб почаще
 use strict;
 use warnings;
 use Data::Dumper;
@@ -238,7 +239,7 @@ if ($show_targets){
 
 
 $\="\n";
-my @jobs = $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
+my @jobs = reverse $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
 if ( $dump_jobs ){	print Dumper \@jobs and exit 0  }	
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
 
