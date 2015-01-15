@@ -19,10 +19,39 @@ cd `dirname $0`
 loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
-target_date="2015-01-12"
+# url_groups:
+days=$(hours -d=today -n=-2days -days) # <--- стараемся успеть за два дня
+target_dates=$days
+proc=3 # count of parallel processes at time
+for target_date in $target_dates; do
+    jobs_start_time=`date +%s`
+    for job in net_sites google ssp_sites; do
+	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
+	target=../RESULT/10/$target_date/$job/$tn/url_groups_diff.gz
+
+	./95_REMOVE_EMPTY $job;
+	./95_REMOVE_OLD_HOURS $job;
+	cmd="nice ./00_geek4 --want=$target"
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+    done
+    jobs_stop_time=`date +%s`
+    jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
+    if [[ $jobs_time -gt 120 ]]; then
+	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
+	break
+    fi
+done    
+
+# кластеризация:
+days=$(hours -d=today -shift=7days -n=-14days -days) # <--- неделю вперед (готовимся к будущему) + неделю назад
+# список понедельников:
+days=`perl -M"Date::Calc qw(Day_of_Week_Abbreviation Day_of_Week)" -e'$,=" "; print grep {Day_of_Week_Abbreviation(Day_of_Week(split /\-/, $_)) eq "Mon" } @ARGV' $days`
+
+target_dates=$days
+
 proc=3 # count of parallel processes at time
 
-while true; do
+for target_date in $target_dates; do
 
     jobs_start_time=`date +%s`
 
@@ -33,7 +62,7 @@ while true; do
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
 	cmd="nice ./00_geek4 --want=$target"
-	fork -pf=../pids/common.pids -n=$proc "$cmd" -wait
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
     
     jobs_stop_time=`date +%s`
@@ -43,10 +72,7 @@ while true; do
 	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
 	break
     fi
-    # если цикл не прервать, то дата увеличивается:
 
-    target_date=$( date -d"$target_date 1 day" +%F )
-    echo "============== Increase target date. Set to $target_date ============="    
 done    
 
 )>>"$0.log" 2>&1

@@ -151,7 +151,7 @@ $g->routes(
 	    #print $cmd;
 	    #netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
 	},
-	note { viatmp=>0, flag=>0 },
+	#note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
