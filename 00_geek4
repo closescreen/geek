@@ -151,7 +151,7 @@ $g->routes(
 	    #print $cmd;
 	    #netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
 	},
-	#note { viatmp=>0, flag=>0 },
+	note { check_need=>1, }, # пока для всех будем чекать
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
@@ -169,7 +169,7 @@ $g->routes(
 	    dom_gr => sub{ Files( $+{N}, "$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
 	},     
 	bash { qb "nice ./22_DOMGR7DAYS \"$_{job}\" \"$_{day}\"" },    
-	note { viatmp=>0, flag=>0 },
+	note { viatmp=>0, flag=>0, check_need=>1, },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr.txt",
 	any {
@@ -248,13 +248,37 @@ my $skipped = 0;
 my $all = 0;
 
 for my $job ( @jobs_to_do ){
+
+#    warn "sleep...";
+#    sleep 20;
+#    warn "..awake";
+
     #die Dumper $job;
     my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
+    my @missing_need;
+    if ( $job->{note} and $job->{note}{check_need} ){
+	my %need = %{ $job->{need}||{} };
+	for my $need_type ( keys %need ){
+	    my @list_for_type = @{ $need{ $need_type }||[] };
+	    for my $hash ( @list_for_type ){
+		my $ok = $g->test($hash->{name});
+		#warn "$hash->{name} = $ok";
+		push @missing_need, $hash->{name} if $g->test($hash->{name});
+	    }
+	}
+    }
+
+    if ( !$norun and @missing_need and delete $job->{note}{check_need} ){ 
+	warn( "Skip $job->{target}: missing need files: ".join(", ", @missing_need)) if $deb;
+	next;
+    }    
+    
     if ($desc){
 	use List::Util qw/min max/;
 	my @desc;
 	push @desc, mytime();
 	push @desc, $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
+
 	# работает только для данного проекта:
 	if ($avg){
 	    my ($t) = $job->{target}=~m|../RESULT/10/\d\d\d\d-\d\d-\d\d/(.+)|;
@@ -290,6 +314,7 @@ for my $job ( @jobs_to_do ){
 #	push @desc, "parents=".join( ",", grep {$_} keys %{$job->{parents}} );
 	print join " ", @desc;
     }	
+
     
     next if $norun;
     

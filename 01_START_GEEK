@@ -31,6 +31,7 @@ for target_date in $target_dates; do
 
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
+	./96_REMOVE_OLD_ALL $job;
 	cmd="nice ./00_geek4 --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
@@ -61,6 +62,7 @@ for target_date in $target_dates; do
 
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
+	./96_REMOVE_OLD_ALL $job;
 	cmd="nice ./00_geek4 --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
