@@ -74,7 +74,7 @@ for target_date in $target_dates; do
     jobs_stop_time=`date +%s`
 
     jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
-    if [[ $jobs_time -gt 120 ]]; then
+    if [[ $jobs_time -gt $(( $proc*120 )) ]]; then
 	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
 	break
     fi
