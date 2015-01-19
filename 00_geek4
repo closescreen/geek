@@ -268,10 +268,11 @@ for my $job ( @jobs_to_do ){
 	}
     }
 
-    if ( !$norun and @missing_need and delete $job->{note}{check_need} ){ 
+    if ( !$norun and @missing_need ){ 
 	warn( "Skip $job->{target}: missing need files: ".join(", ", @missing_need)) if $deb;
 	next;
-    }    
+    }
+    delete $job->{note}{check_need};    
     
     if ($desc){
 	use List::Util qw/min max/;
