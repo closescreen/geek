@@ -23,15 +23,17 @@ echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 days=$(hours -d=today -n=-2days -days) # <--- стараемся успеть за два дня
 target_dates=$days
 proc=3 # count of parallel processes at time
+
 for target_date in $target_dates; do
     jobs_start_time=`date +%s`
     for job in net_sites google ssp_sites; do
 	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
 	target=../RESULT/10/$target_date/$job/$tn/url_groups_diff.gz
 
+	./96_REMOVE_OLD_ALL;
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
-	./96_REMOVE_OLD_ALL $job;
+
 	cmd="nice ./00_geek4 --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
@@ -52,6 +54,7 @@ target_dates=$days
 
 proc=3 # count of parallel processes at time
 
+
 for target_date in $target_dates; do
 
     jobs_start_time=`date +%s`
@@ -60,9 +63,10 @@ for target_date in $target_dates; do
 	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
 	target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt
 
+	./96_REMOVE_OLD_ALL;
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
-	./96_REMOVE_OLD_ALL $job;
+
 	cmd="nice ./00_geek4 --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
