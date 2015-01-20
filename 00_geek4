@@ -206,7 +206,7 @@ $g->routes(
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
 	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
-	note { viatmp => 0, flag=>0 },    
+	note { viatmp => 0, flag=>0, check_need=>1, },    
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
@@ -262,8 +262,8 @@ for my $job ( @jobs_to_do ){
 	    my @list_for_type = @{ $need{ $need_type }||[] };
 	    for my $hash ( @list_for_type ){
 		my $ok = $g->test($hash->{name});
-		#warn "$hash->{name} = $ok";
-		push @missing_need, $hash->{name} if $g->test($hash->{name});
+		warn "Check file: $hash->{name} = ".($ok||"----(NO)");
+		push @missing_need, $hash->{name} unless $ok;
 	    }
 	}
     }
