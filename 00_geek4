@@ -262,7 +262,7 @@ for my $job ( @jobs_to_do ){
 	    my @list_for_type = @{ $need{ $need_type }||[] };
 	    for my $hash ( @list_for_type ){
 		my $ok = $g->test($hash->{name});
-		warn "Check file: $hash->{name} = ".($ok||"----(NO)");
+		warn "Check file: $hash->{name} = ".($ok||"----(NO)") if $deb;
 		push @missing_need, $hash->{name} unless $ok;
 	    }
 	}
