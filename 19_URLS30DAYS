@@ -57,7 +57,7 @@ echo "$ff" | washing -maxf="$maxf" -res="
     # получая в $_ имя исходного ./.../.../urls.gz, получаем имя urlsNdays.gz для N существующих предыдущих файлов urls.gz
  );
  \$_=\"\$path/urls\${N}days.gz\"
-" -d -v_flag="$processor %s $job $typenum $minN $maxN" -comp=gzip -timelog=00_all.time.log
+" -v_flag="$processor %s $job $typenum $minN $maxN" -comp=gzip -timelog=00_all.time.log
 
 
 )>>"$0.log" 2>&1
