@@ -45,12 +45,13 @@ chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 1
 #> Часы группируются в папки по суткам с 04.00 до 04.00.
 
 if [[ -n "$day" ]]; then
-    hh=`hours -t="$day"T04 -n=24 -r` # (reversed order!)
+    hh=`hours -t="$day"T04 -n=24 -r | only -older=$(date +"%FT%H")` # (reversed order!)  ( only older current hour )
 else
     #>: период, за который собрать данные (если их еще нет)
     period=`conf 00_conf.txt source_deep` 
     hh=`hours -t=todayT04 -n=-"$period" -r`
 fi
+
 
 maxf=`conf 00_conf.txt maxf`
 maxf=$(($maxf*24))
