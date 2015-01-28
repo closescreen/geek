@@ -8,33 +8,32 @@ cd `dirname $0`
 
 # ./55_process %s %f $server $remote_project $job $remote_script
 
-local_src=${1:?Src!}
+local_srcf=${1:?Src!}
 local_resf=${2:?Resf!}
 server=${3:?Server!}
 rem_project=${4:?Rem_proj!}
 job=${5:?JOB!}
 rem_script=${6:?Rem_script!}
 day=`fn2days "$local_resf"`
-rem_result="$rem_project/RESULT/10/$job/$day"
+
+rem_result_dir="$rem_project/RESULT/10/$job/$day"
 USER=d.belyaev
+rem_srcf="$rem_result_dir/$(basename $local_srcf)"
+rem_out1f="$rem_result_dir/clust_sz_1.txt"
+rem_out2f="$rem_result_dir/clust_sz_2.txt"
+rem_out3f="$rem_result_dir/clust_sz_3.png"
 
 # если сущ - то удаление для пересчета:
-ssh "${USER}@${server}" "[[ -s $rem_result/$( basename $local_src ) ]] && rm -r $rem_result/$( basename $local_src )" 
+ssh "${USER}@${server}" "[[ -s $rem_srcf ]] && rm -r $rem_srcf" 
     
-if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) ; then
-    scp -p "$local_src" "${USER}@${server}:$rem_result/"
+if ( ssh "${USER}@${server}" "mkdir -p $rem_result_dir && [[ ! -s $rem_srcf ) ]]" ) ; then
+    scp -p "$local_srcf" "${USER}@${server}:$rem_result_dir/"
 fi    
 
-rem_src="$rem_result/$(basename $local_src)"
-rem_out1="$rem_result/clust_sz_1.txt"
-rem_out2="$rem_result/clust_sz_2.txt"
-rem_out3="$rem_result/clust_sz_3.png"
 
-
-#if ( ssh "${USER}@${server}" "[[ -s $rem_out1 && -s $rem_out2 ]] || $rem_project/bin/clust_sz.sh $rem_src $rem_out1 $rem_out2 $rem_out3" )
-if ( ssh "${USER}@${server}" "$rem_project/bin/clust_sz.sh $rem_src $rem_out1 $rem_out2 $rem_out3" )
+if ( ssh "${USER}@${server}" "$rem_project/bin/clust_sz.sh $rem_srcf $rem_out1f $rem_out2f $rem_out3f" )
 then
-    scp "${USER}@${server}:$rem_result/*.txt" "$(dirname $local_resf)"
+    scp "${USER}@${server}:$rem_result_dir/*.txt" "$(dirname $local_resf)"
 fi    
 
 # clear old data on $server:
