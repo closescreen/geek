@@ -28,7 +28,7 @@ action=$( href -dict="
 [[ -n "$action" ]] && eval $action
 
 sids=$( href -dict="
-    ssp_sites=>\"` cat ssp_sites.txt | words -fu=sortnu -ot='|' `\",
+    ssp_sites=>\"` cat ssp_sites.txt | grep -v `conf 00_conf.txt google_sid` | words -fu=sortnu -ot='|' `\", # <--- google отфильтровывается
     google=>\"`conf 00_conf.txt google_sid`\", # see 00_conf.txt
     net_sites=>\"` cat network_sites.txt | words -fu=sortnu -ot='|' `\",
     " -val="$job"

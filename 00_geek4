@@ -206,7 +206,7 @@ $g->routes(
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
 	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
-	note { viatmp => 0, flag=>0, check_need=>1, },    
+	note { viatmp => 0, flag=>0, }, # check_need отключил - попробуем делегировать mergef'у. Если много будет в логах - будем думать.    
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
@@ -221,6 +221,7 @@ $g->routes(
 	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
 #	cmc => sub{},
     },
+
 #    {
 #	target "../RESULT/TEST/$sm{day}/test.gz",
 #	need { bb=>sub{"bb"}},

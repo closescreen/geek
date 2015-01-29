@@ -44,7 +44,7 @@ traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" |
 chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
 # Порядок сетей в отчете:
-nets="net-forty-three net-forty-four net-forty-five net-sixty"
+nets="43 44 45 60"
 
 # порядок pagezones в отчете:
 pz_list="1 3"

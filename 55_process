@@ -26,7 +26,7 @@ rem_out3f="$rem_result_dir/clust_sz_3.png"
 # если сущ - то удаление для пересчета:
 ssh "${USER}@${server}" "[[ -s $rem_srcf ]] && rm -r $rem_srcf" 
     
-if ( ssh "${USER}@${server}" "mkdir -p $rem_result_dir && [[ ! -s $rem_srcf ) ]]" ) ; then
+if ( ssh "${USER}@${server}" "mkdir -p $rem_result_dir && [[ ! -s $rem_srcf  ]]" ) ; then
     scp -p "$local_srcf" "${USER}@${server}:$rem_result_dir/"
 fi    
 

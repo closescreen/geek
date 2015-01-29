@@ -43,7 +43,7 @@ traits_fn=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/traits30days.gz" |
 chk "$traits_fn" "($0, line: $LINENO) traits30days.gz за $day" || exit 3
 
 # Порядок сетей в отчете:
-nets="net-forty-three net-forty-four net-forty-five net-sixty"
+nets="43 44 45 60"
 
 # порядок pagezones в отчете:
 pz_list="1 3" 
@@ -146,9 +146,9 @@ my %minimum_by_index = map { $_, 50 } 0..45; # ограничения по ум�
 @minimum_by_index{ 0 , 1 } = ( 30, 30 ); # male, female = 30
 
 # traits:
-#> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
-#> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
-#> после splita:0      1     2     3  .....  45(auditory30 ) 46(trash)
+# sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
+# 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
+# после splita:0      1     2     3  ...                              15(ctr11) 16(auditory01).....            45(auditory30 ) 46(trash)
 
 my %traits;
 open FILE, shift or die $!;
