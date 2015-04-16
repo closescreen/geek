@@ -20,6 +20,7 @@ my $first_job;
 my $desc;
 my $norun;
 my $avg;
+my $loadaverage;
 #my $no_warn_deep;
 
 GetOptions(
@@ -36,10 +37,14 @@ GetOptions(
     'desc' => \$desc, # print descriptions
     'norun' => \$norun, # not run jobs (skip they)
     'avg' => \$avg,
+    'loadaverage=i' => \$loadaverage, # при каком loadaverage 1m (до, включительно), запускать.
 #    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
 ) or die "Bad opt!";
 
 @wanted = split /\s+/, join " ", @wanted;
+
+my $lo=`loadaverage -15m`;
+warn "loadaverage > $loadaverage, exit" and exit 1 if $lo>$loadaverage;
 
 my %pn = possible_need();
 $pn{ $need } or die "Not allowed need='$need'. Allowed only: ".join(", ", keys %pn );
@@ -324,7 +329,7 @@ for my $job ( @jobs_to_do ){
     my %notes = %{ $job->{note}||{} };
     print join ",", map {"$_=$notes{$_}"} keys %notes if %notes and $deb;
     
-    my ($rv, $msg) = execute( 
+    my ($rv, $msg) = $g->execute( 
 	$job->{job},
 	%defaults,
 	%notes, 
