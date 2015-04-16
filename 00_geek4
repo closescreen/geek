@@ -43,8 +43,8 @@ GetOptions(
 
 @wanted = split /\s+/, join " ", @wanted;
 
-my $lo=`loadaverage -15m`;
-warn "loadaverage > $loadaverage, exit" and exit 1 if $lo>$loadaverage;
+my $lo=`loadaverage -1m`;
+warn "loadaverage > $loadaverage, exit" and exit 1 if $loadaverage and $lo>$loadaverage;
 
 my %pn = possible_need();
 $pn{ $need } or die "Not allowed need='$need'. Allowed only: ".join(", ", keys %pn );
