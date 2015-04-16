@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> doms30days.gz -----( ...crawler job via ssh ...)---->dom_gr.txt , quant.gz
+#> doms30days.gz -----( ...dm1 job via ssh ...)---->dom_gr.txt , quant.gz
 #> Запускать 1 поток!
 (
 set -u
@@ -29,8 +29,8 @@ else
 fi
 
       
-server="crawler.adriver.x"
-remote_project="/work/share/d.belyaev/1460_1421"
+server="dm1.adriver.x"
+remote_project="/usr/local/rle/var/share/d.belyaev/1460_1421"
 remote_script="1.sh"
 maxf=`conf 00_conf.txt maxf`
 
@@ -39,7 +39,7 @@ echo "$ff" | washing \
     -maxf="$maxf" \
     -res='s|doms\d+days\.gz|dom_gr.txt|' \
     -w="netflag --check --file=\"%f.FLAG\" -rm" \
-    -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -e %f && ! -e %f.TMP ]]" \
+    -r="( ! netflag --check --file=\"%f.FLAG\" -rm ) && [[ -s %f && ! -e %f.TMP ]]" \
     -do="set -o pipefail; mkdir -p %d && netflag --file=\"%f.FLAG\" -cmd=\"./21_process %s %f $server $remote_project $job $remote_script\"" \
     -time=00_all.time.log 
 

@@ -17,7 +17,7 @@ cd `dirname $0`
 
 [[ -z "$force" ]] && [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
-older="50days" # удалять старее чем
+older="45days" # удалять старее чем
 
 #-----часовые данные ----
 jobs="google ssp_sites net_sites"
@@ -27,6 +27,10 @@ typenums="0 1 3"
 ff=`find ../RESULT/10/  -type d -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" |
   only -older="$older"`
   [[ -n "$ff" ]] && echo "$(date) remove $ff">&2 && rm -r $ff
+  
+ff=`find ../RESULT/traits_copy/  -type d -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]" |
+  only -older="$older"`
+  [[ -n "$ff" ]] && echo "$(date) remove $ff">&2 && rm -r $ff  
 
 
 )>>"$0.log" 2>&1

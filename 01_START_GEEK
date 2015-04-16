@@ -16,34 +16,10 @@ cd `dirname $0`
 [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
 # запуск только при низком loadaverage или при "force"
-loadaverage -1m -gt 4 && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
+lo="4"
+loadaverage -1m -gt $lo && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
-# url_groups:
-days=$(hours -d=today -n=-2days -days) # <--- стараемся успеть за два дня
-target_dates=$days
-proc=3 # count of parallel processes at time
-
-for target_date in $target_dates; do
-    jobs_start_time=`date +%s`
-    for job in net_sites google ssp_sites; do
-	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
-	target=../RESULT/10/$target_date/$job/$tn/url_groups_diff.gz
-
-	./96_REMOVE_OLD_ALL;
-	./95_REMOVE_EMPTY $job;
-	./95_REMOVE_OLD_HOURS $job;
-
-	cmd="nice ./00_geek4 --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
-    done
-    jobs_stop_time=`date +%s`
-    jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
-    if [[ $jobs_time -gt 120 ]]; then
-	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
-	break
-    fi
-done    
 
 # кластеризация:
 days=$(hours -d=today -shift=7days -n=-14days -days) # <--- неделю вперед (готовимся к будущему) + неделю назад
@@ -67,8 +43,8 @@ for target_date in $target_dates; do
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
 
-	cmd="nice ./00_geek4 --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	fork -pf=../pids/common.pids -dela=3 -n=$proc "$cmd" -wait
     done
     
     jobs_stop_time=`date +%s`
@@ -82,3 +58,30 @@ for target_date in $target_dates; do
 done    
 
 )>>"$0.log" 2>&1
+
+
+# url_groups:
+#days=$(hours -d=today -n=-2days -days) # <--- стараемся успеть за два дня
+#target_dates=$days
+#proc=1 # count of parallel processes at time
+#
+#for target_date in $target_dates; do
+#    jobs_start_time=`date +%s`
+#    for job in net_sites google ssp_sites; do
+#	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
+#	target=../RESULT/10/$target_date/$job/$tn/url_groups_diff.gz
+#
+#	./96_REMOVE_OLD_ALL;
+#	./95_REMOVE_EMPTY $job;
+#	./95_REMOVE_OLD_HOURS $job;
+#
+#	cmd="nice ./00_geek4 --want=$target"
+#	fork -pf=../pids/common.pids -dela=3 -n=$proc "$cmd" -wait
+#    done
+#    jobs_stop_time=`date +%s`
+#    jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
+#    if [[ $jobs_time -gt 120 ]]; then
+#	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
+#	break
+#    fi
+#done    

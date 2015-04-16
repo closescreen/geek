@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> sz_vars_30days.gz -----( ...crawler job via ssh ...)----> clust_sz_1.txt
+#> sz_vars_30days.gz -----( ...dm1 job via ssh ...)----> clust_sz_1.txt
 #> Запускать 1 поток!
 (
 set -u
@@ -21,14 +21,15 @@ typenum=$(
 )
 
 N=30
-server="crawler.adriver.x"
-remote_project="/work/share/d.belyaev/1460_1421"
+server="dm1.adriver.x"
+remote_project="/usr/local/rle/var/share/d.belyaev/1460_1421"
 remote_script="clust_sz.sh"
 deep=`conf 00_conf.txt report_deep`
 
 if [[ -n "$day" ]]; then
     find_path="../RESULT/10/$day/"
-    deep=366 # отключаем deep когда day
+    [[ ! -d "$find_path" ]] && exit 1
+    deep="366"days # отключаем deep когда day
 else
     find_path="../RESULT/10/"
 fi
@@ -42,7 +43,7 @@ if [[ -n "$emptyff" ]]; then
     rm $emptyff
 fi    
 
-find "$find_path" -wholename "*/$job/$typenum/sz_vars_${N}days.gz" | sort -r | only -upto="$deep"days |
+find "$find_path" -wholename "*/$job/$typenum/sz_vars_${N}days.gz" | sort -r | only -upto="$deep" |
  washing \
     -maxf="$maxf" \
     -res="s|sz_vars_${N}days\.gz|clust_sz_1.txt|" \

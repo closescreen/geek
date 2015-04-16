@@ -12,7 +12,7 @@ cut -d* -f3,4,8,9|
 perl -w -F'\*' -lane'
 # now input:
 #       sid,     sz,     ad,      dom
-$bids{ $F[0] }{ $F[1] }{ $F[2] }++ if $F[2];
+$bids{ $F[0] }{ $F[1] }{ $F[2]||0 }++;
 $dom{ $F[0] }{ $F[1] } ||= $F[3];
 
 END{

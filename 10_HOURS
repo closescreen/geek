@@ -21,15 +21,16 @@ silent_exit=$( href -dict="
 [[ -n "$silent_exit" ]] && exit 0
 
 action=$( href -dict="
-    ssp_sites => 'scp dm10.adriver.x:/work/data/share3/DATA/dicts/ssp_sites.txt ./ssp_sites.txt',
-    net_sites => 'scp dm10.adriver.x:/work/data/share3/DATA/dicts/network_sites.txt ./network_sites.txt',
+    ssp_sites => 'cp -f /usr/local/rle/var/share3/DATA/dicts/ssp_sites.txt ./ssp_sites.txt',
+    net_sites => 'cp -f /usr/local/rle/var/share3/DATA/dicts/network_sites.txt ./network_sites.txt',
     " -val=$job 
 )
 [[ -n "$action" ]] && eval $action
 
+google_sid=`conf 00_conf.txt google_sid`
 sids=$( href -dict="
-    ssp_sites=>\"` cat ssp_sites.txt | grep -v `conf 00_conf.txt google_sid` | words -fu=sortnu -ot='|' `\", # <--- google отфильтровывается
-    google=>\"`conf 00_conf.txt google_sid`\", # see 00_conf.txt
+    ssp_sites=>\"` cat ssp_sites.txt | cut -f1 | grep -v $google_sid | words -fu=sortnu -ot='|' `\", # <--- google отфильтровывается
+    google=>"$google_sid", # see 00_conf.txt
     net_sites=>\"` cat network_sites.txt | words -fu=sortnu -ot='|' `\",
     " -val="$job"
 )
