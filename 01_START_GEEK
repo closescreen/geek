@@ -28,7 +28,7 @@ days=`perl -M"Date::Calc qw(Day_of_Week_Abbreviation Day_of_Week)" -e'$,=" "; pr
 
 target_dates=$days
 
-proc=3 # count of parallel processes at time
+proc=1 # count of parallel processes at time
 
 
 for target_date in $target_dates; do

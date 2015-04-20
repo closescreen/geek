@@ -16,11 +16,12 @@ filled () {
 
 days=${1:-""} # можно указать days
 
-report_deep="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
+#report_deep="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
 source_deep="$(conf 00_conf.txt source_deep)" 
 
-report_first_day="$( hours -t=today -n=-"$report_deep" -days -first)"
-upto_day="$( hours -t="$report_first_day" -n=-"$source_deep" -days -first )"
+#report_first_day="$( hours -t=today -n=-"$report_deep" -days -first)"
+#upto_day="$( hours -t="$report_first_day" -n=-"$source_deep" -days -first )"
+upto_day="$( hours -t=today -n=-"$source_deep" -days -first )"
 
 remote_host="hist7.adriver.x"
 

@@ -138,7 +138,10 @@ $g->routes(
 	note { viatmp => 0, flag=>0 },
     },
     { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz|ctr11gr.gz)",
-	perl { "hello $_{TARGET}." },	
+	note { viatmp => 0, flag=>0 },
+	perl { "hello $_{TARGET}." },
+	# можно былоб написать типо такого (не проверял), по каждый раз лезть за результатами на hist7 - распамим логи ssh
+	#bash { qb fork -pf=../pids/copy_traits.pids --single "nice ./32_COPY_TRAITS" "%s", $_{day} },	
     },
 
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups_diff.gz",
