@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 #> пересечение uidsz.gz за 30 дней с файлами трейтов predict_add.gz, predict_gr_v2.gz, ctr10gr.gz, ctr11gr.gz
-#> v2, надеемся на ускорение.
 
 #>> gender (predict_add.gz): 
 #>> format: 1480566*11
@@ -27,6 +26,9 @@
 #>> uid * group
 #>> sorted: 1,1n
 
+#>> filtered_traits.txt.gz
+#>> format:
+#>> uid \t	trait	... (other fields)
 
 set -u
 set +x
@@ -65,6 +67,9 @@ chk "$ctr11_file" "ctr11file" "-s" "exists" nop || exit 2
 auditory_file="$traits_base_dir/$day/auditory.gz"
 chk "$auditory_file" "auditory_file" "-s" "exists" nop || exit 2
 
+buyers_file="$traits_base_dir/$day/filtered_traits.txt.gz"
+chk "$buyers_file" "buyers_file" "-s" "exists" nop || exit 2
+
 uidsz30files=`hours -d="$day" -shift=1day -n=-"$merge_deep"days -days | files "$uids_base_dir/%F/$job/$typenum/uidsz.gz"`
 
 # должны быть все на месте:
@@ -79,7 +84,8 @@ sort -m -k1,1n \
 <(zcat $age_file | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"age"}' ) \
 <(zcat $ctr10_file | cut -d* -f1,5 | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"ctr"}') \
 <(zcat $ctr11_file | cut -d* -f1 | sort -T. -S333M -k1,1n | awk -v"OFS=*" '{print $0,11,"ctr"}') \
-<(zcat $auditory_file | awk -F* -v"OFS=*" '{print $0,"auditory"}' ) |
+<(zcat $auditory_file | awk -F* -v"OFS=*" '{print $0,"auditory"}' ) \
+<(zcat $buyers_file | awk -F"\t" -v"OFS=*" '$2==184549376 {print $1,$2,"buyer"}') | sort -t\* -n -k1,1 | # интересует только трейт 184549376 (11.0)
 perl -Mstrict -Mwarnings -MData::Dumper -e'
 # uid * value * type
 # 5*43527*sz
@@ -121,9 +127,12 @@ my %ind = (
 
 # номера полей и их количество для "аудиторий":
 my $start_i = 17;
-for ( 1..30 ){
+for ( 1..29 ){
  $ind{ auditory }{ $_ } = $start_i++;
 }
+
+# в бывшей 30-й аудиторной колонке:
+$ind{ buyer }{ 184549376 } = $start_i++; # интересует пока только один трейт
 
 # замыкает - trash:
 $ind{ trash } = $start_i; # unknown traits or values
@@ -133,6 +142,7 @@ my @uid_sz;
 my %traits;
 my %sz;
 my @auditories;
+my @buyer_traits;
 
 $\="\n";
 $,="*";
@@ -148,10 +158,16 @@ sub break_uid(){
     for my $au_number ( @auditories ){
 	$sz{ $sz }[ $ind{ auditory }{ $au_number } ]++;
     }
+
+    for my $buy_trait ( @buyer_traits ){
+	$sz{ $sz }[ $ind{ buyer }{ $buy_trait } ]++;
+    }
+    
  }
  undef @uid_sz;
  undef %traits; 
  undef @auditories;
+ undef @buyer_traits;
 }
 
 while(<>){
@@ -162,6 +178,7 @@ while(<>){
  $uid = $new_uid;
  if ( $new_type eq "sz" ){ push @uid_sz, $new_value }
  elsif( $new_type eq "auditory" ){ push @auditories, $new_value }
+ elsif( $new_type eq "buyer" ){ push @buyer_traits, $new_value }
  else{ $traits{ $new_type } = $new_value }
 };
 break_uid();
@@ -173,8 +190,8 @@ for my $sz ( sort {$a<=>$b} keys %sz ){
 }
 
 #>> out
-#>> sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
-#>> 1     2      3      4     5     6      7       8     9       10         18      19           20      21            48        49
+#>>  sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory29 * buyer * trash
+#>>  1     2      3      4     5     6      7       8     9       10         18      19           20      21            47        48      49
 '
  
 
