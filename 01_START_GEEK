@@ -22,13 +22,13 @@ echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
 
 # кластеризация:
-days=$(hours -d=today -shift=7days -n=-14days -days) # <--- неделю вперед (готовимся к будущему) + неделю назад
+days=$(hours -d=today -shift=7days -n=-17days -days) # <--- неделю вперед (готовимся к будущему) + ~~недел назад
 # список понедельников:
 days=`perl -M"Date::Calc qw(Day_of_Week_Abbreviation Day_of_Week)" -e'$,=" "; print grep {Day_of_Week_Abbreviation(Day_of_Week(split /\-/, $_)) eq "Mon" } @ARGV' $days`
 
 target_dates=$days
 
-proc=1 # count of parallel processes at time
+proc=3 # count of parallel processes at time
 
 
 for target_date in $target_dates; do

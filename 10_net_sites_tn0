@@ -34,7 +34,7 @@ job_history_log -c=./history.conf "$1" "uid!=0,second,sid=${sids},sz,pz,bt,expos
  } 
 
  ' |
- LANG=POSIX sort -T. -t\* -k1,1 -k2,2n
+ LANG=POSIX sort -T. -t\* -k1,1 -k2,2n -S333M --compress-program=gzip
 
 #>> OUT
 #>> uid - для сессий

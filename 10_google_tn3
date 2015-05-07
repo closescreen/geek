@@ -20,6 +20,6 @@ job_history_log -c=./history.conf "$1" "uid!=0,second,sz,pz,bt,exposureprice,ad,
 @F[ 7,8 ] = $F[7] ? map {$_||""} Dom::split_ref( $F[7] ) : ("",""); # справа добавляется еще одна колонка
 
 print join("*",map {$_||""} @F);
-' | sort -T. -t\* -n -k1,1 -k2,2
+' | sort -T. -t\* -n -k1,1 -k2,2 -S333M --compress-program=gzip
 
 

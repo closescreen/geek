@@ -120,14 +120,27 @@ $g->routes(
     },
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/traits30days.gz",
 	need {
+	    # Здесь уместно решить проблему пробелов в суточных трейтах на hist7:
+	    # Если нет данных для текущего дня, но посчитан более поздний день, 
+	    # то можно использовать этот более новый день, 
+	    # но тошда нужно передавать в скрипт решение и там принимать. Гемор.
+	    
 	    uidsz => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz") }, 
-	    predicted => sub { "$traits_copy/$+{day}/predict_gr_v2.gz" },
 	    predicted_add => sub { "$traits_copy/$+{day}/predicted_add.gz" },
+	    predicted => sub { "$traits_copy/$+{day}/predict_gr_v2.gz" },
 	    auditory => sub { "$traits_copy/$+{day}/auditory.gz" },
 	    ctr10gr => sub { "$traits_copy/$+{day}/ctr10gr.gz" },
 	    ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" },
 	    },
-	bash {qb "nice ./33_TRAITS_30DAYS \"$_{job}\" \"$_{day}\""},	
+#	any {
+#	    predicted_add => sub { 
+#		days(from=>$+{day}, n=>3, shift=>0)->files("$traits_copy/%F/predicted_add.gz")
+#		#$g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz")
+#		#"$traits_copy/$+{day}/predicted_add.gz" 
+#	    
+#	    },	    
+#	},    
+	bash {qb "nice ./33_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
 	note { viatmp=>0, flag=>0 },
     },
     {	target "$res/$sm{day}/net_sites/0/dom_net.gz", # только .../net_sites/0/...
@@ -139,9 +152,10 @@ $g->routes(
     },
     { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz|ctr11gr.gz)",
 	note { viatmp => 0, flag=>0 },
-	perl { "hello $_{TARGET}." },
-	# можно былоб написать типо такого (не проверял), по каждый раз лезть за результатами на hist7 - распамим логи ssh
-	#bash { qb fork -pf=../pids/copy_traits.pids --single "nice ./32_COPY_TRAITS" "%s", $_{day} },	
+	perl { "hello $_{TARGET}." 
+	    # можно былоб написать типо такого (не проверял), по каждый раз лезть за результатами на hist7 - распамим логи ssh
+	    #bash { qb fork -pf=../pids/copy_traits.pids --single "nice ./32_COPY_TRAITS" "%s", $_{day} },	
+	},
     },
 
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups_diff.gz",
@@ -205,7 +219,7 @@ $g->routes(
 	need {
 	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" }
 	},
-	bash { qb "nice ./17_URLS \"$_{job}\" \"$_{day}\"" },
+	bash { qb "fork --single -pf=17_URLS.pids './17_URLS \"$_{job}\" \"$_{day}\"'" },
 	note { viatmp=>0, flag=>0 },
     },
     {
@@ -218,7 +232,7 @@ $g->routes(
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
-	bash { qb "nice ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
+	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
 	note { viatmp => 0, flag=>0 },    
     },
     

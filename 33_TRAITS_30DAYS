@@ -39,6 +39,7 @@ if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/uidsz.gz" | only -s`
 else
     ff=`find $uids_base_dir/ -wholename "*/$job/$typenum/uidsz.gz" | sort -r | only -upto="$report_deep" | only -without="traits30days.gz"`
+    [[ -n "$ff" ]] && days=`echo $ff | fn2days`
 fi
 
 chk "$ff" "uidsz files upto $report_deep days. " || exit 2
@@ -73,9 +74,14 @@ ff=`echo "$ff" |
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/auditory.gz"'`
 chk "$ff" "uidsz files with auditory.gz " || exit 2
 
+# filtered_traits (buyers)
+ff=`echo "$ff" | 
+only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/filtered_traits.txt.gz"'`
+chk "$ff" "buyers file filtered_traits.txt.gz " || exit 2
+
 # DEBUG: (get first file from list):
-#ff=`echo $ff | words -first` # закомментировать потом
-#chk "$ff" "files. " || exit 2
+# ff=`echo $ff | words -first` # закомментировать потом
+# chk "$ff" "files. " || exit 2
 
 maxf=`conf 00_conf.txt maxf`
 echo "$ff" | washing  -res="s|uidsz\.gz|traits30days.gz|" -v_flag="$processor %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \

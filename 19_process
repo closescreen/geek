@@ -14,7 +14,7 @@ typenum=${3:?typenum!}
 
 #>: параметр (days):
 mimN=${4:? minN Days!} # f.e. 5. За сколько дней суммировать minimum
-maxN=${4:? maxN days!} # f.e. 30
+maxN=${5:? maxN days!} # f.e. 30
 
 day=`fn2days $src_file`
 

@@ -96,14 +96,28 @@ for day in $days; do
 
     # аудитории Ильи:
     # Файл один (без указания за какое число), поэтому за все дни пересчета копируется если еще не скопирован текущий файл
-    remote_host2="dm8.adriver.x"
+#    remote_host2="dm8.adriver.x"
     remote_file2="/usr/local/rle/var/share3/DATA/all_sites_10p_traffic/auditory.gz"
     if [[ ! -s $local_dir/$day/auditory.gz ]]; then
 	# если он есть на удаленной стороне:
-	if [[ $( ssh "$remote_host2" "[[ -s $remote_file2 ]]" && echo OK ) ]];then 
+	#if [[ $( ssh "$remote_host2" "[[ -s $remote_file2 ]]" && echo OK ) ]];then 
+	if [[ -s "$remote_file2" ]]; then
 	    mkdir -p "$local_dir/$day/"
-	    scp "$remote_host2:$remote_file2" "$local_dir/$day/"
+	    #scp "$remote_host2:$remote_file2" "$local_dir/$day/"
+	    cp "$remote_file2" "$local_dir/$day/"
 	    chk "$local_dir/$day/auditory.gz" "auditory file" '-s' 'was copyed' nop || exit 2
+	fi
+    fi
+
+    # трейты buyers:
+    # Файл один (без указания за какое число), поэтому за все дни пересчета копируется если еще не скопирован текущий файл
+    remote_file3="/usr/local/rle/var/share3/DATA/traits/filtered_traits.txt.gz"
+    if [[ ! -s $local_dir/$day/filtered_traits.txt.gz ]]; then
+	# если он есть на удаленной стороне:
+	if [[ -s "$remote_file3" ]]; then
+	    mkdir -p "$local_dir/$day/"
+	    cp "$remote_file3" "$local_dir/$day/"
+	    chk "$local_dir/$day/filtered_traits.txt.gz" "buyers traits file" '-s' 'was copyed' nop || exit 2
 	fi
     fi
 
