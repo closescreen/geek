@@ -14,6 +14,21 @@ filled () {
 }
 # ----------------------------------------
 
+next_day_file () {
+ # get filename with day in name
+ # and N - delta days
+ # return file for next day
+ : ${1:? File! }
+ : ${2:? N! }
+ echo  "$1" | 
+  perl -M'Date::Calc qw(Add_Delta_Days)' -e'
+    $N = shift or die "N!";
+    $N+=0 or die "not a digit!";
+    chomp($_=<STDIN>);
+    $re=qr|(\d\d\d\d)-(\d\d)-(\d\d)|; ($y,$m,$d)=m/$re/; $n=sprintf("%s-%02d-%02d",Add_Delta_Days($y,$m,$d,$N)); s/$re/$n/; print
+ ' -- "$2"
+}
+
 days=${1:-""} # можно указать days
 
 #report_deep="$(conf 00_conf.txt report_deep)" # за какие рассчетные дни (не старше чем)
@@ -52,6 +67,19 @@ for day in $days; do
 	    cat "$local_gender_stem.txt" | viatmp -gz "$local_gender_file" && \
 	    rm "$local_gender_stem.txt"
 	    chk "$local_gender_file" "Copyed file" "-s" "was copyed" nop || exit 2
+	else 
+	    pref_day_file=$( next_day_file "$local_gender_file" -1 ) # файл предыдущего дня
+	    pref_2day_file=$( next_day_file "$local_gender_file" -2 ) # файл пре-предыдущего дня
+	    next_day_file=$( next_day_file "$local_gender_file" 1 ) # файл следующего дня
+	    if filled "$pref_day_file" && filled "$next_day_file" ; then
+		# копируем вчерашний файл в виде ссылки взамен ожидания текущего
+		ln -s $(readlink -e "$pref_day_file") "$local_gender_file"
+	    
+	    elif filled "$pref_2day_file" && filled "$next_day_file" ; then
+		# копируем позавчерашний файл в виде ссылки взамен ожидания текущего
+		ln -s $(readlink -e "$pref_2day_file") "$local_gender_file"
+	    fi
+	    
 	fi
     fi
     

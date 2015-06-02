@@ -58,8 +58,9 @@ not_found_ff=""
 chk "$dom_net_ff" "dom_net.gz for 30 days (не хватает: $not_found_ff)" || exit 3 
 
 # текущий dom_gr:
-dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
-chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr.txt " || exit 3
+#dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr.txt" | only -all -s`
+dom_gr_f=`echo "$day" | files "../RESULT/10/%F/$job/$typenum/dom_gr7days.gz" | only -all -s`
+chk "$dom_gr_f" "1 файл dom_gr ../RESULT/10/%F/$job/$typenum/dom_gr7days.gz " || exit 3
 
 #> смерженные файлы bids.gz:
 #> 30 days bids.gz мержатся по первым двум полям (sz,ad), третье поле (bids_count) суммируется, четвертое (dom) - берется последнее значение по данному ключу:
@@ -369,7 +370,7 @@ zcat "$traits_fn"
  # format: sz bt cnt
 ) <(
  #dom_gr.txt:
- cat $dom_gr_f
+ zcat $dom_gr_f
  # Format :
  # dom * group
 ) 
