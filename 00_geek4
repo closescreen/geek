@@ -14,7 +14,7 @@ my $deep = 1000;
 my $show_targets;
 my $dump_jobs;
 my $force;
-my $deb;
+my $deb="";
 my $set="";
 my $first_job;
 my $desc;
@@ -67,13 +67,18 @@ sub Files($$){ days(from=>$+{day}, n=>-$_[0], shift=>1 )->files($_[1]) } # Files
 sub ExistsFilesMinimum($$$){
  # вычисляет и просит только имеющиеся файлы из перечисленных
  # введена как принятие неизбежности того, что некоторые файлы пересчитать не могу, приходится брать что есть
- my ($days, $tmpl, $minimum ) = @_;
- my @need = days(from=>$+{day}, n=>-$days, shift=>1 )->files($tmpl);
- my @exists = grep { $g->test($_) } @need;
- if ( @exists < $minimum ){
-    return @need
+ my ($days, $tmpl, $take ) = @_;
+ my @all = days(from=>$+{day}, n=>-$days, shift=>1 )->files($tmpl);
+ my @exists = grep { $g->test($_) } @all;
+ 
+ if ( @exists > $take ){
+    #return grep {$_} @need[0..($maximum-1)]
+    my @exists_r = reverse @exists;
+    return @exists_r[0..($take-1)]
  }else{
-    return @exists
+    my $deficit = $take - @exists;
+    my @all_r = reverse @all;
+    return @exists, @all_r[0..($deficit-1)]
  }    
 }
 
@@ -96,8 +101,12 @@ $g->routes(
 	    pzbt => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
 	    traits30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/traits30days.gz" },
 	    dom_net => sub{ Files(30, "$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
-	    dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr.txt" },
+	    #dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr7days.gz" }, # меняем на any
 	},
+	any {
+	    dom_grNdays => sub{  map { "$res/$+{day}/$+{job}/$+{tn}/dom_gr${_}days.gz" } reverse (2..7) },
+	},
+	
 	bash { qb "nice ./51_SZVARS_30DAYS \"$_{job}\" \"$_{day}\"" },
 	note { viatmp=>0, flag=>0 },
     },
@@ -188,9 +197,11 @@ $g->routes(
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr(?<N>\\d)days.gz",
 	# д.б х-м!
 	need {
-	    dom_gr => sub{ Files( $+{N}, "$res/\%F/$+{job}/$+{tn}/dom_gr.txt") }
+	    dom_gr_current =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr.txt" },
+	    #dom_gr => sub{ Files( $+{N}, "$res/\%F/$+{job}/$+{tn}/dom_gr.txt") },
+	    dom_gr_exists => sub{ ExistsFilesMinimum(14, "$res/%F/$+{job}/$+{tn}/dom_gr.txt", $+{N} ) },
 	},     
-	bash { qb "nice ./22_DOMGR7DAYS \"$_{job}\" \"$_{day}\"" },    
+	bash { qb "nice ./22_DOMGR7DAYS \"$_{job}\" \"$_{day}\" \"\" \"@{$_{dom_gr_exists_ARRAY}}\" \"$+{N}\" "},    
 	note { viatmp=>0, flag=>0, check_need=>1, },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr.txt",
@@ -207,6 +218,15 @@ $g->routes(
 	bash { qb "nice ./20_DOM30DAYS \"$_{job}\" \"$_{day}\""},
 	note { viatmp=>0, flag=>0 },
     },
+
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat.gz", 
+	need {
+	    urls30days=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
+	},
+	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
+	note { viatmp=>0, flag=>0 },
+    },
+
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls(?<NN>\\d\\d)days.gz",
 	need {
 	    urls=>sub{ Files( $+{NN}, "$res/%F/$+{job}/$+{tn}/urls.gz") },
