@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #>
-(
+#(
 set -u
 set -x
 set -o pipefail
@@ -22,5 +22,10 @@ tn=$(
 src_f=`echo ../RESULT/10/$day/$job/$tn/$src_base_name`
 chk $src_f "source file for URL_CAT" "-s" "exists-and-noempty" nop || exit 2
 
-echo "$src_f" | washing -res="s|$src_base_name|url_cat.gz|" -v_flag="zcat %s | ./28_process | LANG=POSIX sort -t\\* -S 333M -k1,1 --compress-program=gzip" -comp=gzip -time=00_all.time.log
-)#>>"$0.log" 2>&1
+echo "$src_f" | 
+ washing -res="s|$src_base_name|url_cat.gz|" -v_flag="
+ zcat %s |
+  grep -v -P 'anonymous\.google' |
+  ./28_process |
+  LANG=POSIX sort -t\\* -S 333M -k1,1 --compress-program=gzip" -comp=gzip -time=00_all.time.log
+#)#>>"$0.log" 2>&1
