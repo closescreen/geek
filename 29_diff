@@ -1,0 +1,58 @@
+#!/usr/bin/env bash
+#> различия между предыдущим и текущим url_cat
+#> На входе смерженный поток 
+
+# 000a.ru*217*320 * "curr"|"prev"
+# 248*000a.ru/a/tag/1139 * "curr"|"prev"
+# 229*000a.ru/a/tag/951 * "curr"|"prev"
+
+
+#>>              1                  2          3   
+#>>  000a.ru/a/best_year/2015/40 * 177 * "curr"|"prev"
+
+# OLD:
+#> Если в curr появилась запись (cat+url) или значение cat изменилось, то - insert
+#> Если в curr исчезла запись (cat+url) - то delete
+set -u
+set +x
+set -o pipefail
+
+awk -F* -v"OFS=*" '
+# url * cat * "curr"|"prev"
+{
+ if ( $1!=url ) flush();
+
+ url=$1;  
+
+ if ($3=="prev"){ 
+    prev_cat = $2
+ }else{
+    if ($3=="curr"){ 
+	curr_cat = $2
+    }
+ }
+}
+
+END{
+ flush()
+}
+
+function flush(){
+ 
+ if ( curr_cat!="" ){
+    if ( curr_cat!=prev_cat ){
+	print url,curr_cat,"insert" 
+    }	
+ }else{
+    if ( prev_cat!="" ){
+	print url, prev_cat, "delete"
+    }
+ }
+ 
+ prev_cat=""; curr_cat="";
+ 
+}
+'
+
+#> out:
+#> url * curr_cat * "insert"|"delete"

@@ -184,6 +184,23 @@ $g->routes(
 	},
 	note { check_need=>1, }, # пока для всех будем чекать
     },
+
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.gz",
+	need {
+	    url_cat => sub{ Files(2, "$res/\%F/$+{job}/$+{tn}/url_cat.gz") },
+	},
+	bash { qb( qq( 
+	    LANG=POSIX sort -T. -t\\* -m -k1,1 <\( 
+		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
+		\) <\(
+		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
+		\) | ./29_diff 
+	    ), @{$_{url_cat_ARRAY}});
+	},
+	note { check_need=>1, }, # пока для всех будем чекать
+    },
+
+
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
 	# any - способ указать, что требуется хотябы один из указанного списка:
 	# пока только два дня (2..2), было (1..7), потом если надо - переделать на 7

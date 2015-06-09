@@ -5,25 +5,24 @@ set +x
 set -o pipefail
 
 # на входе поток формата urls30days.gz
-# url * path * sess * sessends
+# doml * path * sess * sessends
 # 000a.ru*/a/add*3*1
 # 000a.ru*/a/best/*1*1
 
-awk -v n=10 -v m=1000 -F* '
- pu!=$1
- { out(); delete su; delete lu; s=0; l=0 }
+awk -v n=10 -v m=300 -F* '
+ pu!=$1 { out(); delete su; delete lu; s=0; l=0 }
+
  { pu=$1; s+=$3; l+=$4 } 
  
- $3>5 
- { su[$1""$2]=$3; lu[$1""$2]=$4 } 
+ $3>5 { su[$1""$2]=$3; lu[$1""$2]=$4 } 
  
  END{ out() } 
  
  function out(){
   if( s>100 && length(su)>0 ){
-    print pu"*"int(m*l/s)"*"length(su); 
+#    print pu "*" int(m*l/s) "*" length(su); 
     for( i in su ) 
-	print int( m * (lu[i] + n * l/s) / (su[i] + n) ) "*" i
+	print i "*" int( m * (lu[i] + n * l/s) / (su[i] + n) )
   }
  }
 ' 

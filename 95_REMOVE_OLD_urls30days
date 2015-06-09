@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#> Удаление старых файлов urls30days.gz потому что они большие.
+
+export PATH=$PATH:/usr/local/rle/var/bike
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5
+export PATH=$PATH:/usr/local/rle/bin
+export SCALA_HOME=$HOME/scala-2.11.2
+export PATH=$SCALA_HOME/bin:$PATH
+
+job=${1:?JOB!} # нужно указывать job
+# следует запускать не во время работы geek , а лучше, перед его запуском
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+older="14days" # удалять старее чем
+
+#-----часовые данные ----
+jobs="google ssp_sites net_sites"
+typenums="0 1 3"
+
+for job in $job; do
+ for tn in $typenums; do
+  # часовые данные:
+  ff=`find ../RESULT/10/  -type f -wholename "*/[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]/$job/$tn/urls30days.gz" |
+  only -near="sz_vars_30days.gz" |
+  only -older="$older"`
+  [[ -n "$ff" ]] && echo "$(date) remove $ff">&2 && rm $ff
+
+ done
+done
+
+
+)>>"$0.log" 2>&1
