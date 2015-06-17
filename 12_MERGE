@@ -16,7 +16,7 @@ day=${3:-""} # можно указать day
 variant=${4-""} # можно указать вариант типа "url"
 
 deb=${5:-""} # млжно указать deb
-[[ -n "$deb" ]] && set -x
+[[ -n "$deb" ]] && deb="-d" && set -x
 
 
 # некоторые комбинации job+typenum не обрабатываются:
@@ -33,13 +33,17 @@ postfilter="./12_postf_${job}_tn${typenum}${suffix}"
 [[ -x "$postfilter" ]] || exit 3 # выход без ошибок в лог при отсутствии скрипта
 #chk "$postfilter" "postfilter script" "-x" "exists and executable" noprint || exit 2
 
+#>: prefilter определяет скрипт, который может обработать отдельные потоки файлов до merge: 
+prefilter="./12_pref_${job}_tn${typenum}${suffix}"
+[[ -x "$prefilter" ]] || prefilter="cat"
+
 # Набор ключей для mergef тоже зависит от job и typenum и variant:
 varopt="base" # когда не указан $variant
 [[ -n "$variant" ]] && varopt="$variant"
 mkeys=$( href -v="$job" -v="$typenum" -v="$varopt" -dict='
  "google" => 		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}, 3 => {"base"=>"1,1n 2,2n"} },
  "ssp_sites" =>		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}, 3 => {"base"=>"1,1n 2,2n"} },
- "net_sites" =>		{ 0 => {"base"=>"1,1n 2,2n"},                 1 => {"base"=>"1,1n 2,2n"}},
+ "net_sites" =>		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}},
 ' )
 chk "$mkeys" "Ключи для mergef по $job и $typenum и $variant" || exit 1
 
@@ -59,13 +63,21 @@ fi
 
 [[ ! -d "$find_path" ]] && exit 0
 
-prefix=""
-[[ -n "$variant" ]] && prefix="${variant}_"
+total_prefix=""
+[[ -n "$variant" ]] && total_prefix="${variant}_"
 
-find "$find_path" -type f -wholename "*/$job/$typenum/${prefix}[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
- only --without="${prefix}total.gz" |
+hour_prefix=""
+[[ -n "$variant" ]] && hour_prefix=$(href -v="$job" -v="$typenum" -v="$varopt" -dict='
+    google    =>  {0 => { url => "url_", base=>"" }},
+    ssp_sites =>  {0 => { url => "url_", base=>"" }},
+    net_sites =>  {0 => { url => "" ,    base=>"" }}, # net_sites тотал по урлам берут из обычных часовых файлов
+' )
+
+find "$find_path" -type f -wholename "*/$job/$typenum/${hour_prefix}[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+ only --without="${total_prefix}total.gz" |
  only -sizegt=20 |
- LANG=POSIX mergef -reverse -allow-empty -least=24 -having='m/T03/' --incomplete='22: %t_%n_hours.%e' -m -k="$mkeys" -postfilter="$postfilter" \
+ LANG=POSIX mergef -tt="${total_prefix}total.gz" -reverse -allow-empty -least=24 -having='m/T03/' --incomplete='22: %t_%n_hours.%e' \
+    -m -k="$mkeys" -prefilter="$prefilter" -postfilter="$postfilter" \
     -on_another="silent_skip" -timelog=00_all.time.log
 
 

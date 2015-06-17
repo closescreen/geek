@@ -1,0 +1,17 @@
+#!/usr/bin/env bash
+#> пре-фильтр для net_sites 0 url
+
+#> По урлам.
+
+#> net_sites tn0 - это показы, а также "биды" (сетевые показы - выигранные биды)
+
+#          1     2    3  4  5  6       7            8        9   10     11  12 
+# input: "uid second sid sz pz bt exposureprice secondprice ad network dom path" 
+
+awk -F* -v"OFS=*" '$11!="" {print $11,$12,$10,$7,$8}' | LANG=POSIX sort -T. -t\* -k1,1 -k2,2
+
+#       1   2    3    4         5
+# out: dom path net expprice secondprice
+
+
+# merge ожидает отсортированные потоки, поэтому sort - здесь

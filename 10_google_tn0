@@ -10,15 +10,7 @@ set +x
 
 sids=${2:?sids!} #like a: 123|234|3254
 
-job_history_log -c=./history.conf "$1" "sz,ad,exposureprice,winprice,uid!=0,typenum=0,sid=$sids,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" \
+job_history_log -c=./history.conf "$1" "sz,ad,exposureprice,winprice,uid!=0,typenum=0,sid=$sids,statusnum=0,usergroup=$(conf 00_conf.txt usergroups)" \
  -fn -cut="sid,statusnum,typenum,uid,usergroup" -true="sz" |
-  perl -MDom -Mstrict -w -F'\*' -lane'
-# IN: sz,ad,exposureprice,winprice,ref
-#      0  1     2             3     4  
-
-@F[ 4,5 ] = $F[4] ? map {$_||""} Dom::split_ref( $F[4] ) : ("",""); # справа добавляется еще одна колонка
-
-print join("*",map {$_||""} @F);
-'
-sort -T. -t\* -n -k1,1 -k2,2
+ sort -T. -t\* -n -k1,1 -k2,2
 

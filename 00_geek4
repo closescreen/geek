@@ -116,7 +116,8 @@ $g->routes(
 	    },
 	cmd => sub { 
 	    my %commands = (
-		"views.gz" => "nice ./37_VIEWS \"$_{job}\" \"$_{day}\"",
+		"views.gz"     => "nice ./37_VIEWS \"$_{job}\" \"$_{day}\"",
+		"url_views.gz" => "nice ./37_VIEWS \"$_{job}\" \"$_{day}\" \"url\"",
 		"sessions.gz" => "nice ./15_SESSIONS \"$_{job}\" \"$_{day}\"",
 		"bids.gz" => "nice ./14_BIDS \"$_{job}\" \"$_{day}\"",
 		"uidsz.gz" => "nice ./18_UIDSZ \"$_{job}\" \"$_{day}\"",
@@ -185,20 +186,6 @@ $g->routes(
 	note { check_need=>1, }, # пока для всех будем чекать
     },
 
-    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.gz",
-	need {
-	    url_cat => sub{ Files(2, "$res/\%F/$+{job}/$+{tn}/url_cat.gz") },
-	},
-	bash { qb( qq( 
-	    LANG=POSIX sort -T. -t\\* -m -k1,1 <\( 
-		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
-		\) <\(
-		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
-		\) | ./29_diff 
-	    ), @{$_{url_cat_ARRAY}});
-	},
-	note { check_need=>1, }, # пока для всех будем чекать
-    },
 
 
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_groups.gz",
@@ -236,14 +223,6 @@ $g->routes(
 	note { viatmp=>0, flag=>0 },
     },
 
-    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat.gz", 
-	need {
-	    urls30days=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
-	},
-	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
-	note { viatmp=>0, flag=>0 },
-    },
-
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/urls(?<NN>\\d\\d)days.gz",
 	need {
 	    urls=>sub{ Files( $+{NN}, "$res/%F/$+{job}/$+{tn}/urls.gz") },
@@ -260,35 +239,101 @@ $g->routes(
 	note { viatmp=>0, flag=>0 },
     },
     {
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/total.gz",
+	target "$res/$sm{day}/net_sites/0/url_vars.gz",
+	need {
+	    url_total=>sub{"$res/$+{day}/".'net_sites/0'."/url_total.gz"},
+	},
+	bash { qb "nice zcat \"$_{url_total}\" | ./52_urlvars_30days_net_sites" },
+	note { check_need=>1, },
+    },
+    {
+	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/3/url_vars.gz",
+	need {
+	    bids_url_total=>sub{"$res/$+{day}/$_{job}/3/url_total.gz"},
+	},
+	bash { qb "nice zcat \"$_{total_by_url}\" | ./52_urlvars_30days_net_sites" },
+	note { check_need=>1, },
+    },
+
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?total.gz", # может быть префикс типа "url" за которым следует "_"
 	need {
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
-	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
+	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
 	note { viatmp => 0, flag=>0, }, # check_need отключил - попробуем делегировать mergef'у. Если много будет в логах - будем думать.    
     },
     {
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/$sm{hour}.gz",
-	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" " },
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
+	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
 	note { viatmp => 0, flag=>0 },    
     },
-    
     {
-	target "../RESULT/TEST/$sm{day}/test.gz",
-	need { aa=>sub{"aa"} },
-	desc {"тестовый файл $_{day}"},
-	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
-#	cmc => sub{},
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_to_send.ready",
+	need {
+	    to_send=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat_to_send.gz" },
+	},
+	bash {qb "(zcat $_{to_send} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{to_send}\" "},
+	#bash {qb "(zcat $_{to_send} | perl -lane'1' ) && echo \"Emulating of sent $_{to_send}\" "},
+	note { check_need=>1, stdall=>"./30_sendind.log" },
+    },
+    {
+	target "$res/$sm{day}/".'google/3'."/url_cat_to_send.gz",
+	need {
+	    diff=>sub{ "$res/$+{day}/google/3/url_cat_diff.gz" },	
+	},
+	bash {qb "[[ -s \"$_{diff}\" ]] && ln -s ./`basename $_{diff}` $_{TARGET}"},
+	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log" },
+    },
+    {
+	target "$res/$sm{day}/".'ssp_sites/3'."/url_cat_to_send.gz",
+	need {
+	    diff=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_diff.gz" },
+	    url_cat_dom=>sub{ "$res/$+{day}/google/3/url_cat_dom.gz" },	
+	},
+	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
+    },    
+    {
+	target "$res/$sm{day}/".'net_sites/0'."/url_cat_to_send.gz",
+	need {
+	    diff=>sub{ "$res/$+{day}/net_sites/0/url_cat_diff.gz" },
+	    url_cat_dom=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_dom.gz", "$res/$+{day}/google/3/url_cat_dom.gz" },	
+	},
+	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
+    },    
+    
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.gz",
+	need {
+	    url_cat => sub{ Files(2, "$res/\%F/$+{job}/$+{tn}/url_cat.gz") },
+	},
+	bash { qb( qq( 
+	    LANG=POSIX sort -T. -t\\* -m -k1,1 <\( 
+		zcat %s | awk -v"OFS=*" '{print \$0,"prev"}'
+		\) <\(
+		zcat %s | awk -v"OFS=*" '{print \$0,"curr"}'
+		\) | ./29_diff 
+	    ), @{$_{url_cat_ARRAY}});
+	},
+	note { check_need=>1, }, # пока для всех будем чекать
     },
 
-#    {
-#	target "../RESULT/TEST/$sm{day}/test.gz",
-#	need { bb=>sub{"bb"}},
-#	desc {"тестовый файл - redefined $_{day}"},
-#	bash { qb "sleep 10; echo $_{day} %s", qx(date) },
-#	cmc => sub{},
-#    }
-    
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_dom.gz",
+	need {
+	    url_cat=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat.gz" },
+	},
+	bash {qb "zcat $_{url_cat} | cut -d* -f1 | perl -lane' print /([^\\/]+)/ ' | uniq "},
+	note { check_need=>1,  },
+    },
+
+    {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat.gz", 
+	need {
+	    urls30days=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
+	},
+	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
+	note { viatmp=>0, flag=>0 },
+    },
+
 
 );
 
@@ -376,12 +421,12 @@ for my $job ( @jobs_to_do ){
 	print join " ", @desc;
     }	
 
-    
-    next if $norun;
-    
+
     my %defaults = (viatmp=>$job->{target}, flag=>$job->{target} );
     my %notes = %{ $job->{note}||{} };
     print join ",", map {"$_=$notes{$_}"} keys %notes if %notes and $deb;
+
+    next if $norun;
     
     my ($rv, $msg) = $g->execute( 
 	$job->{job},

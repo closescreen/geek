@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+
+# сбор по урлам
+
+sids=${2:?sids!} #like a: 123|234|3254
+
+job_history_log -c=./history.conf "$1" "sid=$sids,sz,winprice,uid!=0,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" -fn \
+ -cut="sid,sz,uid,typenum,statusnum,usergroup" -true="sz,ref" |
+ perl -MDom -Mstrict -w -F'\*' -lane'
+# IN: winprice,ref
+#      0        1   
+my ($dom,$ref) = $F[1] ? map {$_||""} Dom::split_ref( $F[1] ) : ("",""); # справа добавляется еще одна колонка
+
+print join("*",map {$_||""} $dom, $ref, $F[0]);
+' | LANG=POSIX sort -T. -t\* --compress-program=gzip -k1,1 -k2,2
+

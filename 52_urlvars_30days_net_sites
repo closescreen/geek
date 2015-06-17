@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+#>
+(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+# in:
+#  1    2     3    4       5              6        
+# dom  path  net  cnt  sum_expprice sum_secondprice
+
+# code ....
+
+# out:
+#  1    2     3      4              5
+# dom  path  views  bids  sum-secondprice-for-views
+
+
+)#>>"$0.log" 2>&1

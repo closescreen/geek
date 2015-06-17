@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 #>
-#(
+(
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 
@@ -28,4 +28,4 @@ echo "$src_f" |
   grep -v -P 'anonymous\.google' |
   ./28_process |
   LANG=POSIX sort -t\\* -S 333M -k1,1 --compress-program=gzip" -comp=gzip -time=00_all.time.log
-#)#>>"$0.log" 2>&1
+)>>"$0.log" 2>&1

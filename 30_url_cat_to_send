@@ -1,0 +1,35 @@
+#!/usr/bin/env bash
+#> подготовить и отдать на засылку в базу url_cat_diff
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+diff_f=${1:?diff file!} # url_cat_diff.gz для засылки в базу
+# url * group [* INSERT|DELETE ]
+
+exlude_domains_ff=${2:-""} # могут быть указаны (список в кавычках) имена файлов с доменами, которые уже засланы (исключить из текущей засылки)
+# одна колонка с доменами (не сортированы)
+
+zcat "$diff_f" |
+ perl -F'\*' -lane'
+ BEGIN{
+    $edoms = shift or die "File with exclude domains!";
+    open EDOMS, "$edoms" or die "Cant open file $edoms";
+    while (<EDOMS>){
+	chomp;
+	$edoms{$_}||=1;
+    }
+ }
+ 
+ ($dom) = $F[0]=~/([^\/]+)/; # <-- domain from url of current line
+
+ next if $edoms{ $dom }; # <-- skip exclude domains
+ 
+ print; # <-- another script will be send to base
+ 
+' <( echo "$exlude_domains_ff" | LANG=POSIX mergef -allow-empty -k=1,1 -u -stdout )
+
+
+) 2>>"$0.log" 

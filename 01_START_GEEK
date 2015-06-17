@@ -84,6 +84,11 @@ for target_date in $target_dates; do
 #	cmd="nice ./00_geek4 --want=$target"
 #	fork -pf=../pids/common.pids -dela=3 -n=$proc "$cmd" -wait
 
+	#-----
+	target=../RESULT/10/$target_date/$job/$tn/url_cat_to_send.ready
+	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	fork -pf=../pids/url-like.pids -dela=1 -n=$proc "$cmd" -wait
+
     done
     jobs_stop_time=`date +%s`
     jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
