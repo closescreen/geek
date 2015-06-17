@@ -1,11 +1,6 @@
 #!/usr/bin/env bash
 #> urls.
 
-#> 1 переписать на один хеш-массив
-#> 2 сравнить результаты со старыми
-#> 3 добавить поля bids
-
-
 #>IN:
 #> google:
 #>  1   2     3   4  5       6        7   8   9     10      11
@@ -44,7 +39,7 @@ _{
  #> when uid was changed:
  increment_counters() if Uid!=prevUid and prevUid;
  
- $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }||=1;
+ $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }{bids}+=1;
  $urls{ $F[DOM] }{ $F[SESTART] }{ last } = $F[PATH];
 
 } -prev=>"uid=0,sestart=0,dom,path";
@@ -56,7 +51,8 @@ sub increment_counters{
  for my $dom ( keys %urls ){
     for my $sestart ( keys %{ $urls{$dom} } ){
 	for my $path ( keys %{ $urls{$dom}{$sestart}{path} } ){
-	    $sessions{ $dom."*".$path }{cnt}++;
+	    $sessions{ $dom."*".$path }{cnt}++; # кол-во сессий
+	    $sessions{ $dom."*".$path }{bids} += $urls{$dom}{$sestart}{path}{$path}{bids}; # кол-во бидов
 	}
 	#> sessions_end counter:
 	$sessions{ $dom."*".$urls{$dom}{$sestart}{last} }{ends}++;
@@ -68,7 +64,7 @@ sub increment_counters{
 
 for my $ref ( keys %sessions ){
     # ( $ref - joined Dom*Path )
-    p0 $ref, $sessions{ $ref }{ cnt }, $sessions{ $ref }{ ends };
+    p0 $ref, $sessions{$ref}{cnt}, $sessions{$ref}{ends}, $sessions{$ref}{bids};
 }
 
 ' | LANG=POSIX sort -T. -S 333M -t\* -k1,1 -k2,2
@@ -78,11 +74,11 @@ for my $ref ( keys %sessions ){
 #>>  
 #>> | field          | description |
 #>> | -------------- | ----------- |
-#>> | dom  |
-#>> | path |
+#>> | dom  	     |
+#>> | path 	     |
 #>> | sessions_count | количество сессий, где dom+url участвовал |
 #>> | sessions_ends  | количество сессий, где он был последним.  |
-
+#>> | bids           | кол-во бидов (по урлу)			 |
 
 
 
