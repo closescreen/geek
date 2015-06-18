@@ -268,39 +268,56 @@ $g->routes(
 	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
 	note { viatmp => 0, flag=>0 },    
     },
+#    {
+#	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_to_send.ready",
+#	need {
+#	    to_send=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat_to_send.gz" },
+#	},
+#	bash {qb "(zcat $_{to_send} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{to_send}\" "},
+#	#bash {qb "(zcat $_{to_send} | perl -lane'1' ) && echo \"Emulating of sent $_{to_send}\" "},
+#	note { check_need=>1, stdall=>"./30_sendind.log" },
+#    },
+#    {
+#	target "$res/$sm{day}/".'google/3'."/url_cat_to_send.gz",
+#	need {
+#	    diff=>sub{ "$res/$+{day}/google/3/url_cat_diff.gz" },	
+#	},
+#	bash {qb "[[ -s \"$_{diff}\" ]] && ln -s ./`basename $_{diff}` $_{TARGET}"},
+#	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log" },
+#    },
+#    {
+#	target "$res/$sm{day}/".'ssp_sites/3'."/url_cat_to_send.gz",
+#	need {
+#	    diff=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_diff.gz" },
+#	    url_cat_dom=>sub{ "$res/$+{day}/google/3/url_cat_dom.gz" },	
+#	},
+#	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
+#    },    
+#    {
+#	target "$res/$sm{day}/".'net_sites/0'."/url_cat_to_send.gz",
+#	need {
+#	    diff=>sub{ "$res/$+{day}/net_sites/0/url_cat_diff.gz" },
+#	    url_cat_dom=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_dom.gz", "$res/$+{day}/google/3/url_cat_dom.gz" },	
+#	},
+#	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
+#    },    
+
     {
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_to_send.ready",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.sent",
 	need {
-	    to_send=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat_to_send.gz" },
+	    diff=>sub{ "$res/$+{day}/$+{job}/$+{tn}/".'url_cat_diff.gz' },
+	    after=>sub{ 
+		my %depend = (
+		    ssp_sites => {3=>"$res/$+{day}/net_sites/0/".'url_cat_diff.sent'},
+		    google =>    {3=>"$res/$+{day}/ssp_sites/3/".'url_cat_diff.sent'},
+		);
+		$depend{ $+{job} }{ $+{tn} };
+	    },
 	},
-	bash {qb "(zcat $_{to_send} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{to_send}\" "},
-	#bash {qb "(zcat $_{to_send} | perl -lane'1' ) && echo \"Emulating of sent $_{to_send}\" "},
-	note { check_need=>1, stdall=>"./30_sendind.log" },
+	bash {qb "(zcat $_{diff} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{diff}\" "},
+	#bash {qb "(zcat $_{diff} | perl -lane'1' ) && echo \"Emulating of sent $_{diff}\" "},
+	note { check_need=>1, stdall=>"./30_sending.log" },
     },
-    {
-	target "$res/$sm{day}/".'google/3'."/url_cat_to_send.gz",
-	need {
-	    diff=>sub{ "$res/$+{day}/google/3/url_cat_diff.gz" },	
-	},
-	bash {qb "[[ -s \"$_{diff}\" ]] && ln -s ./`basename $_{diff}` $_{TARGET}"},
-	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log" },
-    },
-    {
-	target "$res/$sm{day}/".'ssp_sites/3'."/url_cat_to_send.gz",
-	need {
-	    diff=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_diff.gz" },
-	    url_cat_dom=>sub{ "$res/$+{day}/google/3/url_cat_dom.gz" },	
-	},
-	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
-    },    
-    {
-	target "$res/$sm{day}/".'net_sites/0'."/url_cat_to_send.gz",
-	need {
-	    diff=>sub{ "$res/$+{day}/net_sites/0/url_cat_diff.gz" },
-	    url_cat_dom=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_dom.gz", "$res/$+{day}/google/3/url_cat_dom.gz" },	
-	},
-	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
-    },    
     
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.gz",
 	need {
