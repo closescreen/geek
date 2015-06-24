@@ -47,6 +47,10 @@ for target_date in $target_dates; do
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 	
+	#--
+	target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv.sent
+	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 	
     done
     
@@ -85,7 +89,8 @@ for target_date in $target_dates; do
 #	fork -pf=../pids/common.pids -dela=3 -n=$proc "$cmd" -wait
 
 	#-----
-	target=../RESULT/10/$target_date/$job/$tn/url_cat_to_send.ready
+	#OLD: target=../RESULT/10/$target_date/$job/$tn/url_cat_to_send.ready
+	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.sent
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/url-like.pids -dela=1 -n=$proc "$cmd" -wait
 

@@ -109,8 +109,16 @@ my %vars;
 open FILE, shift or die $!;
 while(<FILE>){
  chomp;
- my ($sid, $sz, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
- $vars{ $sid }{ $sz } = { exposures => $exposures, winprice => $winprice, expprice => $expprice, exp_div_win=>$exp_div_win };
+ my ($sid, $sz, $is_net, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
+ if ( $is_net ){ # is_net=1 или 0
+    # только для сетевых показов - "выигранных бидов"
+    $vars{ $sid }{ $sz }{ exposures } = $exposures;
+    $vars{ $sid }{ $sz }{ winprice } = $winprice;
+    $vars{ $sid }{ $sz }{ expprice } = $expprice;
+    $vars{ $sid }{ $sz }{ exp_div_win } = $exp_div_win;
+ }
+ # для всех показов (сетевых и не сетевых):
+ $vars{ $sid }{ $sz }{ all_exposures } += $exposures; # для ctr - нужны все показы    
 }
 
 # clicks:
@@ -216,7 +224,7 @@ _{
  my ( $ctr, $avg_winprice, $avg_exp_div_win );
  if ( my $exposures = $vars_sid_sz->{exposures} ){
     if ( $F[BIDS]>=1000 && $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $vars_sid_sz->{all_exposures} );
     }else{ 
 	$ctr = "NA";
 	# DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sid_sz->{clicks}, exposures:$exposures ";
@@ -310,9 +318,9 @@ _{
 };
 
 ' "$nets" "$pz_list" "$bt_list" <(
- # ПРОСМОТРЫ за 30 дней: sid sz exposures exppr secondpr exp_div_sec
- mergef -ff="$views_ff" -m -k=1,1n -k=2,2n -stdout | summator -fu="sum,sum,sum,sum"
- # merged OUT format: sid sz exposures expprice secondprice exp_divided_by_sec
+ # ПРОСМОТРЫ за 30 дней: sid sz isnetwork exposures exppr secondpr exp_div_sec
+ mergef -ff="$views_ff" -m -k=1,1n -k=2,2n -k=3,3n -stdout | summator -fu="sum,sum,sum,sum"
+ # merged OUT format: sid sz IsNet exposures expprice secondprice exp_divided_by_sec
 ) <(
  # КЛИКИ за 30 дней ключ (sid,sz,ad,cliks) (ad - выкидываем) , суммы clicks по sid,sz:
  mergef -ff="$tn1_total_ff" -m -prefilter="cut -d* -f1,2,4" -k=1,1n -k=2,2n -stdout | summator -fu="sum"

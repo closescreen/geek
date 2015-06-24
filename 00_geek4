@@ -91,6 +91,26 @@ $g->routes(
 	bash {qb "nice ./55_SZGR \"$_{job}\" \"$_{day}\""},
 	note { viatmp=>0, flag=>0 },
     },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv.sent",
+	need {
+	    conv => sub{ 
+		my %allow = (google=>{3=>"OK"}, ssp_sites=>{3=>"OK"}, net_sites=>{0=>"OK"}, );
+		return undef unless $allow{$+{job}}{$+{tn}};
+		"$res/$+{day}/$+{job}/$+{tn}/sz_vars_conv.gz" 
+	    },
+	},
+	bash {qb "[[ -n \"$_{conv}\" ]] && nice zcat \"$_{conv}\" | ./set_sz_vars_for_bidder.pl"},
+	note {check_need=>1 },
+    },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv.gz",
+	need {
+	    szvars => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_vars_30days.gz" },
+	},
+	bash {qb "nice zcat \"$_{szvars}\" | ./53_sz_vars_conv -conf=53_sz_vars_decl.conf"},
+	note {check_need=>1 },
+    },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	need {
 	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
