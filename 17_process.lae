@@ -51,20 +51,23 @@ sub increment_counters{
  for my $dom ( keys %urls ){
     for my $sestart ( keys %{ $urls{$dom} } ){
 	for my $path ( keys %{ $urls{$dom}{$sestart}{path} } ){
-	    $sessions{ $dom."*".$path }{cnt}++; # кол-во сессий
-	    $sessions{ $dom."*".$path }{bids} += $urls{$dom}{$sestart}{path}{$path}{bids}; # кол-во бидов
+	    $sessions{ $dom }{ $path }{cnt}++; # кол-во сессий
+	    $sessions{ $dom }{ $path }{bids} += $urls{$dom}{$sestart}{path}{$path}{bids}; # кол-во бидов
 	}
 	#> sessions_end counter:
-	$sessions{ $dom."*".$urls{$dom}{$sestart}{last} }{ends}++;
+	$sessions{ $dom }{ $urls{$dom}{$sestart}{last} }{ends}++;
     }
  }
     
  undef %urls;
 }
 
-for my $ref ( keys %sessions ){
-    # ( $ref - joined Dom*Path )
-    p0 $ref, $sessions{$ref}{cnt}, $sessions{$ref}{ends}, $sessions{$ref}{bids};
+for my $dom ( keys %sessions ){
+    for my $path (keys %{$sessions{$dom}}){
+	my $ref = $dom."*".$path;
+	# ( $ref - joined Dom*Path )
+	p0 $ref, $sessions{$ref}{cnt}, $sessions{$ref}{ends}, $sessions{$ref}{bids};
+    }	
 }
 
 ' | LANG=POSIX sort -T. -S 333M -t\* -k1,1 -k2,2
