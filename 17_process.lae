@@ -55,7 +55,7 @@ sub increment_counters{
 	    $sessions{ $dom }{ $path }{bids} += $urls{$dom}{$sestart}{path}{$path}{bids}; # кол-во бидов
 	}
 	#> sessions_end counter:
-	$sessions{ $dom }{ $urls{$dom}{$sestart}{last} }{ends}++;
+	$sessions{ $dom }{ $urls{$dom}{$sestart}{last} }{ ends }++;
     }
  }
     
@@ -64,9 +64,7 @@ sub increment_counters{
 
 for my $dom ( keys %sessions ){
     for my $path (keys %{$sessions{$dom}}){
-	my $ref = $dom."*".$path;
-	# ( $ref - joined Dom*Path )
-	p0 $ref, $sessions{$ref}{cnt}, $sessions{$ref}{ends}, $sessions{$ref}{bids};
+	p0 $dom, $path, $sessions{$dom}{$path}{cnt}, $sessions{$dom}{$path}{ends}, $sessions{$dom}{$path}{bids};
     }	
 }
 
