@@ -41,7 +41,6 @@ BEGIN{
  if ( ($2!=prevPath || $1!=prevDom ) && prevDom ){ flush() };
  sessions+=$3;
  sess_ends+=$4;
- bids+=$5;
  prevDom=$1;
  prevPath=$2;
 }
@@ -51,7 +50,7 @@ END{
 }
 
 function flush(){
- print prevDom, prevPath, sessions, sess_ends, bids;
+ print prevDom, prevPath, sessions, sess_ends;
  sessions=0;
  sess_ends=0;
 }
@@ -65,5 +64,4 @@ function flush(){
 #>> | path      |
 #>> | sessions  |
 #>> | sess_ends |
-#>> | bids      |
 

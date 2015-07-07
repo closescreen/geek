@@ -21,10 +21,13 @@ fields_numbers=`perl -e'
  %L = map { $F[$_],$_+1 } (0..$#F); 
  print join ",", @L{qw| uid dom path sestart isview |}' "$lb"`
 
+ads_domains_f="adservice_domains.txt"
+
 cut -d* -f$fields_numbers |
 lae -lb="uid dom path sestart isview" '
 my %sessions;
 my %urls;
+my %ads_domains = map {$_,1} cat shift(); 
 
 _{
 
@@ -34,13 +37,15 @@ _{
  # 25443534*1411888006*23983*3*29*-1*0*gatchina24.ru*/gtn-pravda/gtn-pravda_10592.html*1411887999*0
  # 25443534*1411888010*54731*3*36*-1*0*prosto-ma-ma.ru*/*1411888002*0
 
- return if not $F[ISVIEW];
+ return if not $F[ISVIEW]; # <--считаются только засчитанные нами просмотры, используемые для сессий. Нельзя здесь считать кол-во бидов и прочее.
+ return if $ads_domains{ $F[DOM] };
  
  #> when uid was changed:
  increment_counters() if Uid!=prevUid and prevUid;
  
- $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }{bids}+=1;
+ $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }+=1;
  $urls{ $F[DOM] }{ $F[SESTART] }{ last } = $F[PATH];
+
 
 } -prev=>"uid=0,sestart=0,dom,path";
 
@@ -52,7 +57,6 @@ sub increment_counters{
     for my $sestart ( keys %{ $urls{$dom} } ){
 	for my $path ( keys %{ $urls{$dom}{$sestart}{path} } ){
 	    $sessions{ $dom }{ $path }{cnt}++; # кол-во сессий
-	    $sessions{ $dom }{ $path }{bids} += $urls{$dom}{$sestart}{path}{$path}{bids}; # кол-во бидов
 	}
 	#> sessions_end counter:
 	$sessions{ $dom }{ $urls{$dom}{$sestart}{last} }{ ends }++;
@@ -62,13 +66,16 @@ sub increment_counters{
  undef %urls;
 }
 
-for my $dom ( keys %sessions ){
-    for my $path (keys %{$sessions{$dom}}){
-	p0 $dom, $path, $sessions{$dom}{$path}{cnt}, $sessions{$dom}{$path}{ends}, $sessions{$dom}{$path}{bids};
+for my $dom ( sort keys %sessions ){
+    for my $path (sort keys %{$sessions{$dom}}){
+	## Не считаем другие счетчики здесь, тут только засчитанные просмотры
+	p0 $dom, $path, $sessions{$dom}{$path}{cnt}, $sessions{$dom}{$path}{ends};
     }	
 }
 
-' | LANG=POSIX sort -T. -S 333M -t\* -k1,1 -k2,2
+' "$ads_domains_f" | LANG=POSIX sort -T. --compress-program=gzip -t\* -k1,1 -k2,2
+
+# убрал -S 333M что-то памяти не хватает
 
 #>>OUT:
 #>> dom, ref, sessions_count, sessions_ends
@@ -79,7 +86,6 @@ for my $dom ( keys %sessions ){
 #>> | path 	     |
 #>> | sessions_count | количество сессий, где dom+url участвовал |
 #>> | sessions_ends  | количество сессий, где он был последним.  |
-#>> | bids           | кол-во бидов (по урлу)			 |
 
 
 
