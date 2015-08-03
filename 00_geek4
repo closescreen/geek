@@ -6,6 +6,7 @@ use Data::Dumper;
 use lib '/usr/local/rle/var/bike';
 use Geek qw/ :all /;
 use Getopt::Long;
+use Date::Calc qw(Today_and_Now Delta_DHMS);
 
 my @wanted;
 my $need = 'todo';
@@ -22,6 +23,7 @@ my $norun;
 my $avg;
 my $loadaverage;
 #my $no_warn_deep;
+my $timelog = "00_all.time.log";
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -101,7 +103,7 @@ $g->routes(
 	    },
 	},
 	bash {qb "[[ -n \"$_{conv}\" ]] && nice zcat \"$_{conv}\" | ./set_sz_vars_for_bidder.pl"},
-	note {check_need=>1 },
+	note {check_need=>1, timelog=>$timelog },
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv.gz",
@@ -109,7 +111,7 @@ $g->routes(
 	    szvars => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_vars_30days.gz" },
 	},
 	bash {qb "nice zcat \"$_{szvars}\" | ./53_sz_vars_conv -conf=53_sz_vars_decl.conf"},
-	note {check_need=>1 },
+	note {check_need=>1, timelog=>$timelog },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	need {
@@ -203,7 +205,7 @@ $g->routes(
 	    #print $cmd;
 	    #netflag sub { system "bash", '-c', $cmd }, flag=>$_{TARGET}, viatmp=>$_{TARGET};
 	},
-	note { check_need=>1, }, # пока для всех будем чекать
+	note { check_need=>1, timelog=>$timelog }, # пока для всех будем чекать
     },
 
 
@@ -226,7 +228,7 @@ $g->routes(
 	    dom_gr_exists => sub{ ExistsFilesMinimum(14, "$res/%F/$+{job}/$+{tn}/dom_gr.txt", $+{N} ) },
 	},     
 	bash { qb "nice ./22_DOMGR7DAYS \"$_{job}\" \"$_{day}\" \"\" \"@{$_{dom_gr_exists_ARRAY}}\" \"$+{N}\" "},    
-	note { viatmp=>0, flag=>0, check_need=>1, },
+	note { viatmp=>0, flag=>0, check_need=>1, timelog=>$timelog },
     },
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_gr.txt",
 	any {
@@ -255,33 +257,33 @@ $g->routes(
 	need {
 	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" }
 	},
-	bash { qb "fork --single -pf=17_URLS.pids './17_URLS \"$_{job}\" \"$_{day}\"'" },
+	bash { qb "fork -wait --single -pf=../pids/urls.pids './17_URLS \"$_{job}\" \"$_{day}\"'" },
 	note { viatmp=>0, flag=>0 },
     },
     {
-	target "$res/$sm{day}/net_sites/0/url_vars.gz",
+	target "$res/$sm{day}/net_sites/0/url_vars_(?<N>\\d+)days.gz",
 	need {
-	    url_total=>sub{"$res/$+{day}/".'net_sites/0'."/url_total.gz"},
+	    url_total=>sub{ Files( $+{N}, "$res/%F/".'net_sites/0'."/url_total.gz") },
 	},
-	bash { qb "nice zcat \"$_{url_total}\" | ./52_urlvars_30days_net_sites" },
-	note { check_need=>1, },
+	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\"" },
+	note { check_need=>1, timelog=>$timelog },
     },
     {
-	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/3/url_vars.gz",
+	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/3/url_vars_(?<N>\\d+)days.gz",
 	need {
-	    bids_url_total=>sub{"$res/$+{day}/$_{job}/3/url_total.gz"},
+	    url_total=>sub{ Files( $+{N}, "$res/%F/$+{job}/3/url_total.gz") },
 	},
-	bash { qb "nice zcat \"$_{total_by_url}\" | ./52_urlvars_30days_net_sites" },
-	note { check_need=>1, },
+	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\"" },
+	note { check_need=>1, timelog=>$timelog },
     },
 
     {
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?total.gz", # может быть префикс типа "url" за которым следует "_"
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>url)?_?total.gz", # может быть префикс типа "url" за которым следует "_"
 	need {
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
-	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
-	note { viatmp => 0, flag=>0, }, # check_need отключил - попробуем делегировать mergef'у. Если много будет в логах - будем думать.    
+	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"".($+{prefix}||"")."\" " },
+	note { viatmp => 0, flag=>0, timelog=>$timelog }, # check_need отключил - попробуем делегировать mergef'у. Если много будет в логах - будем думать.    
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
@@ -295,7 +297,7 @@ $g->routes(
 #	},
 #	bash {qb "(zcat $_{to_send} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{to_send}\" "},
 #	#bash {qb "(zcat $_{to_send} | perl -lane'1' ) && echo \"Emulating of sent $_{to_send}\" "},
-#	note { check_need=>1, stdall=>"./30_sendind.log" },
+#	note { check_need=>1, stdall=>"./30_sendind.log", timelog=>$timelog },
 #    },
 #    {
 #	target "$res/$sm{day}/".'google/3'."/url_cat_to_send.gz",
@@ -303,7 +305,7 @@ $g->routes(
 #	    diff=>sub{ "$res/$+{day}/google/3/url_cat_diff.gz" },	
 #	},
 #	bash {qb "[[ -s \"$_{diff}\" ]] && ln -s ./`basename $_{diff}` $_{TARGET}"},
-#	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log" },
+#	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log", timelog=>$timelog },
 #    },
 #    {
 #	target "$res/$sm{day}/".'ssp_sites/3'."/url_cat_to_send.gz",
@@ -336,7 +338,7 @@ $g->routes(
 	},
 	bash {qb "(zcat $_{diff} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{diff}\" "},
 	#bash {qb "(zcat $_{diff} | perl -lane'1' ) && echo \"Emulating of sent $_{diff}\" "},
-	note { check_need=>1, stdall=>"./30_sending.log" },
+	note { check_need=>1, stdall=>"./30_sending.log", timelog=>$timelog },
     },
     
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.gz",
@@ -351,7 +353,7 @@ $g->routes(
 		\) | ./29_diff 
 	    ), @{$_{url_cat_ARRAY}});
 	},
-	note { check_need=>1, }, # пока для всех будем чекать
+	note { check_need=>1, timelog=>$timelog }, # пока для всех будем чекать
     },
 
     {
@@ -360,7 +362,7 @@ $g->routes(
 	    url_cat=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat.gz" },
 	},
 	bash {qb "zcat $_{url_cat} | cut -d* -f1 | perl -lane' print /([^\\/]+)/ ' | uniq "},
-	note { check_need=>1,  },
+	note { check_need=>1, timelog=>$timelog  },
     },
 
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat.gz", 
@@ -369,6 +371,14 @@ $g->routes(
 	},
 	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
 	note { viatmp=>0, flag=>0 },
+    },
+    
+    {	target "$res/$sm{day}/".'net_sites/0/'."dom_total.gz",
+	need {
+	    url_total=>sub{"$res/$+{day}/net_sites/0/url_total.gz"},
+	},
+	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_sites_tn0"},
+	note { check_need=>1, timelog=>$timelog },
     },
 
 
@@ -415,6 +425,11 @@ for my $job ( @jobs_to_do ){
 	next;
     }
     delete $job->{note}{check_need};    
+    
+    my %timelog;
+    if ( $job->{note} and $timelog{file}=$job->{note}{timelog}){
+	$timelog{start}=[Today_and_Now] and $timelog{start_sec}=time and delete $job->{note}{timelog}
+    }
     
     if ($desc){
 	use List::Util qw/min max/;
@@ -475,6 +490,14 @@ for my $job ( @jobs_to_do ){
 #	stdall=>"../RESULT/TEST/$job->{vars}{day}/test.log",
     );
     warn "Return value: $rv, msg=$msg" if $deb;
+    
+    if ( $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
+        my $min = int( ($timelog{end_sec}-$timelog{start_sec})/60);
+	my $string = sprintf("%s %d-%02d-%02dT%02d %d-%02d-%02dT%02d %d", $job->{target}, @{ $timelog{start} }[0..3], @{ $timelog{end} }[0..3], $min );
+	local $|=1;
+	open my $log, "$timelog{file}" or die "can't open $timelog{file}: $!";
+	print $log "$string";
+    }
 }    
 
 my $minh = ($avg_total{min}||=0) ? sprintf("%.1f", $avg_total{min}/60) : "NA";
