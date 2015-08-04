@@ -493,9 +493,10 @@ for my $job ( @jobs_to_do ){
     
     if ( $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
         my $min = int( ($timelog{end_sec}-$timelog{start_sec})/60);
-	my $string = sprintf("%s %d-%02d-%02dT%02d %d-%02d-%02dT%02d %d", $job->{target}, @{ $timelog{start} }[0..3], @{ $timelog{end} }[0..3], $min );
+        # потом M заментть на m
+	my $string = sprintf("%s %d-%02d-%02dT%02d %d-%02d-%02dT%02d %dM", $job->{target}, @{ $timelog{start} }[0..3], @{ $timelog{end} }[0..3], $min );
 	local $|=1;
-	open my $log, "$timelog{file}" or die "can't open $timelog{file}: $!";
+	open my $log, ">>$timelog{file}" or die "can't open $timelog{file}: $!";
 	print $log "$string";
     }
 }    
