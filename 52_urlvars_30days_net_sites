@@ -2,13 +2,108 @@
 #>
 (
 set -u
-set -x
+set +x
 set -o pipefail
 cd `dirname $0`
 
-# in:
-#  1    2     3    4       5              6        
-# dom  path  net  cnt  sum_expprice sum_secondprice
+#echo "Скрипт на переделке">&2 
+#exit 1
+
+url_total_ff=${1:? url_total files!} # файлы url_total.gz за (30) дней, их нужно мержить
+# in merged url_total_ff:
+#  1    2       3       4              5        
+# dom  path    cnt  sum_expprice sum_secondprice
+# только сетевые просмотры, сети не разделены
+
+url_traits_30days_f=${2:? url_traits_30days file!}
+#  1       2         3   4     5      6      7   
+# dom   * path     *all*male*female*buyers*trash 
+# 101.ru*/?an=music*1771*99*131*27*0
+
+LANG=POSIX mergef -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
+summator -fu="sum,sum,sum" | # после мержа 30 дней суммы по трем посл колонкам
+awk -F* '$3>10' | # остаются только урлы с показами>N, для net_sites cnt - это кол-во показов
+lae -lb="dom path cntexp expprice secondprice" '
+# на входе будут строки с суммами по ключу dom + path 
+
+my $N = 10;
+
+# переданные параметры:
+my ( $smoof_f, $traits_f ) = @ARGV;
+
+my %smoof; #  $dom=>{ cntexp=>$cnt, expprice=>$xp, secondprice=>$sp } 
+$smoof_f or die "smoof file!";
+open SMF, "$smoof_f" or die "cant open $smoof_f: $!";
+for my $l (<SMF>){
+ chomp $l;
+ my @f = split /\*/, $l, -1;
+ $smoof{ $f[0] } = { cntexp=>$f[1], expprice=>$f[2], secondprice=>$f[3] };
+}
+
+my %traits; # will like $dom->{$path}{all=>$x0, male=>$x1, fem=>$x2, buyers=>$x3 }
+$traits_f or die "url_traits file!";
+opem TRAITS, "$traits_f" or die "cant open $traits_f: $!";
+for my $l (<TRAITS>){
+ chomp $l;
+ my ( $dom, $path, $all_uids, $male, $female, $buyers ) = split /\*/,$l, -1; 
+ $traits{ $dom }{ $path } = {}
+}
+
+my ($sum_expprice, $sum_winprice, $sum_cnt_exp);
+_{
+  if ( prevDom and ( Dom ne prevDom or Path ne prevPath ) ){
+    print_counters();
+    ($sum_expprice, $sum_winprice, $sum_cnt_exp)=(0,0,0);
+  }
+ 
+ # ( по net_sites - одна строка на урл, но в google,ssp_sites - будут разные tn., поэтому называем переменные "sum_..." )
+ $sum_expprice += Expprice;
+ $sum_winprice += Secondprice;
+ $sum_cnt_exp += Cntexp;
+
+} -prev=>"dom,path";
+
+print_counters();
+
+
+#--------------------
+sub print_counters{
+
+ my ($dom, $path) = (prevDom, prevPath);
+ 
+ my $smf_expprice = int( $smoof{$dom}{expprice} / $smoof{$dom}{cntexp} / 100 ) + 1;
+ my $smf_winprice = int( $smoof{$dom}{secondprice} / $smoof{$dom}{cntexp} / 100 ) + 1; 
+ 
+ my $avg_expprice = int( ($sum_expprice/100 + $smf_expprice * $N)/($sum_cnt_exp + $N) ) + 1; 
+ my $avg_winprice = int( ($sum_winprice/100 + $smf_winprice * $N)/($sum_cnt_exp + $N) ) + 1; 
+ my $profit = int( ($avg_expprice - $avg_winprice) / $avg_expprice * 100 );
+ my $male = 0; # <--- заменить значением
+ my $female = 0; # <--- заменить значением
+ my $buyers = 0; # <--- заменить значением
+ 
+ #$_ = sprintf( "%.3f", $_) for ( $avg_expprice, $avg_winprice, $profit, $male, $female, $buyers );
+
+ p $dom, $path, $avg_expprice, $avg_winprice, $profit, $male, $female, $buyers;
+ 
+ 0 and warn(
+  "smf: ".Dumper($smoof{$dom}),
+  "dom=$dom\n",
+  "path=$path\n",
+  "smf_expprice=$smf_expprice\n",
+  "smf_winprice=$smf_winprice\n",
+  "avg_expprice=$avg_expprice\n",
+  "avg_winprice=$avg_winprice\n",
+  "profit=$profit\n",
+  "male=$male\n",
+  "female=$female\n",
+  "buyers=$buyers\n", 
+ 
+ ) and exit;
+
+}
+'  <( LANG=POSIX mergef -ff="$url_total_ff" -m -k=1,1 -prefilt="cut -d* -f1,3,4,5" -stdout | # dom * cnt * sum_exppr * sum_secondpr
+     summator -fu="sum,sum,sum" # <-----это убрать
+ ) <( zcat "$url_traits_30days_f" )
 
 # code ....
 
@@ -17,4 +112,4 @@ cd `dirname $0`
 # dom  path  views  bids  sum-secondprice-for-views
 
 
-)#>>"$0.log" 2>&1
+) #2>>"$0.log" 

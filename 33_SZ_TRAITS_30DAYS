@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> uidsz [за 30 дней] + traits_copy/.. ------(33_process)--------->traits30days.gz 
+#> uidsz [за 30 дней] + traits_copy/.. ------(33_process)--------->sz_traits_30days.gz 
 (
 set -u
 set +x
@@ -38,7 +38,7 @@ typenum=$(
 if [[ -n "$days" ]]; then
     ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/uidsz.gz" | only -s`
 else
-    ff=`find $uids_base_dir/ -wholename "*/$job/$typenum/uidsz.gz" | sort -r | only -upto="$report_deep" | only -without="traits30days.gz"`
+    ff=`find $uids_base_dir/ -wholename "*/$job/$typenum/uidsz.gz" | sort -r | only -upto="$report_deep" | only -without="sz_traits_30days.gz"`
     [[ -n "$ff" ]] && days=`echo $ff | fn2days`
 fi
 
@@ -84,7 +84,7 @@ chk "$ff" "buyers file filtered_traits.txt.gz " || exit 2
 # chk "$ff" "files. " || exit 2
 
 maxf=`conf 00_conf.txt maxf`
-echo "$ff" | washing  -res="s|uidsz\.gz|traits30days.gz|" -v_flag="$processor %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \
+echo "$ff" | washing  -res="s|uidsz\.gz|sz_traits_30days.gz|" -v_flag="$processor %s %f '$job' '$typenum' '$merge_days' '$traits_base_dir' '$uids_base_dir'" \
  -comp=gzip -time=00_all.time.log -maxf="$maxf"
 
 )>>"$0.log" 2>&1
