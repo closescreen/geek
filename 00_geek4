@@ -113,6 +113,7 @@ $g->routes(
 	bash {qb "nice zcat \"$_{szvars}\" | ./53_sz_vars_conv -conf=53_sz_vars_decl.conf"},
 	note {check_need=>1, timelog=>$timelog },
     },
+
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	need {
 	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
@@ -121,7 +122,7 @@ $g->routes(
 	    tn0_totals => sub{ Files(30, "$res/\%F/$+{job}/0/total.gz") },
 	    sessions => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/sessions.gz") },
 	    pzbt => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
-	    traits30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/traits30days.gz" },
+	    sz_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_traits_30days.gz" },
 	    dom_net => sub{ Files(30, "$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
 	    #dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr7days.gz" }, # меняем на any
 	},
@@ -130,7 +131,7 @@ $g->routes(
 	},
 	
 	bash { qb "nice ./51_SZVARS_30DAYS \"$_{job}\" \"$_{day}\"" },
-	note { viatmp=>0, flag=>0 },
+	note { viatmp=>0, flag=>0, check_need=>1, },
     },
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<basename>bids\.gz|views\.gz|sessions\.gz|pzbt\.gz|uidsz.gz)",
 	need {
@@ -150,7 +151,33 @@ $g->routes(
 	},
 	note { viatmp=>0, flag=>0 },	
     },
-    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/traits30days.gz",
+
+    { 	target "$res/$sm{day}/(?<job>".'net_sites'.")/(?<tn>".'0'.")/uidurl30days.gz",
+	need {
+	    total_ff => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/total.gz") },
+	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
+	    },
+	bash {qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".'1,12,13'." | uniq |
+		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
+		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
+		# out: uid * dom * path
+		" }, 
+	note { check_need=>1, timelog=>$timelog, },	
+    },    
+    { 	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/(?<tn>".'3'.")/uidurl30days.gz",
+	need {
+	    total_ff => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/total.gz") },
+	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
+	    },
+	bash {qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".'1,9,10'." | uniq |
+		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
+		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
+		# out: uid * dom * path
+		" }, 
+	note { check_need=>1, timelog=>$timelog, },	
+    },    
+
+    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_traits_30days.gz",
 	need {
 	    # Здесь уместно решить проблему пробелов в суточных трейтах на hist7:
 	    # Если нет данных для текущего дня, но посчитан более поздний день, 
@@ -164,17 +191,49 @@ $g->routes(
 	    ctr10gr => sub { "$traits_copy/$+{day}/ctr10gr.gz" },
 	    ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" },
 	    },
-#	any {
-#	    predicted_add => sub { 
-#		days(from=>$+{day}, n=>3, shift=>0)->files("$traits_copy/%F/predicted_add.gz")
-#		#$g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz")
-#		#"$traits_copy/$+{day}/predicted_add.gz" 
-#	    
-#	    },	    
-#	},    
-	bash {qb "nice ./33_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
+	bash {qb "nice ./33_SZ_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
 	note { viatmp=>0, flag=>0 },
     },
+
+    {	# эксперимент с superjob:
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_sj_30days.gz",
+	need {
+	    url_traits_sj => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
+	},
+	bash { qb "exit" },
+	note { check_need=>1, viatmp=>0, },
+    },
+
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_30days.gz",
+	need {
+	    url_traits => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_30days.gz" },
+	},
+	bash { qb "exit" },
+	note { check_need=>1, viatmp=>0, },
+    },
+    { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_30days.gz",
+	need {
+	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
+	    predicted_add => sub{ "$traits_copy/$+{day}/predicted_add.gz" },
+	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
+	    },
+	bash {qb "nice ./34_url_traits_net_sites \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
+	note { check_need=>1, timelog=>$timelog,  },
+    },
+
+    { 	# reseach - эксперимент, потом удалить
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_sj_30days.gz",
+	need {
+	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
+	    superjob => sub{ "$res/$+{day}/$+{job}/$+{tn}/superjob30days.gz" }, #<----  данные с суперджоба uid*m/f делаются скриптом на hist7 в home, а вызывыется по ssh руками
+	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
+	    },
+	bash {qb "nice ./34_url_traits_net_sites \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{superjob}\" \"$_{buyers}\" \"$_{TARGET}\" "},
+	note { check_need=>1, timelog=>$timelog,  },
+    },
+
+    
     {	target "$res/$sm{day}/net_sites/0/dom_net.gz", # только .../net_sites/0/...
 	need {
 	    total => sub{ "$res/$+{day}/net_sites/0/total.gz" },
@@ -261,21 +320,71 @@ $g->routes(
 	note { viatmp=>0, flag=>0 },
     },
     {
-	target "$res/$sm{day}/net_sites/0/url_vars_(?<N>\\d+)days.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/urlvars_diff.sent",
 	need {
-	    url_total=>sub{ Files( $+{N}, "$res/%F/".'net_sites/0'."/url_total.gz") },
+	    total=>sub{ 
+		my $diff = "$res/$+{day}/$+{job}/$+{tn}/urlvars_diff.gz";
+		my $init = "$res/$+{day}/$+{job}/$+{tn}/urlvars_diff_INIT.gz";
+		my $old_diff = [ Files( 8, "$res/%F/$+{job}/$+{tn}/urlvars_diff.gz" ) ]->[0];
+		warn "$diff $init $old_diff";
+		
+		if ( !-s $diff and !-s $init and ! -s $old_diff ){ $init }
+		elsif( ! -s $diff and ! -s $init and -s $old_diff ){ $diff  }
+		elsif( -s $diff or -s $init ){ grep { -s } ( $diff, $init ) }
+		
+	    },
 	},
-	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\"" },
+	bash { qb "zcat $_{total} | ./set_urlvars_for_bidder.pl && echo \"Sent $_{total}\"" },
 	note { check_need=>1, timelog=>$timelog },
-    },
+    },    
     {
-	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/3/url_vars_(?<N>\\d+)days.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/urlvars_diff_INIT.gz",
 	need {
-	    url_total=>sub{ Files( $+{N}, "$res/%F/$+{job}/3/url_total.gz") },
+	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_vars_30days.gz" },
 	},
-	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\"" },
+	bash { qb "zcat \"$_{total}\" | ./52_urlvars_diff" },
+	note { check_need=>1, timelog=>$timelog },
+    },    
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/urlvars_diff.gz",
+	need {
+	    total=>sub{ 
+		my @ff = Files( 8, "$res/%F/$+{job}/$+{tn}/url_vars_30days.gz" );
+		@ff = @ff[0,-1]; # первый и последний файл из этого списка
+		return @ff;
+	    }
+	},
+	bash { qb "
+	    LANG=POSIX sort -t\\* -m <(zcat \"$_{total_ARRAY}[0]\" | perl -lne'print \$_.\"*P\"')  <(zcat \"$_{total_ARRAY}[1]\" | perl -lne'print \$_.\"*C\"') -k1,1 -k2,2 |
+	    ./52_urlvars_diff" },
 	note { check_need=>1, timelog=>$timelog },
     },
+
+#    {	# url_vars по superjob: эксперимент
+#	target "$res/$sm{day}/(?<job>".'net_sites'.")/(?<tn>".'0'.")/url_vars_sj_(?<N>\\d+)days.gz",
+#	need {
+#	    url_total=>sub{ Files( $+{N}, "$res/%F/$+{job}/$+{tn}/url_total.gz") },
+#	    url_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
+#	    dom_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_sj_30days.gz" },
+#	},
+#	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\" \"$_{url_traits_sj_30days}\" \"$_{dom_traits_sj_30days}\"" },
+#	note { check_need=>1, timelog=>$timelog },
+#    },
+    
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_vars_30days.gz",
+	need {
+	    url_total=>sub{ 
+		my %stem = (net_sites=>"url_total", ssp_sites=>"url_total_join",google=>"url_total_join");
+		return Files( 30, "$res/%F/$+{job}/$+{tn}/$stem{$+{job}}.gz");
+	    },
+	    url_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_30days.gz" },
+	    dom_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_30days.gz" },
+	},
+	bash { qb "nice ./52_urlvars_30days_$_{job} \"$_{url_total}\" \"$_{url_traits_30days}\" \"$_{dom_traits_30days}\"" },
+	note { check_need=>1, timelog=>$timelog },
+    },
+
 
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>url)?_?total.gz", # может быть префикс типа "url" за которым следует "_"
@@ -283,46 +392,29 @@ $g->routes(
 	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
 	},
 	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"".($+{prefix}||"")."\" " },
-	note { viatmp => 0, flag=>0, timelog=>$timelog }, # check_need отключил - попробуем делегировать mergef'у. Если много будет в логах - будем думать.    
+	note { viatmp => 0, flag=>0, timelog=>$timelog },     
     },
+
+    {
+	target "$res/$sm{day}/(?<job>".'google|ssp_sites'.")/3/url_total_join.gz", 
+	need {
+	    url_total_tn0=>sub{ "$res/$+{day}/$+{job}/0/url_total.gz" },
+	    url_total_tn3=>sub{ "$res/$+{day}/$+{job}/3/url_total.gz" },
+	},
+	bash { qb "
+	    zcat \"$_{url_total_tn3}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' |
+	    addf -df=<( zcat \"$_{url_total_tn0}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' ) -dadd=4,5,6 | # url*tn0cnt*tn0sumexppr*tn0sumwinpr*dom*path*tn3cnt*tn3sumexppr
+	    awk -F* -vOFS=* '{print \$5,\$6,\$7,\$8,\$2,\$3,\$4}'   
+	    # dom * path * tn0_cnt(exp) * tn0_sum(exppr) * tn0_sum(winpr) * tn3_cnt(bids) * tn3_sum(exppr)
+	" },
+	note { check_need=>1, timelog=>$timelog },     
+    },
+    
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
 	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
 	note { viatmp => 0, flag=>0 },    
     },
-#    {
-#	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_to_send.ready",
-#	need {
-#	    to_send=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_cat_to_send.gz" },
-#	},
-#	bash {qb "(zcat $_{to_send} | ./set_urls_cats_for_bidder.pl cat_id=2) && echo \"Sent $_{to_send}\" "},
-#	#bash {qb "(zcat $_{to_send} | perl -lane'1' ) && echo \"Emulating of sent $_{to_send}\" "},
-#	note { check_need=>1, stdall=>"./30_sendind.log", timelog=>$timelog },
-#    },
-#    {
-#	target "$res/$sm{day}/".'google/3'."/url_cat_to_send.gz",
-#	need {
-#	    diff=>sub{ "$res/$+{day}/google/3/url_cat_diff.gz" },	
-#	},
-#	bash {qb "[[ -s \"$_{diff}\" ]] && ln -s ./`basename $_{diff}` $_{TARGET}"},
-#	note { viatmp => 0, flag=>0, check_need=>1, stdall=>"./30_url_cat_to_send.log", timelog=>$timelog },
-#    },
-#    {
-#	target "$res/$sm{day}/".'ssp_sites/3'."/url_cat_to_send.gz",
-#	need {
-#	    diff=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_diff.gz" },
-#	    url_cat_dom=>sub{ "$res/$+{day}/google/3/url_cat_dom.gz" },	
-#	},
-#	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
-#    },    
-#    {
-#	target "$res/$sm{day}/".'net_sites/0'."/url_cat_to_send.gz",
-#	need {
-#	    diff=>sub{ "$res/$+{day}/net_sites/0/url_cat_diff.gz" },
-#	    url_cat_dom=>sub{ "$res/$+{day}/ssp_sites/3/url_cat_dom.gz", "$res/$+{day}/google/3/url_cat_dom.gz" },	
-#	},
-#	bash {qb "nice ./30_url_cat_to_send \"@{$_{diff_ARRAY}}\" \"@{$_{url_cat_dom_ARRAY}}\" "},
-#    },    
 
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_cat_diff.sent",
@@ -370,16 +462,17 @@ $g->routes(
 	    urls30days=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
 	},
 	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
-	note { viatmp=>0, flag=>0 },
+	note { viatmp=>0, flag=>0, check_need=>1 },
     },
     
-    {	target "$res/$sm{day}/".'net_sites/0/'."dom_total.gz",
-	need {
-	    url_total=>sub{"$res/$+{day}/net_sites/0/url_total.gz"},
-	},
-	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_sites_tn0"},
-	note { check_need=>1, timelog=>$timelog },
-    },
+# не нужно?
+#    {	target "$res/$sm{day}/".'net_sites/0/'."dom_total.gz",
+#	need {
+#	    url_total=>sub{"$res/$+{day}/net_sites/0/url_total.gz"},
+#	},
+#	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_sites_tn0"},
+#	note { check_need=>1, timelog=>$timelog },
+#    },
 
 
 );
@@ -493,8 +586,7 @@ for my $job ( @jobs_to_do ){
     
     if ( $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
         my $min = int( ($timelog{end_sec}-$timelog{start_sec})/60);
-        # потом M заментть на m
-	my $string = sprintf("%s %d-%02d-%02dT%02d %d-%02d-%02dT%02d %dM", $job->{target}, @{ $timelog{start} }[0..3], @{ $timelog{end} }[0..3], $min );
+	my $string = sprintf("%s %d-%02d-%02dT%02d:%02d %d-%02d-%02dT%02d:%02d %dm", $job->{target}, @{ $timelog{start} }[0..4], @{ $timelog{end} }[0..4], $min );
 	local $|=1;
 	open my $log, ">>$timelog{file}" or die "can't open $timelog{file}: $!";
 	print $log "$string";

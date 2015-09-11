@@ -7,21 +7,15 @@ set -o pipefail
 set +x
 
 #>> IN:
-#>>  1   2      3            
-#>> dom path  winprice
+#>>  1   2      3           4          5 
+#>> dom path  cnt(exp)  sum(exppr) sum(winprice)
 
-summator -fu="cnt,+sum" 
+summator -fu="sum,sum,sum" 
 
 #>> OUT: 
-#>>  1   2     3            4 
-#>> dom path cnt_exp   sum_winprice 
+#>>  1   2     3            4          5
+#>> dom path cnt(exp)   sum(exppr) sum(winprice) 
 
-#>> | field        | description |
-#>> | -----        | ----------- |
-#>> | dom          |
-#>> | path         |
-#>> | cnt_exp      | количество показов |
-#>> | sum_winprice | сумма winprice |
 
 
 

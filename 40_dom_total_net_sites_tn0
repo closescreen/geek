@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#> для получения smoof (сглаживания) нужны суммы по доменам
+#> Из потока формата net_sites / tn0 / url_total  -> поток по доменам
+#> Сортировка на входе уже по урлам
+
+# НЕ ИСПОЛЬЗУЕТСЯ (ПОКА или никогда)
+
+# такой скрипт мог бы выполнять роль мержилки для google,ssp
+# там нужно будет объединять tn0 и tn3 за 30 дней в один поток (если не придкмаем что-то лучше)
+
+exit 1
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+# input формата net_sites tn0 url_total:
+# dom   path   cnt   sum_expprice   sum_secondprice
+#  1     2      3        4               5
+
+cut -d* -f1,3,4,5 |
+ summator -fu="sum,sum,sum"
+
+# выход формата: Dom * Cnt * Sum_expprice * Sum_secondprice 
+) 2>>"$0.log"

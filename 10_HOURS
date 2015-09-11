@@ -62,11 +62,11 @@ maxf=$(($maxf*24))
 
 prefix=""
 [[ -n "$variant" ]] && prefix="${variant}_"
-echo "$hh" |
-  files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/${prefix}%FT%H.gz" |
-  only --without="${prefix}total.gz" |
-  only --without="urls.gz" |
-  only --without="bids.gz" |
+
+files=` echo "$hh" | files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/${prefix}%FT%H.gz" `
+[[ -z "$day" ]] && files=`echo "$files" | only --without="${prefix}total.gz urls.gz bids.gz"` # ограничиваем список, если день не указан
+
+echo "$files" |
   washing -time=00_all.time.log -cmd="$jobscript %f \"$sids\"" -comp=gzip -max=$maxf 
   # почему max: собирается долго, за это время некоторые файлы выйдут из периода
   

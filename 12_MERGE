@@ -41,11 +41,12 @@ prefilter="./12_pref_${job}_tn${typenum}${suffix}"
 varopt="base" # когда не указан $variant
 [[ -n "$variant" ]] && varopt="$variant"
 mkeys=$( href -v="$job" -v="$typenum" -v="$varopt" -dict='
- "google" => 		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}, 3 => {"base"=>"1,1n 2,2n"} },
- "ssp_sites" =>		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}, 3 => {"base"=>"1,1n 2,2n"} },
- "net_sites" =>		{ 0 => {"base"=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {"base"=>"1,1n 2,2n"}},
+ "google" => 		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} },
+ "ssp_sites" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} },
+ "net_sites" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}},
 ' )
-chk "$mkeys" "Ключи для mergef по $job и $typenum и $variant" || exit 1
+[[ -z "$mkeys" ]] && exit 1
+#chk "$mkeys" "Ключи для mergef по $job и $typenum и $variant" || exit 1
 
 if [[ -n "$day" ]]; then
     find_path=../RESULT/10/$day/

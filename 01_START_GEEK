@@ -20,33 +20,24 @@ lo="4"
 loadaverage -1m -gt $lo && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
+
 #--------------------- ежедневные -------------------------
 days=$(hours -d=today -n=-4days -days) # <--- стараемся успеть за N дня
 target_dates=$days
-proc=1 # count of parallel processes at time
+proc=3 # count of parallel processes at time
 
 for target_date in $target_dates; do
     jobs_start_time=`date +%s`
     for job in net_sites google ssp_sites; do
 	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
 
+	wantmem=15
+	freemem -lt $wantmem -ed g && echo "Low free memory ($? less then $wantmem)">&2 && continue
+	
 	# ----
 	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.gz
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
-
-	#-----
-	target=../RESULT/10/$target_date/$job/$tn/url_vars_30days.gz
-	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
-
-#	# ----
-#	target=../RESULT/10/$target_date/$job/$tn/url_groups_diff.gz
-#	./96_REMOVE_OLD_ALL;
-#	./95_REMOVE_EMPTY $job;
-#	./95_REMOVE_OLD_HOURS $job;
-#	cmd="nice ./00_geek4 --want=$target"
-#	fork -pf=../pids/common.pids -dela=3 -n=$proc "$cmd" -wait
 
 	#-----
 	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.sent
@@ -56,7 +47,7 @@ for target_date in $target_dates; do
     done
     jobs_stop_time=`date +%s`
     jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
-    if [[ $jobs_time -gt 120 ]]; then
+    if [[ $jobs_time -gt $(( $proc*300 )) ]]; then
 	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
 	break
     fi
@@ -82,6 +73,9 @@ for target_date in $target_dates; do
 	./95_REMOVE_OLD_HOURS $job;
 	./95_REMOVE_OLD_urls30days $job;
 
+	wantmem=15
+	freemem -lt $wantmem -ed g && echo "Low free memory">&2 && continue
+
 	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
 
 	# --
@@ -93,7 +87,16 @@ for target_date in $target_dates; do
 	target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv.sent
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+
+	#-----
+	target=../RESULT/10/$target_date/$job/$tn/url_vars_30days.gz
+	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 	
+	#----
+	target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.sent
+	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
     
     jobs_stop_time=`date +%s`

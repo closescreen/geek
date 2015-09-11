@@ -1,0 +1,182 @@
+#!/usr/bin/env bash
+#> Для net_sites.
+
+#>> gender (predict_add.gz): 
+#>> format: 1480566*11
+#>>  11 - 2.54 муж
+#>>  12 - 2.55 жен
+
+#>> filtered_traits.txt.gz
+#>> format:
+#>> uid \t	trait	... (other fields)
+
+
+set -u
+set +x
+set -o pipefail
+
+day=${1:? Day! }
+
+job=${2:?Job!} # google
+
+typenum=${3:?typenum!}
+
+uidurl30days=${4:?uidurl30days!} 
+uidurl30days=`echo "$uidurl30days" | only -all -s`
+chk "$uidurl30days" "30 uidurl.gz files for merge, не хватает: $? файлов" || exit 2 
+
+gender_file=${5:?GenderFile!}
+#gender_file="$traits_base_dir/$day/predicted_add.gz"
+chk "$gender_file" "gender file" "-s" "exists" nop || exit 2
+
+buyers_file=${6:?buyersFile!}
+#buyers_file="$traits_base_dir/$day/filtered_traits.txt.gz"
+chk "$buyers_file" "buyers_file" "-s" "exists" nop || exit 2
+
+target_file=${7:?Target!} # принимаем имя целевого файла, из него сделаем имя побочного файла
+add_file=`echo "$target_file" | sed -e"s/url_/dom_/"`
+
+#auditory_file="$traits_base_dir/$day/auditory.gz"
+#chk "$auditory_file" "auditory_file" "-s" "exists" nop || exit 2
+
+#age_file="$traits_base_dir/$day/predict_gr_v2.gz"
+#chk "$age_file" "age file" "-s" "exists" nop || exit 2
+
+#ctr10_file="$traits_base_dir/$day/ctr10gr.gz"
+#chk "$ctr10_file" "ctr10file" "-s" "exists" nop || exit 2
+
+#ctr11_file="$traits_base_dir/$day/ctr11gr.gz"
+#chk "$ctr11_file" "ctr11file" "-s" "exists" nop || exit 2
+
+
+#>> мержит все uidurl за 30 дней, уникалит и подает на вход скриту
+
+
+sort -m -t\* -T. -k1,1n \
+ <( mergef -ff="$uidurl30days" -m -k=1,1n -k=2,2 -k=3,3 -postfilter="uniq | awk -F* -v'OFS=*' '{print \$0,\"url\"}'" -stdout ) \
+ <( zcat $gender_file | awk -v"OFS=*" '{print $0,"gender"}') \
+ <( zcat $buyers_file | awk -F"\t" -v"OFS=*" '$2==184549376 {print $1,$2,"buyer"}' | sort -T. -t\* -k1,1n ) | # интересует только трейт 184549376 (11.0)
+ perl -Mstrict -Mwarnings -MData::Dumper -e'
+# uid * value(*s) * type
+# 5*ya.ru*/weather*url
+# 66*12*gender
+# 66*184549376*buyer
+
+# распределение значений и их типов по колонкам отчета, начиная с нулевой.
+my %ind = (
+ all_uids => 0, # all uids counter
+ gender => { 
+    11=>1, #male 
+    12=>2, #female
+ },
+ buyer => {
+    184549376 => 3,
+ },
+ trash => 4,
+);
+
+my $dom_target_file = shift or die "add file!";
+
+my $uid=0; 
+my @curr_uid_dompath; 
+my %traits;
+my %dom_path_columns;
+my %dom_columns;
+my %curr_uid_buyer_traits;
+
+$\="\n";
+$,="*";
+
+
+sub break_uid(){
+ my %dom_path;
+ for my $dompath_aref ( @curr_uid_dompath ){
+    my ($dom, $path) = @$dompath_aref;
+    $dom_path{ $dom }{ $path }||=1; # получаются комбинации, на каких dom, path была текущая кука
+ }
+ 
+ for my $dom ( sort keys %dom_path ){ 
+    # по доменам:
+    $dom_columns{ $dom }[ $ind{ all_uids } ]++; # сумма кук по доменам
+    for my $type ( keys %traits ){
+	my $value = $traits{ $type };
+	my $column_index = $ind{ $type }{ $value } || $ind{ trash };
+	$dom_columns{ $dom }[ $column_index ]++;
+    }
+    for my $buy_trait ( keys %curr_uid_buyer_traits ){
+        $dom_columns{ $dom }[ $ind{ buyer }{ $buy_trait } ]++;
+    }
+
+    # по урлам:
+    for my $path ( sort keys %{ $dom_path{$dom} } ){
+	$dom_path_columns{ $dom }{ $path }[ $ind{ all_uids } ]++; # сумма кук по урлам
+	for my $type ( keys %traits ){
+	    my $value = $traits{ $type };
+	    my $column_index = $ind{ $type }{ $value } || $ind{ trash };
+	    $dom_path_columns{ $dom }{ $path }[ $column_index ]++;
+	}
+    
+	for my $buy_trait ( keys %curr_uid_buyer_traits ){
+	    $dom_path_columns{ $dom }{ $path }[ $ind{ buyer }{ $buy_trait } ]++;
+	}
+    }
+ } 
+
+ undef @curr_uid_dompath;
+ undef %traits; 
+ undef %curr_uid_buyer_traits;
+}
+
+while(<>){
+ chomp;
+ my @line = split /\*/, $_, -1;
+ my ($new_uid, $new_type, @new_values);
+ $new_uid = shift @line; # первое поле
+ $new_type = pop @line; # посл поле
+ @new_values = @line; # все что между ними
+ break_uid() if $new_uid != $uid;
+
+ $uid = $new_uid;
+ if ( $new_type eq "url" ){ 
+    push @curr_uid_dompath, [ @new_values ] # в массиве: [$dom, $path]
+ }
+ elsif( $new_type eq "buyer" ){ 
+    my $val = join(",",@new_values); # одно значение в массиве @new_values
+    $curr_uid_buyer_traits{$val} ||= 1;  
+ } 
+ else{ $traits{ $new_type } = join ",", @new_values } # аналогично, для gender и пр - одно значение в массиве @new_values
+};
+break_uid();
+
+print_urls();
+print_doms();
+
+sub print_urls{
+ for my $dom ( sort keys %dom_path_columns ){
+    for my $path ( sort keys %{ $dom_path_columns{$dom} } ){
+	$dom_path_columns{ $dom }{ $path }[ $ind{ trash } ]||=0; # чтобы пропечатать все колонки, даже пустые.
+	print  $dom, $path, map {$_||0} @{ $dom_path_columns{ $dom }{ $path } };
+	
+	#>> OUT:
+	#>> dom *  path * all * male * fem * buyer * trash
+	#>>   1     2      3     4      5      6       7    	
+
+    }	
+ }
+ undef %dom_path_columns;
+} 
+
+sub print_doms{
+ open my $dom_fh, "| viatmp -gz $dom_target_file" or die "Cant open $dom_target_file for write: $!";
+ for my $dom ( sort keys %dom_columns ){
+    $dom_columns{ $dom }[ $ind{ trash } ]||=0; # чтобы пропечатать все колонки, даже пустые.
+    print $dom_fh $dom, map {$_||0} @{ $dom_columns{ $dom } };
+ }
+ undef %dom_columns;
+} 
+
+
+' "$add_file" 
+ 
+
+

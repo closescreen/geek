@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+
+# сравнивает два urlvars и делать дифф по каждой колонке
+# или делает начальный дифф, где все будет INSERT
+
+# urlvars:
+# 0gdz.ru*/matematika-6-klas-merzlyak*4*2*50*4*9*0*1*30*C ( C=CURRENT )
+# 0gdz.ru*/matematika-6-klas-merzlyak*4*2*50*4*9*0*1*30*P ( P=PREVIOUS )
+
+#> Usage: 
+
+#> 1) для получения дифа по двум файлам, нужно пустить на STDIN смерженные по dom+path их потоки, 
+#>  добавив дополнительную колонку к каждому потоку: "P" - для предыдущих значений, "C" - для текущих. 
+#>  например,
+#>  file1=../1460/RESULT/10/2015-08-03/net_sites/0/url_vars_30days.gz
+#>  file2=../1460/RESULT/10/2015-08-10/net_sites/0/url_vars_30days.gz
+#>  LANG=POSIX sort -t\* -m <(zcat "$file1" | perl -lne'print $_."*P"')  <(zcat "$file2" | perl -lne'print $_."*C"') -k1,1 -k2,2 | ./52_urlvars_diff"
+	    
+
+#> 2) для получения начального дифа (для первой загрузки ) - пустить на вход поток этого файла, без добавления колонки.
+#>  zcat ~/1460/RESULT/10/2015-08-03/net_sites/0/url_vars_30days.gz | ./52_urlvars_diff | head
+
+#> Формат файлов должен соответствовать описанию ниже. Разделитель - *.
+
+
+lae -lb="dom path exppr winpr profit male female buyers flag mfdiv version" '
+# Названия полей urlvars упрощены:
+# dom - домен
+# path - путь
+# exppr - средний expprice
+# winpr - средний winprice
+# profit - рентабельность
+# male - мальчиков
+# female - девочек
+# buyers - покупателей
+# flag - флаг наличия данных по трейтам
+# mfdiv - отношение, упрощенно, m/(m+f)
+# version = "P" | "C" (prev/current)
+
+my %categs = (
+ # Соответствие индексов колонок номерам категорий.
+ # ( первая занята url_cat-ами )
+ # не ставить "=>"!, использовать запятые
+ BUYERS , 1000, 
+ MALE , 1001,
+ MFDIV , 1002,
+ PROFIT , 1003,
+);
+
+my %lines;
+_{
+ flush() if (Path ne prevPath or Dom ne prevDom) and prevDom; 
+ #> если поле Version пустое, то считается "C"-current. Для случаев когда дифф делается по одному файлу, для начальной загрузки.
+ $lines{ $F[VERSION]||"C" }=[@F]; 
+} -prev=>"dom,path";
+flush();
+
+sub flush{
+ if ( exists $lines{C} ){
+    my @curr = @{$lines{C}};
+    my $url= join "", @curr[DOM,PATH];
+
+    if ( not exists $lines{P} ){
+	# если в текущем - есть url, а в предыдущем - нет:
+	for my $ind ( keys %categs){
+	    if ( $curr[$ind] ne "NA" ){
+		print "$url*$categs{$ind}*$curr[$ind]*INSERT";
+	    }	
+	}    
+    }else{
+	# если есть и в текущем и в предыдущем (но могут значения в полях отличаться):
+	my @prev = @{$lines{P}};
+	for my $ind ( keys %categs){
+	    if ( $curr[$ind] ne $prev[$ind] ){
+		if ( $prev[$ind] eq "NA" ){
+		    print "$url*$categs{$ind}*$curr[$ind]*INSERT";
+		}
+		else{
+		    if ( $curr[$ind] eq "NA" ){
+			print "$url*$categs{$ind}*$curr[$ind]*DELETE";
+		    }
+		}
+	    }
+	}
+    }
+ }elsif( exists $lines{P} ){
+    my @prev = @{$lines{P}}; 
+    my $url = join "", @prev[DOM,PATH];
+    for my $ind ( keys %categs){
+	print "$url*$categs{$ind}*$prev[$ind]*DELETE";
+    }    
+ }
+ %lines = (); 
+}
+'
+

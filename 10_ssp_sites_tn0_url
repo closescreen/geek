@@ -1,16 +1,21 @@
 #!/usr/bin/env bash
 
-# сбор по урлам
+# input from --tee-open (see 10_ssp_sites_tn0)
 
-sids=${2:?sids!} #like a: 123|234|3254
+set +x
 
-job_history_log -c=./history.conf "$1" "sid=$sids,sz,winprice,uid!=0,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" -fn \
- -cut="sid,sz,uid,typenum,statusnum,usergroup" -true="sz,ref" |
- perl -MDom -Mstrict -w -F'\*' -lane'
-# IN: winprice,ref
-#      0        1   
-my ($dom,$ref) = $F[1] ? map {$_||""} Dom::split_ref( $F[1] ) : ("",""); # справа добавляется еще одна колонка
+teef=${1:?teef!} # file to save result
 
-print join("*",map {$_||""} $dom, $ref, $F[0]);
-' | LANG=POSIX sort -T. -t\* --compress-program=gzip -k1,1 -k2,2
-
+awk -F* -vOFS=* '$6{print $6,$4,$5}' |
+ ./10_url_clean --url_field=1 |
+ lae -lb="ref +path exppr winpr" -M=Dom '
+ _{ @F[REF,PATH] = Dom::split_ref(Ref); 
+  p @F 
+ }' |
+ LANG=POSIX sort -t\* -T. --compress-program=gzip -k1,1 -k2,2 |
+ summator -fu="+cnt,sum,sum" |
+ viatmp -gz "$teef"
+ 
+# out:  dom, path, cnt(exposures), sum(exppr), sum(winpr)
+ 
+ 
