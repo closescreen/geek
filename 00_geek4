@@ -169,7 +169,9 @@ $g->routes(
 	    total_ff => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/total.gz") },
 	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
 	    },
-	bash {qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".'1,9,10'." | uniq |
+	bash {
+	    my %fields_from_total = (ssp_sites=>"1,9,10", google=>"1,8,9",); # у total.gz ssp\google разные поля
+	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | uniq |
 		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
 		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
 		# out: uid * dom * path
@@ -195,14 +197,14 @@ $g->routes(
 	note { viatmp=>0, flag=>0 },
     },
 
-    {	# эксперимент с superjob:
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_sj_30days.gz",
-	need {
-	    url_traits_sj => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
-	},
-	bash { qb "exit" },
-	note { check_need=>1, viatmp=>0, },
-    },
+#    {	# эксперимент с superjob:
+#	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_sj_30days.gz",
+#	need {
+#	    url_traits_sj => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
+#	},
+#	bash { qb "exit" },
+#	note { check_need=>1, viatmp=>0, },
+#    },
 
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_30days.gz",
@@ -212,6 +214,7 @@ $g->routes(
 	bash { qb "exit" },
 	note { check_need=>1, viatmp=>0, },
     },
+
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_30days.gz",
 	need {
 	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
@@ -220,6 +223,10 @@ $g->routes(
 	    },
 	bash {qb "nice ./34_url_traits_net_sites \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
 	note { check_need=>1, timelog=>$timelog,  },
+    },
+    {	target "$traits_copy/$sm{day}/filtered_traits.txt.gz",
+	bash {qb "exit"}
+    
     },
 
     { 	# reseach - эксперимент, потом удалить
@@ -563,6 +570,7 @@ for my $job ( @jobs_to_do ){
 	push @desc, ref $job->{job} ? "perl-code" : $job->{job}; # if !ref $job->{job};
 #	push @desc, "level=$job->{level}";
 #	push @desc, "parents=".join( ",", grep {$_} keys %{$job->{parents}} );
+	#unshift @desc, "==>"; # поломает статистику, наверное в логе
 	print join " ", @desc;
     }	
 
