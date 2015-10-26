@@ -28,21 +28,29 @@ proc=3 # count of parallel processes at time
 
 for target_date in $target_dates; do
     jobs_start_time=`date +%s`
-    for job in net_sites google ssp_sites; do
-	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
+    for job in net google ssp; do
 
-	wantmem=15
-	freemem -lt $wantmem -ed g && echo "Low free memory ($? less then $wantmem)">&2 && continue
+	./96_REMOVE_OLD_ALL;
+	./95_REMOVE_EMPTY $job;
+	./95_REMOVE_OLD_HOURS $job;
+	./95_REMOVE_OLD_urls30days $job;
+
+
+	tn=`href -dict="net=>0, google=>3, ssp=>3" -val=$job`
+
+# 	проверку freemem перенес в runtime_check в geek
+#	wantmem=15
+#	freemem -lt $wantmem -ed g && echo "Low free memory ($? less then $wantmem)">&2 && continue
 	
 	# ----
 	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.gz
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 
-	#-----
-	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.sent
-	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+	#----- отключено на время ремонта
+	 target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.sent
+	 cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	 fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 
     done
     jobs_stop_time=`date +%s`
@@ -66,37 +74,55 @@ for target_date in $target_dates; do
 
     jobs_start_time=`date +%s`
 
-    for job in net_sites google ssp_sites; do
+    for job in net google ssp; do
 
 	./96_REMOVE_OLD_ALL;
 	./95_REMOVE_EMPTY $job;
 	./95_REMOVE_OLD_HOURS $job;
 	./95_REMOVE_OLD_urls30days $job;
 
-	wantmem=15
-	freemem -lt $wantmem -ed g && echo "Low free memory">&2 && continue
+#	wantmem=15
+#	freemem -lt $wantmem -ed g && echo "Low free memory">&2 && continue
 
-	tn=`href -dict="net_sites=>0, google=>3, ssp_sites=>3" -val=$job`
+	tn=`href -dict="net=>0, google=>3, ssp=>3" -val=$job`
 
 	# --
-	target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt 
-	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
-	
-	#--
-	target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv.sent
+#	Илья сказал , не требуется:
+#	target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt 
+#	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+#	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+
+	#--посчитать:
+	# (включаю, когда нужно только посчитать а не сетить)
+	target=../RESULT/10/$target_date/$job/$tn/sz_vars_30days.gz
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
 	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
 
-	#-----
-	target=../RESULT/10/$target_date/$job/$tn/url_vars_30days.gz
+	#--посчитать и засетить:
+#	ВРЕМЕННО ОТКЛЮЧЕНО, ДО ПРОВЕРКИ (проверить файлы и включить):
+	if [[ "$job" -eq "net" ]]; then # пока ВКЛ только NET (потом IF убрать):
+	    target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv.sent
+	    cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	    fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+	fi    
+
+	
+#	# отключаю, как подзадачу, которая  и так запросится из urlvars_diff.gz
+#	target=../RESULT/10/$target_date/$job/$tn/url_vars_30days.gz
+#	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+#	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+
+	#----
+	# diff явно указываю, потому, что urlvars_diff.sent может не найдя _diff.gz попросить _diff_INIT.gz
+	target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.gz 
 	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait	
 	
 	#----
-	target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.sent
-	cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
-	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+	# ВРЕМЕННО ОТКЛЮЧЕНО до проверки, потом ВКЛЮЧИТЬ:
+	#target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.sent
+	#cmd="nice ./00_geek4 --loadaverage=$lo --want=$target"
+	#fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
     done
     
     jobs_stop_time=`date +%s`
