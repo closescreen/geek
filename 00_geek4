@@ -24,6 +24,8 @@ my $avg;
 my $loadaverage;
 #my $no_warn_deep;
 my $timelog = "00_all.time.log";
+my $target;
+my $command;
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -40,8 +42,20 @@ GetOptions(
     'norun' => \$norun, # not run jobs (skip they)
     'avg' => \$avg,
     'loadaverage=i' => \$loadaverage, # при каком loadaverage 1m (до, включительно), запускать.
+    'target=s' => \$target,
+    'command=s' => \$command,
 #    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
 ) or die "Bad opt!";
+
+if ( $command ){
+ # command=file - означает: 
+ @wanted = ($command); # попросить файл, указанный в опции --command
+ $need = "all"; # все требуемые файлы
+ $deep = 1; # глубиной рекурсии = 1, т.е. те, что непосредственно нужны для этого файла
+ $norun = 1; # не выполняя
+ #$deb = 1; # показать команду для фомирования файла ()
+ $desc = 1; # с выводом описания
+}
 
 @wanted = split /\s+/, join " ", @wanted;
 
@@ -97,7 +111,7 @@ $g->routes(
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv.sent",
 	need {
 	    conv => sub{ 
-		my %allow = (google=>{3=>"OK"}, ssp_sites=>{3=>"OK"}, net_sites=>{0=>"OK"}, );
+		my %allow = (google=>{3=>"OK"}, ssp=>{3=>"OK"}, net=>{0=>"OK"}, );
 		return undef unless $allow{$+{job}}{$+{tn}};
 		"$res/$+{day}/$+{job}/$+{tn}/sz_vars_conv.gz" 
 	    },
@@ -117,13 +131,13 @@ $g->routes(
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	need {
 	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
-	    views => sub{ Files(30, "$res/\%F/net_sites/0/views.gz") },
+	    views => sub{ Files(30, "$res/\%F/net/0/views.gz") },
 	    tn1_totals => sub{ Files(30, "$res/\%F/$+{job}/1/total.gz") },
 	    tn0_totals => sub{ Files(30, "$res/\%F/$+{job}/0/total.gz") },
 	    sessions => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/sessions.gz") },
 	    pzbt => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/pzbt.gz") },
 	    sz_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_traits_30days.gz" },
-	    dom_net => sub{ Files(30, "$res/%F/net_sites/0/dom_net.gz") }, # dom_net всегда - из net_sites/0
+	    dom_net => sub{ Files(30, "$res/%F/net/0/dom_net.gz") }, # dom_net всегда - из net/0
 	    #dom_gr =>sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_gr7days.gz" }, # меняем на any
 	},
 	any {
@@ -152,7 +166,7 @@ $g->routes(
 	note { viatmp=>0, flag=>0 },	
     },
 
-    { 	target "$res/$sm{day}/(?<job>".'net_sites'.")/(?<tn>".'0'.")/uidurl30days.gz",
+    { 	target "$res/$sm{day}/(?<job>".'net'.")/(?<tn>".'0'.")/uidurl30days.gz",
 	need {
 	    total_ff => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/total.gz") },
 	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
@@ -164,13 +178,13 @@ $g->routes(
 		" }, 
 	note { check_need=>1, timelog=>$timelog, },	
     },    
-    { 	target "$res/$sm{day}/(?<job>".'ssp_sites|google'.")/(?<tn>".'3'.")/uidurl30days.gz",
+    { 	target "$res/$sm{day}/(?<job>".'ssp|google'.")/(?<tn>".'3'.")/uidurl30days.gz",
 	need {
 	    total_ff => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/total.gz") },
 	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
 	    },
 	bash {
-	    my %fields_from_total = (ssp_sites=>"1,9,10", google=>"1,8,9",); # у total.gz ssp\google разные поля
+	    my %fields_from_total = (ssp=>"1,9,10", google=>"1,8,9",); # у total.gz ssp\google разные поля
 	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | uniq |
 		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
 		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
@@ -221,7 +235,7 @@ $g->routes(
 	    predicted_add => sub{ "$traits_copy/$+{day}/predicted_add.gz" },
 	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
 	    },
-	bash {qb "nice ./34_url_traits_net_sites \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
+	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
 	note { check_need=>1, timelog=>$timelog,  },
     },
     {	target "$traits_copy/$sm{day}/filtered_traits.txt.gz",
@@ -229,21 +243,21 @@ $g->routes(
     
     },
 
-    { 	# reseach - эксперимент, потом удалить
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_sj_30days.gz",
-	need {
-	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
-	    superjob => sub{ "$res/$+{day}/$+{job}/$+{tn}/superjob30days.gz" }, #<----  данные с суперджоба uid*m/f делаются скриптом на hist7 в home, а вызывыется по ssh руками
-	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
-	    },
-	bash {qb "nice ./34_url_traits_net_sites \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{superjob}\" \"$_{buyers}\" \"$_{TARGET}\" "},
-	note { check_need=>1, timelog=>$timelog,  },
-    },
+#    { 	# reseach - эксперимент, потом удалить
+#	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_sj_30days.gz",
+#	need {
+#	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
+#	    superjob => sub{ "$res/$+{day}/$+{job}/$+{tn}/superjob30days.gz" }, #<----  данные с суперджоба uid*m/f делаются скриптом на hist7 в home, а вызывыется по ssh руками
+#	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
+#	    },
+#	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{superjob}\" \"$_{buyers}\" \"$_{TARGET}\" "},
+#	note { check_need=>1, timelog=>$timelog,  },
+#    },
 
     
-    {	target "$res/$sm{day}/net_sites/0/dom_net.gz", # только .../net_sites/0/...
+    {	target "$res/$sm{day}/net/0/dom_net.gz", # только .../net/0/...
 	need {
-	    total => sub{ "$res/$+{day}/net_sites/0/total.gz" },
+	    total => sub{ "$res/$+{day}/net/0/total.gz" },
 	},
 	bash { qb "./35_DOM_NET %s", $_{day} },
 	note { viatmp => 0, flag=>0 },
@@ -324,7 +338,7 @@ $g->routes(
 	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/total.gz" }
 	},
 	bash { qb "fork -wait --single -pf=../pids/urls.pids './17_URLS \"$_{job}\" \"$_{day}\"'" },
-	note { viatmp=>0, flag=>0 },
+	note { viatmp=>0, flag=>0, runtime_need=>"freemem -gt 15", },
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/urlvars_diff.sent",
@@ -368,13 +382,13 @@ $g->routes(
     },
 
 #    {	# url_vars по superjob: эксперимент
-#	target "$res/$sm{day}/(?<job>".'net_sites'.")/(?<tn>".'0'.")/url_vars_sj_(?<N>\\d+)days.gz",
+#	target "$res/$sm{day}/(?<job>".'net'.")/(?<tn>".'0'.")/url_vars_sj_(?<N>\\d+)days.gz",
 #	need {
 #	    url_total=>sub{ Files( $+{N}, "$res/%F/$+{job}/$+{tn}/url_total.gz") },
 #	    url_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
 #	    dom_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_sj_30days.gz" },
 #	},
-#	bash { qb "nice ./52_urlvars_30days_net_sites \"$_{url_total}\" \"$_{url_traits_sj_30days}\" \"$_{dom_traits_sj_30days}\"" },
+#	bash { qb "nice ./52_urlvars_30days_net \"$_{url_total}\" \"$_{url_traits_sj_30days}\" \"$_{dom_traits_sj_30days}\"" },
 #	note { check_need=>1, timelog=>$timelog },
 #    },
     
@@ -382,7 +396,7 @@ $g->routes(
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_vars_30days.gz",
 	need {
 	    url_total=>sub{ 
-		my %stem = (net_sites=>"url_total", ssp_sites=>"url_total_join",google=>"url_total_join");
+		my %stem = (net=>"url_total", ssp=>"url_total",google=>"url_total");
 		return Files( 30, "$res/%F/$+{job}/$+{tn}/$stem{$+{job}}.gz");
 	    },
 	    url_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_30days.gz" },
@@ -396,26 +410,34 @@ $g->routes(
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>url)?_?total.gz", # может быть префикс типа "url" за которым следует "_"
 	need {
-	    hours=>sub{ $g->hours( from=>$+{day}, n=>24, shift=>4 )->files("$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz") }
+	    hours=>sub{
+		my @hours;
+		push @hours, $g->hours( from=>$+{day}, n=>24, shift=>4 )->files( "$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz" );
+		if ( $+{tn} eq "3" and $+{prefix}||"" eq "url" ){
+		    push @hours, $g->hours( from=>$+{day}, n=>24, shift=>4 )->files( "$res/$+{day}/$+{job}/".'0'."/%FT%H.gz" );
+		}
+		@hours;
+	    }
 	},
 	bash { qb "nice ./12_MERGE \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"".($+{prefix}||"")."\" " },
-	note { viatmp => 0, flag=>0, timelog=>$timelog },     
+	note { viatmp => 0, flag=>0, timelog=>$timelog, check_need=>0, },     
     },
 
-    {
-	target "$res/$sm{day}/(?<job>".'google|ssp_sites'.")/3/url_total_join.gz", 
-	need {
-	    url_total_tn0=>sub{ "$res/$+{day}/$+{job}/0/url_total.gz" },
-	    url_total_tn3=>sub{ "$res/$+{day}/$+{job}/3/url_total.gz" },
-	},
-	bash { qb "
-	    zcat \"$_{url_total_tn3}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' |
-	    addf -df=<( zcat \"$_{url_total_tn0}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' ) -dadd=4,5,6 | # url*tn0cnt*tn0sumexppr*tn0sumwinpr*dom*path*tn3cnt*tn3sumexppr
-	    awk -F* -vOFS=* '{print \$5,\$6,\$7,\$8,\$2,\$3,\$4}'   
-	    # dom * path * tn0_cnt(exp) * tn0_sum(exppr) * tn0_sum(winpr) * tn3_cnt(bids) * tn3_sum(exppr)
-	" },
-	note { check_need=>1, timelog=>$timelog },     
-    },
+#    {  # вместо url_total_join теперь 3/url_total
+#	target "$res/$sm{day}/(?<job>".'google|ssp'.")/3/url_total_join.gz", 
+#	need {
+#	    url_total_tn0=>sub{ "$res/$+{day}/$+{job}/0/url_total.gz" },
+#	    url_total_tn3=>sub{ "$res/$+{day}/$+{job}/3/url_total.gz" },
+#	},
+#	bash { qb "
+#	    zcat \"$_{url_total_tn3}\" | # dom * path * cnt_bids * sum_exppr
+#	    awk -F* -vOFS=* '{print \$1\$2,\$0}' | # (+)url * dom * path * cnt_bids * sum_exppr
+#	    addf -df=<( zcat \"$_{url_total_tn0}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' ) -dadd=4,5,6 | # url*tn0cnt*tn0sumexppr*tn0sumwinpr*dom*path*tn3cnt*tn3sumexppr
+#	    awk -F* -vOFS=* '{print \$5,\$6,\$7,\$8,\$2,\$3,\$4}'   
+#	    # dom * path * tn3_cnt(bids) * tn3_sum(exppr) * tn0_cnt(exp) * tn0_sum(exppr) * tn0_sum(winpr)
+#	" },
+#	note { check_need=>1, timelog=>$timelog },     
+#    },
     
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
@@ -429,8 +451,8 @@ $g->routes(
 	    diff=>sub{ "$res/$+{day}/$+{job}/$+{tn}/".'url_cat_diff.gz' },
 	    after=>sub{ 
 		my %depend = (
-		    ssp_sites => {3=>"$res/$+{day}/net_sites/0/".'url_cat_diff.sent'},
-		    google =>    {3=>"$res/$+{day}/ssp_sites/3/".'url_cat_diff.sent'},
+		    ssp => {3=>"$res/$+{day}/net/0/".'url_cat_diff.sent'},
+		    google =>    {3=>"$res/$+{day}/ssp/3/".'url_cat_diff.sent'},
 		);
 		$depend{ $+{job} }{ $+{tn} };
 	    },
@@ -473,11 +495,11 @@ $g->routes(
     },
     
 # не нужно?
-#    {	target "$res/$sm{day}/".'net_sites/0/'."dom_total.gz",
+#    {	target "$res/$sm{day}/".'net/0/'."dom_total.gz",
 #	need {
-#	    url_total=>sub{"$res/$+{day}/net_sites/0/url_total.gz"},
+#	    url_total=>sub{"$res/$+{day}/net/0/url_total.gz"},
 #	},
-#	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_sites_tn0"},
+#	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_tn0"},
 #	note { check_need=>1, timelog=>$timelog },
 #    },
 
@@ -486,9 +508,14 @@ $g->routes(
 
 if ($show_targets){
     local ($\,$,)=("\n","\n");
+    #die Dumper grep { $_->{target} and $_->{target}=~/url_total/ } $g->routes();
     print "Targets:", map {$_->{target}} $g->routes() and exit 0;
 }
 
+if ($target){
+    no warnings;
+    exec qq( grep -H -m10 -n --color=auto -A20 -P "target.*?$target" 00_geek4 );
+}
 
 $\="\n";
 my @jobs = reverse $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
@@ -496,7 +523,8 @@ if ( $dump_jobs ){	print Dumper \@jobs and exit 0  }
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
 
 my %avg_total;
-my $skipped = 0;
+my $avg_skiped = 0;
+#my $skiped_jobs = 0;
 my $all = 0;
 
 for my $job ( @jobs_to_do ){
@@ -505,7 +533,7 @@ for my $job ( @jobs_to_do ){
 #    sleep 20;
 #    warn "..awake";
 
-    #die Dumper $job;
+#    die Dumper $job;
     my $file_exists = $g->test( $job->{target} ) ? "v" : "-";
     my @missing_need;
     if ( $job->{note} and $job->{note}{check_need} ){
@@ -522,9 +550,34 @@ for my $job ( @jobs_to_do ){
 
     if ( !$norun and @missing_need ){ 
 	warn( "Skip $job->{target}: missing need files: ".join(", ", @missing_need)) if $deb;
+	#$skiped_jobs+=1;
 	next;
     }
-    delete $job->{note}{check_need};    
+    delete $job->{note}{check_need};
+    
+    my @runtime_checks;
+    if ( $job->{note} and my $rn = $job->{note}{runtime_need} ){
+	$rn = [ $rn ] if !ref $rn;
+	if ( ref $rn eq "ARRAY" ){
+	    for my $test ( @$rn ){
+		$test or warn "Empty test, skip. ".Dumper($rn);
+		# test must be a string for bash:
+		my $status = system($test);
+		if ($status>0){
+		    push @runtime_checks, "test:'$test', status:$status";
+		}else{
+		    warn "Test:$test status:$status - ok" if $deb;
+		}
+	    }
+	}else{
+	    warn "runtime_need must be a array-ref or string (bash-command)!, skip checking. ".Dumper($rn);
+	}
+    }
+    if (@runtime_checks){
+	warn "Fails runtime check(s): @runtime_checks";
+	next;
+    }
+    delete $job->{note}{runtime_need};
     
     my %timelog;
     if ( $job->{note} and $timelog{file}=$job->{note}{timelog}){
@@ -563,7 +616,7 @@ for my $job ( @jobs_to_do ){
 		$avg_total{min} +=$min;
 		$avg_total{max} +=$max;
 	    }	
-	    $skipped+=1 if !$max;
+	    $avg_skiped+=1 if !$max;
 	    $all+=1;
 	}
 
@@ -592,7 +645,7 @@ for my $job ( @jobs_to_do ){
     );
     warn "Return value: $rv, msg=$msg" if $deb;
     
-    if ( $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
+    if ( $rv and $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
         my $min = int( ($timelog{end_sec}-$timelog{start_sec})/60);
 	my $string = sprintf("%s %d-%02d-%02dT%02d:%02d %d-%02d-%02dT%02d:%02d %dm", $job->{target}, @{ $timelog{start} }[0..4], @{ $timelog{end} }[0..4], $min );
 	local $|=1;
@@ -604,7 +657,7 @@ for my $job ( @jobs_to_do ){
 my $minh = ($avg_total{min}||=0) ? sprintf("%.1f", $avg_total{min}/60) : "NA";
 my $avgh = ($avg_total{avg}||=0) ? sprintf("%.1f", $avg_total{avg}/60) : "NA";
 my $maxh = ($avg_total{max}||=0) ? sprintf("%.1f", $avg_total{max}/60) : "NA";
-print "Aproximate: min:$minh hours ($avg_total{min} m), avg:$avgh hours ($avg_total{avg} m), max:$maxh ($avg_total{max} m). Skipped: $skipped / $all" if $avg;    
+print "Aproximate: min:$minh hours ($avg_total{min} m), avg:$avgh hours ($avg_total{avg} m), max:$maxh ($avg_total{max} m). skiped: $avg_skiped / $all" if $avg;    
 
 sub mytime{ my (undef,$mi,$h,$d,$m,$y) = localtime; $y+=1900; $m+=1; sprintf( "%d-%02d-%02d %02d:%02d", $y,$m,$d,$h,$mi) }
 
