@@ -9,10 +9,11 @@ cd `dirname $0`
 #echo "Скрипт на переделке">&2 
 #exit 1
 
-url_total_ff=${1:? url_total files!} # файлы url_total.gz за (30) дней, их нужно мержить
+url_total_ff=${1:? url_total files!} # файлы url_total_join.gz за (30) дней, их нужно мержить
 # in merged tn3/.../url_total_ff:
-#  1    2       3             4               5              6          
-# dom  path   cnt(bids)  sum(expprice)    cnt(exp)      sum(winprice)
+#  1    2       3             4               5              6         7
+# dom  path   cnt(bids)  sum(expprice)    cnt(ecp)      sum(winprice)
+# только сетевые просмотры, сети не разделены
 
 url_traits_30days_f=${2:? url_traits_30days file!}
 #  1       2         3   4     5      6      7   
@@ -21,7 +22,9 @@ url_traits_30days_f=${2:? url_traits_30days file!}
 
 dom_traits_30days_f=${3:? dom_traits_30days file!}
 
-LANG=POSIX mergef -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
+#awk -F* '$3>10' | # остаются только урлы с показами>N, для net cnt - это кол-во показов
+
+LANG=POSIX mergef  -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
 summator -fu="sum,sum,sum,sum" | # после мержа 30 дней суммы по dom+path
 lae -lb="dom path cntbids exppricetn3 cntexp secondpricetn0" '
 # на входе будут строки с суммами по ключу dom + path 
@@ -54,8 +57,7 @@ for my $l (<TRAITS>){
 }
 
 
-
- # ( по net - одна строка на урл, но в google,ssp - будут разные tn., поэтому называем переменные "sum_..." )
+# ( по net - одна строка на урл, но в google,ssp - будут разные tn., поэтому называем переменные "sum_..." )
 
 my ( $dom_expprice, $dom_winprice, $dom_cnt_exp, $dom_cnt_bids );
 my %url;
@@ -75,12 +77,10 @@ _{
  
   my ($dom, $path) = ($F[DOM], $F[PATH]);
   
- # if ( Cntexp > 10 ){ # cnt_expt - кол-во показов 
-    $url{ $F[DOM] }{ $F[PATH] }{ xp } += Exppricetn3; # expprice из бидов (tn3)
-    $url{ $F[DOM] }{ $F[PATH] }{ wp } += Secondpricetn0; #secondprice из показов (tn0)
-    $url{ $F[DOM] }{ $F[PATH] }{ cx } += Cntexp;
-    $url{ $F[DOM] }{ $F[PATH] }{ cb } += Cntbids;
- # }
+  $url{ $F[DOM] }{ $F[PATH] }{ xp } += Exppricetn3; # из бидов
+  $url{ $F[DOM] }{ $F[PATH] }{ wp } += Secondpricetn0; # из показов
+  $url{ $F[DOM] }{ $F[PATH] }{ cx } += Cntexp;
+  $url{ $F[DOM] }{ $F[PATH] }{ cb } += Cntbids;
   
   $dom_expprice += Exppricetn3; # из бидов
   $dom_winprice += Secondpricetn0; # из показов
@@ -101,7 +101,7 @@ sub flush{
 	$dom_male   = $dom_traits{ $do }{ m };
 	$dom_female = $dom_traits{ $do }{ f };
 	$dom_buyers = $dom_traits{ $do }{ b };
-	$dom_all = $dom_traits{ $do }{ a };
+	$dom_all = $dom_traits{ $do }{ a }; # - all uids
     }	
 
     my $dom_winrate = $dom_cnt_bids ? $dom_cnt_exp / $dom_cnt_bids : 0;
@@ -109,15 +109,15 @@ sub flush{
     for my $pa ( grep {$_} sort keys %{ $url{$do} } ){
 	my $will_print_line;
 	my $smf_expprice = $dom_cnt_exp ? int( $dom_expprice / $dom_cnt_exp / 100 ) + 1 : "NA";
-	my $smf_winprice = $dom_cnt_exp ? int( $dom_winprice / $dom_cnt_exp  ) + 1 : "NA"; 
-	
+	my $smf_winprice = $dom_cnt_exp ? int( $dom_winprice / $dom_cnt_exp ) + 1 : "NA"; 
+
 	my ( $avg_expprice, $avg_winprice, $profit, $winrate );
 	if ( $url{ $do }{ $pa }{ cx } > $N ){
-	    # cx - cnt_exp
+	    # cx - cnt_exposures
 	    # cb - cnt_bids
 	    # xp - exp_price
 	    # wp - win_price
-
+	    
 	    $avg_expprice = int( ($url{ $do }{ $pa }{ xp }/100 + $smf_expprice * $N)/($url{ $do }{ $pa }{ cx } + $N) ) + 1; 
 	    $avg_winprice = int( ($url{ $do }{ $pa }{ wp } + $smf_winprice * $N)/($url{ $do }{ $pa }{ cx } + $N) ) + 1; 
 	    $profit = $avg_expprice ? int( ($avg_expprice - $avg_winprice) / $avg_expprice * 100 ) : "NA";
@@ -126,10 +126,11 @@ sub flush{
 	}else{
 	    ( $avg_expprice, $avg_winprice, $profit, $winrate ) = ("NA", "NA", "NA", "NA");
 	}
+ 
 	
 	my ( $url_male, $url_female, $url_buyers, $url_all );
 	my ( $male_smf_perc, $female_smf_perc, $buyers_smf_perc ) = (0,0,0);
-	if ( $url_traits{$do} and $url_traits{$do}{$pa} ){
+	if ( $url_traits{ $do } and $url_traits{ $do }{ $pa } ){
 	    $url_male   = $url_traits{ $do }{ $pa }{ m };
 	    $url_female = $url_traits{ $do }{ $pa }{ f };
 	    $url_buyers = $url_traits{ $do }{ $pa }{ b };
@@ -142,7 +143,7 @@ sub flush{
 	    ($male_smf_perc, $female_smf_perc, $buyers_smf_perc)  = ("NA","NA","NA");
 	}
 	
-#	my $desc = "int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000)";
+	#my $desc = "url_male=$url_male, url_female=$url_female, url_buyers=$url_buyers, url_all=$url_all, dom_male=$dom_male, dom_female=$dom_female, dom_all=$dom_all";
 
 	my ($flag, $male_part);
 	if ( $male_smf_perc eq "NA" ){
@@ -156,13 +157,13 @@ sub flush{
 	}
 
 	next if not $will_print_line;
-	p $do, $pa, $avg_expprice, $avg_winprice, $profit, $male_smf_perc, $female_smf_perc, $buyers_smf_perc, $flag, $male_part, $winrate;# , $desc;
+	p $do, $pa, $avg_expprice, $avg_winprice, $profit, $male_smf_perc, $female_smf_perc, $buyers_smf_perc, $flag, $male_part, $winrate; # , $desc;
  
     }
  }
 
  $dom_expprice = $dom_winprice = $dom_cnt_exp = $dom_cnt_bids = 0;
- undef %url; 
+ undef %url;
 }
 ' <( zcat "$url_traits_30days_f" ) <( zcat "$dom_traits_30days_f")
 
