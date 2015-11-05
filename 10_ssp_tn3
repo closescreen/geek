@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set -u
+
+f=${1:? file!}
+sids=${2:?sids!} #like a: 123|234|3254
+
+job_history_log -c=./history.conf "$f" "uid!=0,second,sid=$sids,sz,pz,bt,exposureprice,ad,typenum=3,usergroup=$(conf 00_conf.txt usergroups),expid,ref,custom" -fn \
+ -cut="typenum,usergroup" -true="sz" | 
+ #  1   2   3  4   5 6   7    8   9    10   11
+ # uid sec sid sz pz bt exppr ad expid ref custom
+ ./10_url_clean -url_field=10 | #<--преобразование ref
+ perl -MDom -Mstrict -w -F'\*' -lane'
+# IN: uid,second,sid,sz,pz,bt,exposureprice,ad,expid,ref,custom
+#      0    1     2  3  4  5       6        7   8     9   10
+
+# custom: 
+my @custom = split /\;/, $F[10];
+@F[11,12] = map {$_||""} @custom[2,3]; # <-- ( id, wm ) from custom.
+
+@F[ 9,10 ] = $F[9] ? map {$_||""} Dom::split_ref( $F[9] ) : ("",""); # справа добавляется еще одна колонка
+
+print join("*", map {$_||""} @F);
+' | sort -T. -t\* -n -k1,1 -k2,2 -S333M --compress-program=gzip
+
+
+#>>       1    2     3  4  5  6    7    8  9     10  11  12          13
+#>> OUT: uid second sid sz pz bt exppr ad expid dom path id(custom) wm(custom)

@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+set +x
+set -u
+set -o pipefail
+
+hour_file=${1:?file!}
+
+tn0_hour_file=$(echo $hour_file | sed -e's|/3/|/0/url_|' )
+
+chk "$tn0_hour_file" "tn0 file" "-s" "exsts and noempty" nop || exit 2 
+
+#>>  1   2      3  4  5  6       7         8  9     10  11   12          13
+#>> uid second sid sz pz bt exposureprice ad expid dom path  id(custom) wm(custom)
+
+awk -F* -v"OFS=*" '$7>0 {print $10,$11,$7,$9}' | # берем только где expprice>0
+ # dom path exppr expid
+ addf -k=4 -dict=<(zcat "$tn0_hour_file") -repl | # expid заменяется на winprice/или 0: dom path exppr winpr
+ LANG=POSIX sort -t\* -T. -S 333M --compress-program=gzip -k1,1 -k2,2 |
+ summator -fu="cnt,+sum,tcnt,+sum"
+ 
+#>       1   2      3        4             5       6
+#> out: dom path bids(cnt) sum(exppr) exp(cnt)  sum(winpr)
+
+
+
