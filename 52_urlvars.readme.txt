@@ -1,0 +1,20 @@
+По сетевым процентов выигранного не считаем.
+
+По ним считаем 3 переменные по ценам (по тем урлам, где случилось больше 10 показов):
+var1 средний exposureprice в рублях + 1
+var2 средний winprice в рублях + 1
+var3 рентабельность int((var1-var2)/var1*100)
+
+var1 и var2 считаем со сглаживанием. Для этого по ВСЕМ урлам на домене считаем
+средний exposureprice в рублях + 1 (total1 = int(sum(exposureprice)/sum(exposures)/100) + 1)
+и средний winprice в рублях + 1 (total2 = int(sum(winprice)/sum(exposures)/100) + 1)
+n=10
+var1 = int((url_exposureprices/100+total1*n)/(url_exposures+n))+1
+var2 = int((url_winprices/100+total2*n)/(url_exposures+n))+1
+
+Но гуглу и ссп к переменным по ценам добавляется процент выигранных бидов со сглаживанием.
+Соответственно также считаем по сайту по ВСЕМ урлам средний winrate = sum(exposures)/sum(bids).
+По урлам, где случилось больше 10 показов, считаем
+var4 = int((url_exposures + winrate * n)/(url_bids + n))*100
+
+Если на домене случилось меньше 100 показов, то по такому домену ни чего не делаем. 

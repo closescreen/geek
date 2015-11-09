@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN:
+
+#>>  1   2  3  4   5   6
+#>> sid id wm d2l dom path
+
+summator -fu="+cnt"
+
+#>> out
+#>>  1   2  3  4   5   6   7
+#>> sid id wm d2l dom path cnt (cnt-количество одинаковых строк)
+
+
+

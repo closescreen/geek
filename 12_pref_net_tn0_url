@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+
+set -u
+set -o pipefail
+
+#> пре-фильтр для net 0 url
+
+#> По урлам.
+
+#> net tn0 - это показы, а также "биды" (сетевые показы - выигранные биды)
+
+#          1     2    3  4  5  6       7            8        9   10     11  12 
+# input: "uid second sid sz pz bt exposureprice secondprice ad network dom path" 
+
+# только сетевые показы и сети не выделяем (не нужны)
+
+awk -F* -v"OFS=*" '$11!="" && $10>0 {print $11,$12,$7,$8}' | LANG=POSIX sort -T. -t\* -k1,1 -k2,2 --compress-program=gzip
+
+#       1   2       3         4      
+# out: dom path expprice secondprice
+
+# merge ожидает отсортированные потоки, поэтому sort - здесь

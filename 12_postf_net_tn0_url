@@ -1,0 +1,27 @@
+#!/usr/bin/env bash
+#> По урлам.
+#> Обработчик смерженного (часы в сутки) потока для net_tn0_url
+
+set -u
+set -o pipefail
+
+#> из показов взяты только сетевые, разбивки на сети не делаем
+
+#> для net 0 url - есть prefilter, см выход с него
+
+#          1     2      3          4               
+# input: "dom  path  expprice secondprice" 
+
+summator -fu="+cnt,sum,sum" | #<--- 1-dom  2-path  3-cnt  4-sum_expprice  5-sum_secondprice
+ perl -F'\*' -lane'
+ # округление десятичных:
+ print join "*", @F[0..2], map { int($_) } @F[3,4]'
+
+#>> OUT:
+#>> | field            | decr |
+#>> |----------------  | ---- |   
+#>> | dom              |
+#>> | path             |
+#>> | cnt              |
+#>> | sum_expprice     |
+#>> | sum_secondprice  | сумма secondprice |

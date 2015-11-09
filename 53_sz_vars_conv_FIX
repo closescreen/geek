@@ -1,0 +1,56 @@
+#!/usr/bin/env perl
+# это только для FIX (2015.09.16)
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+
+my $usage = q{ Usage: };
+
+my $conf_name;
+my $truesz; # только не нулевые sz
+
+GetOptions(
+ "conf=s" => \$conf_name,
+ "truesz" => \$truesz,
+) or die "Bad opt!";
+
+#warn "ONLY TRUE SZ" if $truesz;
+
+my %conf = do $conf_name or die "$conf_name: $!";
+my %decl = %{$conf{DECL}} or die "declarations!";
+
+local $\="\n";
+
+#> На входе поток колонок со значениями (sz_vars), разделитель *.
+while(<>){
+ chomp;
+ my @fields = split /\*/, $_, -1;
+ my @out;
+ #my ($sid,$sz) = split /\:/, $fields[0];
+ #my $id = ( $sid << 32 ) | ($sz||-1);
+ #push @out, $id;
+ #for my $fnumber (2 .. scalar(@fields)){
+#    my $fdecl = $decl{ $fnumber } or next; # на выходе будут только поля, для которых есть определения в conf
+#    my $fvalue = $fields[$fnumber-1];
+#    my $rv = $fdecl->{SUB} ? &{$fdecl->{SUB}}($fvalue) : $fvalue;
+#    my $cat = $fdecl->{C} || $fnumber or die "C!";
+#    next if !$rv and !$fdecl->{Z}; # если в декларации нет Z=>1 и на выходе==0, то не спамить такое
+#    push @out, "$cat:$rv ($fvalue - $fdecl->{D})";
+# }
+ #push @out, $fields[0];
+ 
+ my ($sid,$sz) = split /\:/, $fields[0];
+ next if !$sz and $truesz;
+ for my $fnumber (3..5){
+    my $fdecl = $decl{ $fnumber } or next; # на выходе будут только поля, для которых есть определения в conf
+    my $fvalue = $fields[$fnumber-1];
+    my $rv = $fdecl->{SUB} ? &{$fdecl->{SUB}}($fvalue) : $fvalue;
+    my $cat = $fdecl->{C} || $fnumber or die "C!";
+    next if !$rv and !$fdecl->{Z}; # если в декларации нет Z=>1 и на выходе==0, то не спамить такое
+    #push @out, "$cat:$rv ($fvalue - $fdecl->{D})";
+    print join "*", $fields[0], $cat,$rv;
+    
+ }
+ #print join "*", @out;
+}

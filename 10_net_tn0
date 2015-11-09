@@ -1,0 +1,51 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==0 (показы) , network==60 
+
+# для сетевых сайтов, не сетевые показы - это как биды (проигранные?), сетевые показы - как биды(выигранные) и показы
+# следовательно, этот сбор может включать в себя:
+
+set -o pipefail
+set -u 
+
+f=${1:? file!}
+sids=${2:? sids !} # like a 111|2222|33333|...
+
+job_history_log -c=./history.conf "$f" "uid!=0,second,sid=${sids},sz,pz,bt,exposureprice,secondprice,ad,network,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref"\
+    -fn -cut="typenum,statusnum,usergroup" -fn |
+ ./10_url_clean -url_field=10 | # <----преобр ref
+ perl -Mstrict -MDom -w -e'
+ # IN: uid,second,sid,sz,pz,bt,exposureprice,secondprice,ad,network,ref
+ #      0    1     2   3 4  5        6            7       8     9    10
+ 
+ $\="\n";
+ my ($uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref);
+ my ($dom, $path); 
+
+ while(<>){
+    chomp;
+    ( $uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $ref ) = split /\*/, $_, 11;
+    if ( $ref ){
+	($dom, $path) = map {$_||""} Dom::split_ref( $ref );
+	$dom =~ s/\.$//;
+    }else{
+	($dom, $path)=("","");
+    }
+    print join "*", map {defined($_) ? $_ : ""} $uid, $second, $sid, $sz, $pz, $bt, $exposureprice, $secondprice, $ad, $network, $dom, $path;
+ } 
+
+ ' |
+ LANG=POSIX sort -T. -t\* -k1,1 -k2,2n -S333M --compress-program=gzip
+
+#>> OUT
+#>> uid - для сессий
+#>> sec - для сессий
+#>> sid - *новое для net
+#>> sz
+#>> pz - для комбинаций pzbt
+#>> bt - для комбинаций pzbt
+#>> exppr - для: среднего отношения к winprice, для доли бидов с положит ставкой( если не исп. ad для этого ) ( для выигранных бидов - сетевых просмотров), 
+#>> secondprice - для: среднего winprice, среднего отношения expprice к winprice ( для выигранных бидов - сетевых просмотров)
+#>> ad - для детализации по клиенту,  
+#>> network - (нужно ли фильтровать 43|44|45|60|0 ?) network=43|44|45|60|0 - показ сетевой (в какой сети) или нет
+#>> dom - для bids, sessions, urls
+#>> path

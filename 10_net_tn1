@@ -1,0 +1,12 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==1 (клики) for net
+
+set +x
+set -u
+
+f=${1:? file!}
+sids=${2:?sids!} #like a: 123|234|3254
+
+job_history_log -c=./history.conf "$f" "sid=$sids,sz,ad,uid!=0,typenum=1,statusnum=0,usergroup=$(conf 00_conf.txt usergroups)" -fn \
+ -cut="statusnum,typenum,uid,usergroup" | # у net - не ставить ограничение по sz!
+sort -T. -t\* -n -k1,1 -k2,2 -k3,3 -S 333M

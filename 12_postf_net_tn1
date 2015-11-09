@@ -1,0 +1,25 @@
+#!/usr/bin/env bash
+
+#> Обработчик смерженного (за сутки) потока для net tn1 (клики). 
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN
+#>>  1   2   3 
+#>> sid  sz  ad
+
+summator -la=0 -fu=+cnt
+
+#>> OUT: 
+#>> | field | description |
+#>> | ----- | ----------- |
+#>> | sid   |             |
+#>> | sz    |
+#>> | ad    |
+#>> | cnt_clicks | количество кликов  |
+
+#>>  1  2   3      4
+#>> sid sz ad  cnt_clicks

@@ -1,0 +1,157 @@
+#!/usr/bin/env bash
+#>
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+#echo "Скрипт на переделке">&2 
+#exit 1
+
+url_total_ff=${1:? url_total files!} # файлы url_total.gz за (30) дней, их нужно мержить
+# in merged url_total_ff:
+#  1    2       3       4              5        
+# dom  path    cnt  sum_expprice sum_secondprice
+# только сетевые просмотры, сети не разделены
+
+url_traits_30days_f=${2:? url_traits_30days file!}
+#  1       2         3   4     5      6      7   
+# dom   * path     *all*male*female*buyers*trash 
+# 101.ru*/?an=music*1771*99*131*27*0
+
+dom_traits_30days_f=${3:? dom_traits_30days file!}
+
+LANG=POSIX mergef -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
+summator -fu="sum,sum,sum" | # после мержа 30 дней суммы по трем посл колонкам
+lae -lb="dom path cntexp expprice secondprice" '
+# на входе будут строки с суммами по ключу dom + path 
+
+my $N = 10;
+
+# переданные параметры:
+my ( $url_traits_f, $dom_traits_f ) = @ARGV;
+
+# трейты по урлам:
+my %url_traits; # will like $dom->{$path}{all=>$x0, male=>$x1, fem=>$x2, buyers=>$x3 }
+$url_traits_f or die "url_traits file!";
+open TRAITS, "$url_traits_f" or die "cant open $url_traits_f: $!";
+for my $l (<TRAITS>){
+ chomp $l;
+ my ( $dom, $path, $all_uids, $male, $female, $buyers ) = split /\*/,$l, -1; 
+ $url_traits{ $dom }{ $path } = { all_uids=>$all_uids, male=>$male, female=>$female, buyers=>$buyers };
+ #die Dumper $l, $dom, $path, $all_uids, $male, $female, $buyers;
+}
+
+# трейты по доменам:
+my  %dom_traits; # will like $dom->{all=>$x0, male=>$x1, fem=>$x2, buyers=>$x3 }
+$dom_traits_f or die "dom_traits file!";
+open TRAITS, "$dom_traits_f" or die "cant open $dom_traits_f: $!";
+for my $l (<TRAITS>){
+ chomp $l;
+ my ( $dom, $all_uids, $male, $female, $buyers ) = split /\*/,$l, -1; 
+ #die Dumper $l, $dom, $all_uids, $male, $female, $buyers;
+ $dom_traits{ $dom } = { all_uids=>$all_uids, male=>$male, female=>$female, buyers=>$buyers };
+}
+
+
+
+ # ( по net - одна строка на урл, но в google,ssp - будут разные tn., поэтому называем переменные "sum_..." )
+
+my ( $dom_expprice, $dom_winprice, $dom_cnt_exp );
+my %url;
+
+_{
+
+  if ( not defined Secondprice ){
+    warn "Line $_ - not has 6 fields";
+    next;
+  }
+ 
+
+  my $dom_changed = 1 if (prevDom and (Dom ne prevDom));
+  
+  if ( $dom_changed ){
+    flush();
+  }
+ 
+  my ($dom, $path) = ($F[DOM], $F[PATH]);
+  
+  if ( Cntexp > 10 ){ # cnt_expt - кол-во показов (поле из входн файлов url_total)
+    $url{ $F[DOM] }{ $F[PATH] }{ expprice } += Expprice;
+    $url{ $F[DOM] }{ $F[PATH] }{ winprice } += Secondprice;
+    $url{ $F[DOM] }{ $F[PATH] }{ cnt_exp } += Cntexp;
+  }
+  
+  $dom_expprice += Expprice;
+  $dom_winprice += Secondprice;
+  $dom_cnt_exp  += Cntexp;
+
+} -prev=>"dom";
+
+flush();
+
+
+#----------- flush ---------
+sub flush{
+
+ for my $do ( grep {$_} sort keys %url ){
+    my ($dom_male, $dom_female, $dom_buyers, $dom_all);
+    if ( $dom_traits{ $do } ){
+	$dom_male   = $dom_traits{ $do }{ male };
+	$dom_female = $dom_traits{ $do }{ female };
+	$dom_buyers = $dom_traits{ $do }{ buyers };
+	$dom_all = $dom_traits{ $do }{ all_uids };
+    }	
+    for my $pa ( grep {$_} sort keys %{ $url{$do} } ){
+	my $smf_expprice = int( $dom_expprice / $dom_cnt_exp / 100 ) + 1;
+	my $smf_winprice = int( $dom_winprice / $dom_cnt_exp / 100 ) + 1; 
+ 
+	my $avg_expprice = int( ($url{ $do }{ $pa }{ expprice }/100 + $smf_expprice * $N)/($url{ $do }{ $pa }{ cnt_exp } + $N) ) + 1; 
+	my $avg_winprice = int( ($url{ $do }{ $pa }{ winprice }/100 + $smf_winprice * $N)/($url{ $do }{ $pa }{ cnt_exp } + $N) ) + 1; 
+	my $profit = int( ($avg_expprice - $avg_winprice) / $avg_expprice * 100 );
+	
+	my ( $url_male, $url_female, $url_buyers, $url_all );
+	my ( $male_smf_perc, $female_smf_perc, $buyers_smf_perc ) = (0,0,0);
+	if ( $url_traits{$do} and $url_traits{$do}{$pa} ){
+	    $url_male   = $url_traits{ $do }{ $pa }{ male };
+	    $url_female = $url_traits{ $do }{ $pa }{ female };
+	    $url_buyers = $url_traits{ $do }{ $pa }{ buyers };
+	    $url_all = $url_traits{ $do }{ $pa }{ all_uids };
+	    $male_smf_perc   = int( ( $url_male   + $dom_male / $dom_all   * $N ) / ( $url_all + $N ) * 100 ); # сглаженное мальчиков на урле в процентах
+	    $female_smf_perc = int( ( $url_female + $dom_female / $dom_all * $N ) / ( $url_all + $N ) * 100 ); # девочек
+	    $buyers_smf_perc = int( ( $url_buyers + $dom_buyers / $dom_all * $N ) / ( $url_all + $N ) * 100 ); # покупателей
+	}else{
+	    ($male_smf_perc, $female_smf_perc, $buyers_smf_perc)  = ("NA","NA","NA");
+	}
+	
+	#my $desc = "url_male=$url_male, url_female=$url_female, url_buyers=$url_buyers, url_all=$url_all, dom_male=$dom_male, dom_female=$dom_female, dom_all=$dom_all";
+
+	my ($flag, $male_part);
+	if ( $male_smf_perc eq "NA" ){
+	    ($flag, $male_part) = ("NA","NA");
+	}elsif( $male_smf_perc==0 and $female_smf_perc==0 ){
+	    ($flag, $male_part) = (0, "NA");
+	}else{
+	    $flag = 1;
+	    $male_part = int( $male_smf_perc / ( $male_smf_perc + $female_smf_perc ) * 100 );
+	}
+
+	p $do, $pa, $avg_expprice, $avg_winprice, $profit, $male_smf_perc, $female_smf_perc, $buyers_smf_perc, $flag, $male_part; # , $desc;
+ 
+    }
+ }
+
+ $dom_expprice = $dom_winprice = $dom_cnt_exp = 0;
+ %url = ();  
+ 
+}
+' <( zcat "$url_traits_30days_f" ) <( zcat "$dom_traits_30days_f")
+
+
+# out:
+#>  1    2         3               4          5       6       7         8      9     10
+#> dom  path  avg_expprice, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%
+
+
+) 2>>"$0.log" 

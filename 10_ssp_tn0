@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+
+set +x
+set -u
+
+hour_file=${1:? file!}
+sids=${2:?sids!} #like a: 123|234|3254
+
+tee_file=`dirname $hour_file`"/url_"`basename $hour_file` # .../yyyy-mm-ddThh.gz --> .../url_yyyy-mm-ddThh.gz
+chk "$tee_file" 
+
+job_history_log -c=./history.conf "$hour_file" "sid=$sids,sz,ad,exposureprice,winprice,uid!=0,typenum=0,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),expid" -fn \
+ -cut="statusnum,typenum,uid,usergroup" | 
+ #       1   2  3    4        5      6
+ # out: sid,sz,ad,expprice,winprice,expid
+ tee-open  -to="
+ #      1  2  3     4       5       6
+ # IN: sid,sz,ad,expprice,winprice,expid
+ awk -F* -vOFS=* '{print \$6,\$5}' |
+ viatmp -gz "$tee_file"
+ # OUT (to $tee_file): expid winpr
+ #----------- end of $tee_file ----------
+
+ " |
+ awk -F* -vOFS=* '$2 {print $1,$2,$3,$4,$5}' | 
+ # OUT (to $hour_file): (sz!=0) sid,sz,ad,expprice,winprice
+ sort -T. -t\* -n -k1,1 -k2,2 -k3,3
+

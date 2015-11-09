@@ -1,0 +1,21 @@
+#!/usr/bin/env bash
+
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN:
+#>>  1   2      3           4          5 
+#>> dom path  cnt(exp)  sum(exppr) sum(winprice)
+
+summator -fu="sum,sum,sum" 
+
+#>> OUT: 
+#>>  1   2     3            4          5
+#>> dom path cnt(exp)   sum(exppr) sum(winprice) 
+
+
+
+
