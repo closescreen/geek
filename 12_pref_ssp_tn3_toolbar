@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN:
+#>>       1    2     3  4  5  6    7    8  9     10  11  12          13
+#>> OUT: uid second sid sz pz bt exppr ad expid dom path id(custom) wm(custom)
+
+awk -F* -vOFS=* '$12 || $13 {print $3, $12, $13, $10, $11 }' | # sid id wm dom path
+ lae -M=Dom -lb="sid id wm +d2l dom path" '_{
+    return if not $F[ID]=~m/^\d+$/;
+    $F[D2L] = $F[DOM] ? Dom::d2l( $F[DOM] ) : "";
+    $F[WM]||="NA";
+    p @F;
+ }'
+
+#>> out:
+#>>  1   2  3  4   5   6
+#>> sid id wm d2l dom path
