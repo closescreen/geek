@@ -24,10 +24,12 @@ sub d2l{
     ($rv) = $dom=~m/([^\.]+\.[^\.]+)$/;
  }    
 
- #> Для всех производится очистка от порта, протокола, пути, пробелов
- $rv=~s|\w+\://||; # delete protocol
- $rv=~s|\:\d+||; # delete port
- $rv=~s|\/.*$||; # deplete path
+ if ($rv){
+    #> Для всех производится очистка от порта, протокола, пути, пробелов
+    $rv=~s|\w+\://||; # delete protocol
+    $rv=~s|\:\d+||; # delete port
+    $rv=~s|\/.*$||; # deplete path
+ }    
  return $rv||"";
 }
 
