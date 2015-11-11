@@ -21,7 +21,6 @@ my $first_job;
 my $desc;
 my $norun;
 my $avg;
-my $loadaverage;
 #my $no_warn_deep;
 my $timelog = "00_all.time.log";
 my $target;
@@ -41,7 +40,6 @@ GetOptions(
     'desc' => \$desc, # print descriptions
     'norun' => \$norun, # not run jobs (skip they)
     'avg' => \$avg,
-    'loadaverage=i' => \$loadaverage, # при каком loadaverage 1m (до, включительно), запускать.
     'target=s' => \$target,
     'command=s' => \$command,
 #    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
@@ -59,8 +57,6 @@ if ( $command ){
 
 @wanted = split /\s+/, join " ", @wanted;
 
-my $lo=`loadaverage -1m`;
-warn "loadaverage > $loadaverage, exit" and exit 1 if $loadaverage and $lo>$loadaverage;
 
 my %pn = possible_need();
 $pn{ $need } or die "Not allowed need='$need'. Allowed only: ".join(", ", keys %pn );
@@ -205,20 +201,11 @@ $g->routes(
 	    predicted => sub { "$traits_copy/$+{day}/predict_gr_v2.gz" },
 	    auditory => sub { "$traits_copy/$+{day}/auditory.gz" },
 	    ctr10gr => sub { "$traits_copy/$+{day}/ctr10gr.gz" },
-	    ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" },
+	    #ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" }, # <-- их больше нет
 	    },
 	bash {qb "nice ./33_SZ_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
 	note { viatmp=>0, flag=>0 },
     },
-
-#    {	# эксперимент с superjob:
-#	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_sj_30days.gz",
-#	need {
-#	    url_traits_sj => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
-#	},
-#	bash { qb "exit" },
-#	note { check_need=>1, viatmp=>0, },
-#    },
 
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/dom_traits_30days.gz",
@@ -243,17 +230,6 @@ $g->routes(
     
     },
 
-#    { 	# reseach - эксперимент, потом удалить
-#	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_sj_30days.gz",
-#	need {
-#	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
-#	    superjob => sub{ "$res/$+{day}/$+{job}/$+{tn}/superjob30days.gz" }, #<----  данные с суперджоба uid*m/f делаются скриптом на hist7 в home, а вызывыется по ssh руками
-#	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
-#	    },
-#	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{superjob}\" \"$_{buyers}\" \"$_{TARGET}\" "},
-#	note { check_need=>1, timelog=>$timelog,  },
-#    },
-
     
     {	target "$res/$sm{day}/net/0/dom_net.gz", # только .../net/0/...
 	need {
@@ -262,7 +238,7 @@ $g->routes(
 	bash { qb "./35_DOM_NET %s", $_{day} },
 	note { viatmp => 0, flag=>0 },
     },
-    { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz|ctr11gr.gz)",
+    { 	target "$traits_copy/$sm{day}/(?<basename>predict_gr_v2.gz|predicted_add.gz|auditory.gz|ctr10gr.gz)",
 	note { viatmp => 0, flag=>0 },
 	perl { "hello $_{TARGET}." 
 	    # можно былоб написать типо такого (не проверял), по каждый раз лезть за результатами на hist7 - распамим логи ssh
@@ -344,14 +320,21 @@ $g->routes(
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/urlvars_diff.sent",
 	need {
 	    total=>sub{ 
+		no warnings "uninitialized";
+		
 		my $diff = "$res/$+{day}/$+{job}/$+{tn}/urlvars_diff.gz";
 		my $init = "$res/$+{day}/$+{job}/$+{tn}/urlvars_diff_INIT.gz";
-		my $old_diff = [ Files( 8, "$res/%F/$+{job}/$+{tn}/urlvars_diff.gz" ) ]->[0];
-		warn "$diff $init $old_diff";
 		
-		if ( !-s $diff and !-s $init and ! -s $old_diff ){ $init }
-		elsif( ! -s $diff and ! -s $init and -s $old_diff ){ $diff  }
-		elsif( -s $diff or -s $init ){ grep { -s } ( $diff, $init ) }
+		my $old_diff = [ sort grep { -s } Files( 29, "$res/%F/$+{job}/$+{tn}/urlvars_diff.gz" ) ]->[0]; # искать diff 1+7*N дней назад
+		#warn $old_diff;
+		
+		my $old_init = [ sort grep { -s } Files( 29, "$res/%F/$+{job}/$+{tn}/urlvars_diff_INIT.gz" ) ]->[0]; # искать diff_INIT 1+7*N дней назад
+		#warn $old_init;
+		
+		
+		if ( !-s $diff and !-s $init and ! -s $old_diff and ! -s $old_init ){ $init } # если нет ни старых ни новых, значит просим INIT
+		elsif( ! -s $diff and ! -s $init and ( -s $old_diff or -s $old_init ) ){ $diff  } # если новых нет но есть старые - просим diff
+		elsif( -s $diff or -s $init ){ grep { -s } ( $diff, $init ) } # если есть что-то из новых, то берем, что есть
 		
 	    },
 	},
@@ -381,16 +364,6 @@ $g->routes(
 	note { check_need=>1, timelog=>$timelog },
     },
 
-#    {	# url_vars по superjob: эксперимент
-#	target "$res/$sm{day}/(?<job>".'net'.")/(?<tn>".'0'.")/url_vars_sj_(?<N>\\d+)days.gz",
-#	need {
-#	    url_total=>sub{ Files( $+{N}, "$res/%F/$+{job}/$+{tn}/url_total.gz") },
-#	    url_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/url_traits_sj_30days.gz" },
-#	    dom_traits_sj_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_sj_30days.gz" },
-#	},
-#	bash { qb "nice ./52_urlvars_30days_net \"$_{url_total}\" \"$_{url_traits_sj_30days}\" \"$_{dom_traits_sj_30days}\"" },
-#	note { check_need=>1, timelog=>$timelog },
-#    },
     
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_vars_30days.gz",
@@ -408,7 +381,7 @@ $g->routes(
 
 
     {
-	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>url)?_?total.gz", # может быть префикс типа "url" за которым следует "_"
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>url|toolbar)?_?total.gz", # может быть префикс типа "url" за которым следует "_"
 	need {
 	    hours=>sub{
 		my @hours;
@@ -423,22 +396,6 @@ $g->routes(
 	note { viatmp => 0, flag=>0, timelog=>$timelog, check_need=>0, },     
     },
 
-#    {  # вместо url_total_join теперь 3/url_total
-#	target "$res/$sm{day}/(?<job>".'google|ssp'.")/3/url_total_join.gz", 
-#	need {
-#	    url_total_tn0=>sub{ "$res/$+{day}/$+{job}/0/url_total.gz" },
-#	    url_total_tn3=>sub{ "$res/$+{day}/$+{job}/3/url_total.gz" },
-#	},
-#	bash { qb "
-#	    zcat \"$_{url_total_tn3}\" | # dom * path * cnt_bids * sum_exppr
-#	    awk -F* -vOFS=* '{print \$1\$2,\$0}' | # (+)url * dom * path * cnt_bids * sum_exppr
-#	    addf -df=<( zcat \"$_{url_total_tn0}\" | awk -F* -vOFS=* '{print \$1\$2,\$0}' ) -dadd=4,5,6 | # url*tn0cnt*tn0sumexppr*tn0sumwinpr*dom*path*tn3cnt*tn3sumexppr
-#	    awk -F* -vOFS=* '{print \$5,\$6,\$7,\$8,\$2,\$3,\$4}'   
-#	    # dom * path * tn3_cnt(bids) * tn3_sum(exppr) * tn0_cnt(exp) * tn0_sum(exppr) * tn0_sum(winpr)
-#	" },
-#	note { check_need=>1, timelog=>$timelog },     
-#    },
-    
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
 	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
@@ -493,16 +450,45 @@ $g->routes(
 	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
 	note { viatmp=>0, flag=>0, check_need=>1 },
     },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_totals_(?<N>\\d+)days.gz",
+	need {
+	    toolbar_totals=>sub{
+		$+{tn}==3 or die "This route only for tn=3!";
+		$+{job} eq "ssp" or die "Work only for job==ssp!"; 
+		return Files( $+{N}, "$res/%F/$+{job}/$+{tn}/toolbar_total.gz");
+	    },
+	},
+	bash { qb "echo @{$_{toolbar_totals_ARRAY}} |
+		LANG=POSIX mergef -m -k=1,1n -k=2,2n -k=3,3 -k=4,4 -k=5,5 -k=6,6 -stdout |
+		./63_toolbar_urls" },
+	note { check_need=>1, timelog=>$timelog },
+    },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_percents_(?<N>\\d+)days.gz",
+	need {
+	    toolbar_totals_ndays=>sub{
+		$+{tn}==3 or die "This route only for tn=3!";
+		$+{job} eq "ssp" or die "Work only for job==ssp!"; 
+		return "$res/$+{day}/$+{job}/$+{tn}/toolbar_totals_$+{N}days.gz";
+	    },
+	},
+	bash { qb "zcat $_{toolbar_totals_ndays} | ./64_toolbar_percents" },
+	note { check_need=>1, timelog=>$timelog },
+    },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_top_(?<N>\\d+)days.gz",
+	need {
+	    toolbar_totals_ndays=>sub{
+		$+{tn}==3 or die "This route only for tn=3!";
+		$+{job} eq "ssp" or die "Work only for job==ssp!"; 
+		return "$res/$+{day}/$+{job}/$+{tn}/toolbar_totals_$+{N}days.gz";
+	    },
+	},
+	bash { qb "./65_toolbar_rule $_{toolbar_totals_ndays}" },
+	note { check_need=>1, timelog=>$timelog },
+    },
     
-# не нужно?
-#    {	target "$res/$sm{day}/".'net/0/'."dom_total.gz",
-#	need {
-#	    url_total=>sub{"$res/$+{day}/net/0/url_total.gz"},
-#	},
-#	bash { qb "nice zcat \"$_{url_total}\" | ./40_dom_total_net_tn0"},
-#	note { check_need=>1, timelog=>$timelog },
-#    },
-
 
 );
 
@@ -564,7 +550,7 @@ for my $job ( @jobs_to_do ){
 		# test must be a string for bash:
 		my $status = system($test);
 		if ($status>0){
-		    push @runtime_checks, "test:'$test', status:$status";
+		    push @runtime_checks, "test:'$test', status:$status, target:$job->{target}";
 		}else{
 		    warn "Test:$test status:$status - ok" if $deb;
 		}
@@ -625,6 +611,7 @@ for my $job ( @jobs_to_do ){
 #	push @desc, "parents=".join( ",", grep {$_} keys %{$job->{parents}} );
 	#unshift @desc, "==>"; # поломает статистику, наверное в логе
 	print join " ", @desc;
+	print ""; # empty line for better reading
     }	
 
 
