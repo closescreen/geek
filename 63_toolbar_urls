@@ -1,0 +1,45 @@
+#!/usr/bin/env bash
+#>
+(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+# IN:
+# sid    id  webmaster    dom2l        dom           path
+# 187544*5*hotelnews.ru*hotelnews.ru*hotelnews.ru*/6/11/9955/
+# 187544*5*hotelnews.ru*hotelnews.ru*hotelnews.ru*/6/11/9955/
+# 187544*7*all-pages.com*all-pages.com*all-pages.com*/
+
+ lae -lb="sid id wm dom2l dom path" '
+ my (%doms, %urls, $wm);
+ _{
+  return if not $F[ID]=~m/^\d+$/;
+  set_path(Dom.Path);
+  flush() if (prevSid and (prevSid!=Sid or prevId!=Id));
+  $doms{ $F[DOM2L] } += 1;
+  $urls{ $F[PATH] } ||=1;
+  $wm ||= Wm;
+ } -prev=>"sid,id";
+ flush();
+ 
+ #----------------------
+ sub flush{
+#  warn prevSid." ".prevId; # show progress
+  my @doms; my $all_doms_traffic;
+  for (sort keys %doms){
+    $all_doms_traffic += $doms{$_};
+    push @doms, "$_:$doms{$_}";
+  }
+  p prevSid, prevId, $wm, scalar(keys %urls), scalar(keys %doms), $all_doms_traffic, join(",",@doms) ;
+  %doms = %urls = ();
+  $wm = "";
+ }
+ 
+ '
+ #  1    2  3      4          5               6              7          
+ # sid, id, wm, uniq_urls, uniq_doms, all_doms_traffic, traffic_by_doms
+
+)#>>"$0.log" 2>&1
+

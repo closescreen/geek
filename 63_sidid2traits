@@ -1,0 +1,60 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+
+# IN: (toolbar_uids.gz)
+# uid*sid*id
+
+my $file = shift or die "File!";
+# file format:
+# #comments and other
+# t.rait OR
+# t.rait sid OR
+# t.rait sid:id
+# sample:
+# 239.126 # - общий
+# 239.128 196360
+# 239.137 187544:297
+
+
+my %sidid_trait;
+my %sid_trait;
+my @common_traits;
+open F, $file or die "Can't open file $file: $!";
+while(<F>){
+ chomp;
+ s/\#.*//g; # комментарии
+ my ($trait, $sidid) = split;
+ my ($sid, $id) = split /\:/, $sidid if $sidid;
+ 
+ if ( $trait and $sid and $id ){
+    $sidid_trait{ "$sid*$id" } = $trait;
+ }elsif( $trait and $sid ){
+    $sid_trait{ $sid } = $trait;
+ }elsif( $trait ){
+    push @common_traits, $trait;
+ }
+ 
+}
+# die Dumper \%sidid_trait, \%sid_trait, \@common_traits;
+
+my $sidid_field=2;
+
+my $sidid_ind = $sidid_field-1;
+
+$\="\n";
+while(<STDIN>){
+ chomp;
+ my ($uid, $sid, $id) = split /\*/, $_, -1;
+ $uid and $sid and $id or warn( "Empty one of fields: '$uid', '$sid', '$id'" ) and next;
+ my @traits;
+ push @traits, grep {$_} $sidid_trait{"$sid*$id"}, $sid_trait{$sid};
+ push @traits, @common_traits if @traits;
+# die Dumper $uid, $sid, $id, \@traits if @traits;
+ for my $trait ( @traits ){
+    print join " ", $uid, $trait, "# sid=$sid, id=$id";
+ }
+}

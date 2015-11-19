@@ -1,0 +1,23 @@
+#!/usr/bin/env bash
+#> на вход подать поток с total-from-2015-10-16T00-7-days.gz
+
+#    1   2    3          4    5    6       7
+#   sz   id   wm        urls doms events counters
+# 187544*5*hotelnews.ru*266  *5   *583  *google.ru:1 ,hghltd.yandex.net:1,hotelnews.ru:579,prlog.ru:1,webcache.googleusercontent.com:1
+#(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+lae -lb "sz id wm urls doms events counters" '
+_{
+ my %counters = map { /(.+?)\:(\d+)$/ } split /\,/, Counters;
+ for my $dom (keys %counters){
+    $counters{ $dom } = int( $counters{ $dom } / $F[EVENTS] * 100 );
+ }
+ p Sz, Id, join ",", map {"$_:$counters{$_}"} sort keys %counters;
+}
+'
+
+#)>>"$0.log" 2>&1

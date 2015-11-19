@@ -1,0 +1,56 @@
+#!/usr/bin/env bash
+set +x
+set -u
+set -o pipefail
+
+f=${1:? Filename!}
+
+#> file like a: total-from-YYYY-MM-DDTHH-N-days.gz
+#> 187544*5*hotelnews.ru*266*5*583*google.ru:1,googleusercontent.com:1,hotelnews.ru:579,prlog.ru:1,yandex.net:1
+
+zcat "$f" |awk -F* -v OFS="\t" '$6>1000&&$5>100{print $1,$2,$3}' \
+    |while read site sz webm; do
+	echo $site $sz $webm;
+	zcat "$f" \
+	    |awk -F* -v OFS="\n" '$1=='$site'&&$2=="'$sz'"{$1=$1;print}'\
+	    |awk -F, -v OFS="\n" '{$1=$1;print}'|awk -F: '$2>100{$1=$1;print}'|sort -k 2,2rn|head -n 15;
+	echo;
+    done
+    
+# OUT:
+# paragraphs like:
+#187544 208 setup.ru
+#rankings-analytics.com 89143
+#usadba-starij-hutor.ru 11658
+#xn----7sbbbn1angtnc7a.xn--p1ai 9865
+#vse-na-prodaju.ru 7310
+#enteropt.ru 6452
+#koshelek77.ru 6383
+#med-sanitas.ru 6373
+#teamlider.ru 5994
+#xn--80aaudmldm5a.xn--p1ai 5631
+#xinter.ru 4889
+#blinovrus.ru 4876
+#parefume.ru 4774
+#kgscomp.ru 4187
+#albatros-razbor.ru 4120
+#xn----7sbmrammihisr.xn--p1ai 4086
+
+#187544 297 fishki.net
+#fishki.net 12912380
+#cmle.ru 5335
+#archiveshare.net 2205
+#dresk.ru 1568
+#220.38 1403
+#nblu.ru 1349
+#220.39 1087
+#jinkl.ru 926
+#google.de 816
+#google.ru 784
+#facebook.com 598
+#windowpage.ru 517
+#archivebag.ru 451
+#gapp.az 416
+#googleusercontent.com 408    
+#
+#...

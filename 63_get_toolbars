@@ -1,0 +1,16 @@
+#!/usr/bin/env bash
+#>
+#(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+f=${1:-"./63_toolbar.resume"} # откуда
+
+t="${2:-"\\t"}"
+
+cat "$f" | perl -lane'next if $F[1]!~/(\d+)\:(\d+)/; print "$1*$2"'
+
+
+#)>>"$0.log" 2>&1
