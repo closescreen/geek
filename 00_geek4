@@ -25,6 +25,7 @@ my $avg;
 my $timelog = "00_all.time.log";
 my $target;
 my $command;
+my $format;
 
 GetOptions(
     'wanted=s' => \@wanted, # list wanted files
@@ -42,8 +43,14 @@ GetOptions(
     'avg' => \$avg,
     'target=s' => \$target,
     'command=s' => \$command,
+    'format=s' => \$format,
 #    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
 ) or die "Bad opt!";
+
+my %formats = ("target"=>sub{my $desc = $_[0]; $desc->{desc} }, );
+if ($format){
+    $formats{$format} or die "Bad format: m/b one of: ".(join " ", map {"\'$_\'"} keys(%formats));
+} 
 
 if ( $command ){
  # command=file - означает: 
@@ -124,6 +131,23 @@ $g->routes(
 	note {check_need=>1, timelog=>$timelog },
     },
 
+    {
+	target "$res/$sm{day}/sz_vars_conv_DEL781.sent", # удаление 781 категории  
+	need {
+	    conv => sub{ "$res/$+{day}/sz_vars_conv_DEL781.gz" },
+	},
+	bash {qb "[[ -n \"$_{conv}\" ]] && nice zcat \"$_{conv}\" | ./set_sz_vars_to_del_from_bidder.pl"},
+	note {check_need=>1, timelog=>$timelog },
+    },
+    {
+	target "$res/$sm{day}/sz_vars_conv_DEL781.gz",
+	any { # хотябы один свежий файл sz_vars, иначе нет смысла запускать удаление
+	    szvars => sub{ "$res/$+{day}/ssp/3/sz_vars_30days.gz" , "$res/$+{day}/google/3/sz_vars_30days.gz", "$res/$+{day}/net/0/sz_vars_30days.gz" },
+	},
+	bash {qb "zcat `find ../RESULT/10 -name sz_vars_30days.gz | sort` | ./53_sz_vars_conv_DEL781 -conf=53_sz_vars_decl.conf"},
+	note {check_need=>1, timelog=>$timelog },
+    },
+
     {	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_30days.gz",
 	need {
 	    bids => sub{ Files(30, "$res/\%F/$+{job}/$+{tn}/bids.gz") },
@@ -169,7 +193,7 @@ $g->routes(
 	    },
 	bash {qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".'1,12,13'." | uniq |
 		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
-		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
+		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u -S333M --compress-program=gzip
 		# out: uid * dom * path
 		" }, 
 	note { check_need=>1, timelog=>$timelog, },	
@@ -180,10 +204,11 @@ $g->routes(
 	    urls30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
 	    },
 	bash {
-	    my %fields_from_total = (ssp=>"1,9,10", google=>"1,8,9",); # у total.gz ssp\google разные поля
-	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | uniq |
+	    my %fields_from_total = (ssp=>"1,10,11", google=>"1,9,10",); # у total.gz ssp\google разные поля
+	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | # uid*dom*path
+	        uniq |
 		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
-		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u
+		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u -S333M --compress-program=gzip
 		# out: uid * dom * path
 		" }, 
 	note { check_need=>1, timelog=>$timelog, },	
@@ -223,7 +248,7 @@ $g->routes(
 	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
 	    },
 	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
-	note { check_need=>1, timelog=>$timelog,  },
+	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 10"  },
     },
     {	target "$traits_copy/$sm{day}/filtered_traits.txt.gz",
 	bash {qb "exit"}
@@ -359,7 +384,7 @@ $g->routes(
 	    }
 	},
 	bash { qb "
-	    LANG=POSIX sort -t\\* -m <(zcat \"$_{total_ARRAY}[0]\" | perl -lne'print \$_.\"*P\"')  <(zcat \"$_{total_ARRAY}[1]\" | perl -lne'print \$_.\"*C\"') -k1,1 -k2,2 |
+	    LANG=POSIX sort -S333M --compress-program=gzip -t\\* -m <(zcat \"$_{total_ARRAY}[0]\" | perl -lne'print \$_.\"*P\"')  <(zcat \"$_{total_ARRAY}[1]\" | perl -lne'print \$_.\"*C\"') -k1,1 -k2,2 |
 	    ./52_urlvars_diff" },
 	note { check_need=>1, timelog=>$timelog },
     },
@@ -376,7 +401,7 @@ $g->routes(
 	    dom_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_30days.gz" },
 	},
 	bash { qb "nice ./52_urlvars_30days_$_{job} \"$_{url_total}\" \"$_{url_traits_30days}\" \"$_{dom_traits_30days}\"" },
-	note { check_need=>1, timelog=>$timelog },
+	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 15" },
     },
 
 
@@ -448,7 +473,7 @@ $g->routes(
 	    urls30days=>sub{ "$res/$+{day}/$+{job}/$+{tn}/urls30days.gz" },
 	},
 	bash { qb "nice ./28_URL_CAT \"$_{job}\" \"$_{day}\""},
-	note { viatmp=>0, flag=>0, check_need=>1 },
+	note { viatmp=>0, flag=>0, check_need=>1, runtime_need=>"freemem -gt 10" },
     },
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_totals_(?<N>\\d+)days.gz",
@@ -488,6 +513,43 @@ $g->routes(
 	bash { qb "./65_toolbar_rule $_{toolbar_totals_ndays}" },
 	note { check_need=>1, timelog=>$timelog },
     },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_uids.gz",
+	need {
+	    hours=>sub{
+		$+{tn}==3 or die "This route only for tn=3!";
+		$+{job} eq "ssp" or die "Work only for job==ssp!"; 
+		#return "$res/$+{day}/$+{job}/$+{tn}/total.gz";
+		$g->hours( from=>$+{day}, n=>24, shift=>4 )->files( "$res/$+{day}/$+{job}/$+{tn}/%FT%H.gz" );
+	    },
+	},
+	bash { qb qq(	zcat $_{hours} |
+			awk -F* -vOFS=* '\$12 {print \$1,\$3,\$12}' | # uid*sid*id
+			grepf -fn=<( ./63_get_toolbars 63_toolbar.resume "*" ) -fe='"\$F1*\$F2"' -e='"\$F2*\$F3"' |
+			sort -T. -t\\* -k1,1 -k2,2 -k3,3 -u -S333M --compress-program=gzip
+	    	)},
+	note { check_need=>1, timelog=>$timelog },
+    },
+    {
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/toolbar_trait.sent(?<verb>\-v)?(?<dry>\-n)?", # можно задавать в конце имени [-n][-v] которые станут ключами ttools
+	need {
+	    toolbar_uids=>sub{
+		$+{tn}==3 or die "This route only for tn=3!";
+		$+{job} eq "ssp" or die "Work only for job==ssp!"; 
+		return "$res/$+{day}/$+{job}/$+{tn}/toolbar_uids.gz";
+	    },
+	},
+	bash { $_{dry}||=""; $_{verb}||="";
+			qb qq(	(
+			zcat $_{toolbar_uids} | # uid*sid*id
+			sort -T. -t\* -k1,1 -k2,2 -k3,3 -n -u |
+			./63_sidid2traits "63_toolbar.resume" | # uid t.rait # comments
+			cut -d" " -f1,2 | # uid t.rait without debug comments
+			../traittools/bin/send_traits --read-fields="trait" -c ./ttclient.conf $_{verb} $_{dry} --storage-time=2592000
+			) && echo "Ok"
+	    	)},
+	note { check_need=>1, timelog=>$timelog },
+    },    
     
 
 );
@@ -504,6 +566,18 @@ if ($target){
 }
 
 $\="\n";
+
+# заданная цель уже существует?
+my @noexists_wanted;
+for my $wanted (@wanted){
+    if ( $g->test( $wanted )  ){
+	warn "File $wanted already exists\n" if $deb;
+	next;
+    }
+    push @noexists_wanted, $wanted;
+}
+@wanted = @noexists_wanted;    
+
 my @jobs = reverse $g->match( need=>$need ,any=>$any, deep=>$deep, wanted=>\@wanted );
 if ( $dump_jobs ){	print Dumper \@jobs and exit 0  }	
 my @jobs_to_do = $first_job ? $jobs[0] : @jobs;
@@ -550,7 +624,7 @@ for my $job ( @jobs_to_do ){
 		# test must be a string for bash:
 		my $status = system($test);
 		if ($status>0){
-		    push @runtime_checks, "test:'$test', status:$status, target:$job->{target}";
+		    push @runtime_checks, "test:'$test', status:$status, target: $job->{target}";
 		}else{
 		    warn "Test:$test status:$status - ok" if $deb;
 		}
@@ -559,7 +633,7 @@ for my $job ( @jobs_to_do ){
 	    warn "runtime_need must be a array-ref or string (bash-command)!, skip checking. ".Dumper($rn);
 	}
     }
-    if (@runtime_checks){
+    if (@runtime_checks and !$norun){
 	warn "Fails runtime check(s): @runtime_checks";
 	next;
     }
@@ -572,9 +646,14 @@ for my $job ( @jobs_to_do ){
     
     if ($desc){
 	use List::Util qw/min max/;
-	my @desc;
-	push @desc, mytime();
-	push @desc, $job->{desc} ? $job->{desc} : "(without description)", " ($file_exists)";
+	my %desc;
+	$desc{time} = mytime();
+	if ( $job->{desc} ){
+	    $desc{desc} = $job->{desc};
+	    $desc{exists} = " ($file_exists)";
+	}else{
+	    $desc{desc} = "(without description)";
+	}
 
 	# работает только для данного проекта:
 	if ($avg){
@@ -596,7 +675,8 @@ for my $job ( @jobs_to_do ){
 	    #die $min if $min;
 	    #$rv=~s/^\s+|\s+$//g;
 	    #die $rv if $rv;
-	    push @desc, $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
+	    #push @desc, $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
+	    $desc{avg} = $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
 	    if ($avg){
 		$avg_total{avg} +=$avg;
 		$avg_total{min} +=$min;
@@ -606,12 +686,19 @@ for my $job ( @jobs_to_do ){
 	    $all+=1;
 	}
 
-	push @desc, ref $job->{job} ? "perl-code" : $job->{job}; # if !ref $job->{job};
-#	push @desc, "level=$job->{level}";
-#	push @desc, "parents=".join( ",", grep {$_} keys %{$job->{parents}} );
-	#unshift @desc, "==>"; # поломает статистику, наверное в логе
-	print join " ", @desc;
-	print ""; # empty line for better reading
+	#push @desc, ref $job->{job} ? "perl-code" : $job->{job}; # if !ref $job->{job};
+	$desc{job} = ref $job->{job} ? "perl-code" : $job->{job};
+
+	#print join " ", @desc;
+	if ($format){
+	    my $sub = $formats{$format};
+	    print $sub->(\%desc);
+	}else{
+	    print ""; # empty line for better reading
+	    $desc{desc} = "Target: $desc{desc}";
+	    print join " ", @desc{qw|time desc exists job|};
+	}    
+
     }	
 
 
@@ -634,10 +721,12 @@ for my $job ( @jobs_to_do ){
     
     if ( $rv and $timelog{file} and $timelog{start} and $timelog{end}=[Today_and_Now] and $timelog{end_sec}=time ){
         my $min = int( ($timelog{end_sec}-$timelog{start_sec})/60);
-	my $string = sprintf("%s %d-%02d-%02dT%02d:%02d %d-%02d-%02dT%02d:%02d %dm", $job->{target}, @{ $timelog{start} }[0..4], @{ $timelog{end} }[0..4], $min );
-	local $|=1;
-	open my $log, ">>$timelog{file}" or die "can't open $timelog{file}: $!";
-	print $log "$string";
+        if ($min>0){ # 0 минут - бесполезная информация, такие строки не печатаем
+	    my $string = sprintf("%s %d-%02d-%02dT%02d:%02d %d-%02d-%02dT%02d:%02d %dm", $job->{target}, @{ $timelog{start} }[0..4], @{ $timelog{end} }[0..4], $min );
+	    local $|=1;
+	    open my $log, ">>$timelog{file}" or die "can't open $timelog{file}: $!";
+	    print $log "$string";
+	}    
     }
 }    
 
