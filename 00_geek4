@@ -10,13 +10,13 @@ use Date::Calc qw(Today_and_Now Delta_DHMS);
 
 my @wanted;
 my $need = 'todo';
-my $any = 'max';
+my $any = 'max'; # max | min
 my $deep = 1000;
 my $show_targets;
 my $dump_jobs;
 my $force;
 my $deb="";
-my $set="";
+my $set=""; 
 my $first_job;
 my $desc;
 my $norun;
@@ -28,23 +28,20 @@ my $command;
 my $format;
 
 GetOptions(
-    'wanted=s' => \@wanted, # list wanted files
-    'need=s' => \$need, # 'todo'|'all'
-    'any=s' => \$any, # 'max'|'min'
-    'deep=n' => \$deep, # recursion deep
-    'show_targets' => \$show_targets, # print all 'target' keys from routes 
-    'dump_jobs' => \$dump_jobs,
-    'force' => \$force,
-    'debug' => \$deb,
-    'set=s' => \$set,
-    'first_job' => \$first_job,
-    'desc' => \$desc, # print descriptions
-    'norun' => \$norun, # not run jobs (skip they)
-    'avg' => \$avg,
-    'target=s' => \$target,
-    'command=s' => \$command,
-    'format=s' => \$format,
-#    'no_warn_deep' => \$no_warn_deep, # no warn about deep recursion
+    'wanted=s' => \@wanted, # указание, какой файл посчитать. Путь - относительный. --want ../RESULT/10/2015-12-07/ssp/3/url_vars_30days.gz.
+    'need=s' => \$need, # 'todo'|'all' all испоьзуется, когда нужно посмотреть все дерево зависимостей. Для отладки.
+    'deep=n' => \$deep, # recursion deep. Для отладки.
+    'show_targets' => \$show_targets, # Когда непонятно, что указать в -want=..., можно вывести список возможных вариантов указав -show.  
+    'dump_jobs' => \$dump_jobs, # выводит дамп дерева заданий. Для отладки.
+    'force' => \$force, # переписывать ли существующие файлы. По умолч - нет.
+    'debug' => \$deb, # выводить отладочные сообщения. Первое средство посмотреть что не так происходит.
+    'first_job' => \$first_job, # выполнить только первое по очереди задание (один шаг к цели)
+    'desc' => \$desc, # печатать описания задания
+    'norun' => \$norun, # не выполнять задания. Предполагается включенная печать описаний --desc --deb, чтобы посмотреть, какой будет план действий.
+    'avg' => \$avg, # вычислять предсказание среднего времени выполнеия. Работает, когда time.log содержит статистику, иначе будет писать нули.
+    'target=s' => \$target, # не запускать. Поиск строки содержащей указанный target. См. ниже по коду, запускается простой греп. 
+    'command=s' => \$command, # вывод описания команды для получения файла. Как -target=file, только -command=file.
+    'format=s' => \$format, # варианты форматированного вывода при включенном --desc
 ) or die "Bad opt!";
 
 my %formats = ("target"=>sub{my $desc = $_[0]; $desc->{desc} }, );
@@ -570,7 +567,7 @@ $\="\n";
 # заданная цель уже существует?
 my @noexists_wanted;
 for my $wanted (@wanted){
-    if ( $g->test( $wanted )  ){
+    if ( $g->test( $wanted ) and !$force ){
 	warn "File $wanted already exists\n" if $deb;
 	next;
     }
