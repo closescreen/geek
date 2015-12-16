@@ -1,0 +1,57 @@
+#!/usr/bin/env bash
+# Копипаста из 10_HOURS, только с указанием, какие часы собирать.
+# Впоследствии можно переехать на него полностью.
+
+#> history_log -------( jobscript )--------> ../RESULT/10/${day}/${job}/${typenum}/yyyy-mm-ddThh.gz
+#>> Сбор часовых данных из hl.
+#> Параметры: $job и $typenum.
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+job=${1:?JOB!} # google | net-forty-three, ...
+typenum=${2:?TYPENUM!} # 0|1|3
+hours=${3:?HOURS!} # нужно указать час(ы) yyyy-mm-ddThh
+deb=${4:-""}
+
+[[ "$deb" ]] && set -x
+
+# некоторые комбинации job+typenum не обрабатываются:
+silent_exit=$( href -dict="
+	net => { 3=>'exit'},
+    " -val="$job" -val="$typenum"
+)
+[[ -n "$silent_exit" ]] && exit 0
+
+action=$( href -dict="
+    ssp => 'cp -f /usr/local/rle/var/share3/DATA/dicts/ssp_sites.txt ./ssp_sites.txt',
+    net => 'cp -f /usr/local/rle/var/share3/DATA/dicts/network_sites.txt ./network_sites.txt',
+    " -val=$job 
+)
+[[ -n "$action" ]] && eval $action
+
+google_sid=`conf 00_conf.txt google_sid`
+sids=$( href -dict="
+    ssp=>\"` cat ssp_sites.txt | cut -f1 | grep -v $google_sid | words -fu=sortnu -ot='|' `\", # <--- google отфильтровывается
+    google=>"$google_sid", # see 00_conf.txt
+    # OLD: net=>\"` cat network_sites.txt | words -fu=sortnu -ot='|' `\",
+    net=> \"` cat network_sites.txt | addf -df=<(cat ssp_sites.txt | cut -f1) | awk -F* '!$2{print $1}' | words -fu=sortnu -ot='|' `\",
+    " -val="$job"
+)
+chk "$sids" || exit 1
+
+
+jobscript="./10_${job}_tn${typenum}"
+
+chk "$jobscript" "Job script" "-x" "exists and executable" noprint || exit 1
+
+
+files=` echo "$hours" | files "../RESULT/10/%( hours -t=%f -n=-4 -first -day )/$job/$typenum/%FT%H.gz" `
+
+echo "$files" | words |
+  washing -time=00_all.time.log -cmd="$jobscript %f \"$sids\" \"$deb\"" -comp=gzip  
+
+)>>"$0.log" 2>&1

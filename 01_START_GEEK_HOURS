@@ -1,0 +1,39 @@
+#!/usr/bin/env bash
+#> Запуск всех скриптов.
+
+export PATH=$PATH:/usr/local/rle/var/bike
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5:/usr/local/rle/lib/perl5/
+export PATH=$PATH:/usr/local/rle/bin
+export PATH=$SCALA_HOME/bin:$PATH
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+
+lo="6" # запуск только при loadaverage не больше lo или при "force"
+
+loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">"$lo" && exit
+echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
+
+
+#----------------------- ежечасные -----------------------
+for pars in  "net 0" "net 1" "ssp 0" "ssp 1" "ssp 3" "google 0" "google 1" "google 3"  
+do
+    loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">"$lo" && exit
+
+    hh=`hours -d=today -n=-2 -shift=-1`
+
+    cmd="nice ./10_HOURS_BY_HOURS $pars '$hh'"
+
+    fork -pf=../pids/hours.pids -dela=10 -ed=s --single "$cmd" -wait
+
+done
+
+
+
+)>>"$0.log" 2>&1
