@@ -1,13 +1,12 @@
 #!/usr/bin/env bash
 
 set -u
-set -e
 set -o pipefail
 set +x
 
 #>> IN:
-#>>  1   2        3       4            
-#>> dom path  cnt_bids  sum_expprice
+#>>  1   2        3         4             5       6          7
+#>> dom path  cnt_bids  sum_expprice3  cnt_exp sum_winpr sum_exppr0
 
-summator -fu="sum,sum"
+summator -fu="sum,sum,sum,sum,sum"
 
