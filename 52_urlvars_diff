@@ -1,5 +1,11 @@
 #!/usr/bin/env bash
 
+# разкомментить:
+echo "Disabled. Columns!">&2 && exit 1
+
+# Заменить этим скриптом старый. 
+# Этот учитывает разный набор вх полей и  исправлен логический баг 
+
 # сравнивает два urlvars и делать дифф по каждой колонке
 # или делает начальный дифф, где все будет INSERT
 
@@ -21,30 +27,47 @@
 #>  zcat ~/1460/RESULT/10/2015-08-03/net_sites/0/url_vars_30days.gz | ./52_urlvars_diff | head
 
 #> Формат файлов должен соответствовать описанию ниже. Разделитель - *.
+# ssp и google отличаются от net:
+#       1    2         3               4          5       6       7         8      9     10                 
+# net: dom  path  avg_expprice, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%
+#													         11            12
+# ssp,google: dom  path  avg_expprice, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%  winrate_x1000  exppr3
 
+set -u
+job=${1:? JOB! } # у разных job разный набор полей
 
-lae -lb="dom path exppr winpr profit male female buyers flag mfdiv version" '
+labels=$(href -dict="net=>'dom path exppr winpr profit male female buyers flag mfdiv version'" \
+	         -default="dom path exppr winpr profit male female buyers flag mfdiv winrate exppr3 version" -value="$job" )
+
+chk "$labels" || exit 1
+
+lae -lb="$labels" '
 # Названия полей urlvars упрощены:
 # dom - домен
 # path - путь
-# exppr - средний expprice
+# exppr - средний expprice (ssp,google = это exppr0)
 # winpr - средний winprice
-# profit - рентабельность
-# male - мальчиков
+# +profit - рентабельность
+# +male - мальчиков
 # female - девочек
 # buyers - покупателей
 # flag - флаг наличия данных по трейтам
 # mfdiv - отношение, упрощенно, m/(m+f)
+# exppr3 - средний exppr по всем бидам
 # version = "P" | "C" (prev/current)
 
 my %categs = (
  # Соответствие индексов колонок номерам категорий.
  # ( первая занята url_cat-ами )
  # не ставить "=>"!, использовать запятые
+ # В левой части имена должны быть из списка, указанного в опции -lb=... (см. выше)
  BUYERS , 1000, 
  MALE , 1001,
  MFDIV , 1002,
  PROFIT , 1003,
+ EXPPR, 1004,
+ WINPR, 1005,
+ FEMALE, 1006,
 );
 
 my %lines;
@@ -56,6 +79,7 @@ _{
 flush();
 
 sub flush{
+# warn "flush called ".Dumper(\%lines);
  if ( exists $lines{C} ){
     my @curr = @{$lines{C}};
     my $url= join "", @curr[DOM,PATH];
@@ -72,13 +96,13 @@ sub flush{
 	my @prev = @{$lines{P}};
 	for my $ind ( keys %categs){
 	    if ( $curr[$ind] ne $prev[$ind] ){
-		if ( $prev[$ind] eq "NA" ){
-		    print "$url*$categs{$ind}*$curr[$ind]*INSERT";
-		}
-		else{
-		    if ( $curr[$ind] eq "NA" ){
-			print "$url*$categs{$ind}*$curr[$ind]*DELETE";
-		    }
+		# предыдущий и текущий не равны:
+		if ( $curr[$ind] eq "NA" ){
+		    # текущий есть NA (удаление):
+		    print "$url*$categs{$ind}*$curr[$ind]*DELETE";
+		}else{
+		    # текущий - не NA (вставка/замена):
+		    print "$url*$categs{$ind}*$curr[$ind]*INSERT"; 
 		}
 	    }
 	}
