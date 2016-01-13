@@ -11,9 +11,8 @@ cd `dirname $0`
 
 url_total_ff=${1:? url_total files!} # файлы url_total_join.gz за (30) дней, их нужно мержить
 # in merged tn3/.../url_total_ff:
-#  1    2       3             4               5              6         7
-# dom  path   cnt(bids)  sum(expprice)    cnt(ecp)      sum(winprice)
-# только сетевые просмотры, сети не разделены
+#  1    2       3             4               5             6              7
+# dom  path   cnt(bids)  sum(expprice3)    cnt(exp)    sum(winprice) sum(expprice0)
 
 url_traits_30days_f=${2:? url_traits_30days file!}
 #  1       2         3   4     5      6      7   
@@ -25,11 +24,12 @@ dom_traits_30days_f=${3:? dom_traits_30days file!}
 #awk -F* '$3>10' | # остаются только урлы с показами>N, для net cnt - это кол-во показов
 
 LANG=POSIX mergef  -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
-summator -fu="sum,sum,sum,sum" | # после мержа 30 дней суммы по dom+path
-lae -lb="dom path cntbids exppricetn3 cntexp secondpricetn0" '
+summator -fu="sum,sum,sum,sum,sum" | # после мержа 30 дней суммы по dom+path
+lae -lb="dom path cntbids exppricetn3 cntexp secondpricetn0 exppricetn0" '
 # на входе будут строки с суммами по ключу dom + path 
 
 my $N = 10;
+my $limit1 = 1_200_000; # после превышения кол-ва урлов в домене будет сброс
 
 # переданные параметры:
 my ( $url_traits_f, $dom_traits_f ) = @ARGV;
@@ -59,7 +59,7 @@ for my $l (<TRAITS>){
 
 # ( по net - одна строка на урл, но в google,ssp - будут разные tn., поэтому называем переменные "sum_..." )
 
-my ( $dom_expprice, $dom_winprice, $dom_cnt_exp, $dom_cnt_bids );
+my ( $dom_expprice3, $dom_expprice0, $dom_winprice, $dom_cnt_exp, $dom_cnt_bids );
 my %url;
 
 _{
@@ -77,17 +77,24 @@ _{
  
   my ($dom, $path) = ($F[DOM], $F[PATH]);
   
-  $url{ $F[DOM] }{ $F[PATH] }{ xp } += Exppricetn3; # из бидов
+  $url{ $F[DOM] }{ $F[PATH] }{ xp0 } += Exppricetn0; # из бидов, но только для случаев, когда были просмотры
+  $url{ $F[DOM] }{ $F[PATH] }{ xp3 } += Exppricetn3; # из всех бидов
   $url{ $F[DOM] }{ $F[PATH] }{ wp } += Secondpricetn0; # из показов
   $url{ $F[DOM] }{ $F[PATH] }{ cx } += Cntexp;
   $url{ $F[DOM] }{ $F[PATH] }{ cb } += Cntbids;
   
-  $dom_expprice += Exppricetn3; # из бидов
+  $dom_expprice3 += Exppricetn3; # из всех бидов
+  $dom_expprice0 += Exppricetn0; # из бидов для которых были показы
   $dom_winprice += Secondpricetn0; # из показов
   $dom_cnt_exp  += Cntexp;
   $dom_cnt_bids += Cntbids;
+  
+  if ( keys %{ $url{ $F[DOM] } } > $limit1 and prevPath ne $F[PATH] ){
+    #warn "Force flush on domain:$F[DOM], path:$F[PATH]";
+    flush(); # от переполнения памяти
+  }
 
-} -prev=>"dom";
+} -prev=>"dom,path";
 
 flush();
 
@@ -108,23 +115,35 @@ sub flush{
 
     for my $pa ( grep {$_} sort keys %{ $url{$do} } ){
 	my $will_print_line;
-	my $smf_expprice = $dom_cnt_exp ? int( $dom_expprice / $dom_cnt_exp / 100 ) + 1 : "NA";
+	my $smf_expprice3 = $dom_cnt_exp ? int( $dom_expprice3 / $dom_cnt_bids / 100 ) + 1 : "NA";
+	my $smf_expprice0 = $dom_cnt_exp ? int( $dom_expprice0 / $dom_cnt_exp ) + 1 : "NA";
 	my $smf_winprice = $dom_cnt_exp ? int( $dom_winprice / $dom_cnt_exp ) + 1 : "NA"; 
 
-	my ( $avg_expprice, $avg_winprice, $profit, $winrate );
+	my ( $avg_expprice3, $avg_expprice0, $avg_winprice, $profit, $winrate );
 	if ( $url{ $do }{ $pa }{ cx } > $N ){
 	    # cx - cnt_exposures
 	    # cb - cnt_bids
-	    # xp - exp_price
+	    # xp3 - exp_price3 (для всех бидов)
+	    # xp0 - exp_price0 (для бидов после кот. были показы)
 	    # wp - win_price
 	    
-	    $avg_expprice = int( ($url{ $do }{ $pa }{ xp }/100 + $smf_expprice * $N)/($url{ $do }{ $pa }{ cx } + $N) ) + 1; 
+	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + $smf_expprice3 * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
+	    $avg_expprice0 = int( ($url{ $do }{ $pa }{ xp0 }/100 + $smf_expprice0 * $N)/($url{ $do }{ $pa }{ cx } + $N) ) + 1; 
 	    $avg_winprice = int( ($url{ $do }{ $pa }{ wp } + $smf_winprice * $N)/($url{ $do }{ $pa }{ cx } + $N) ) + 1; 
-	    $profit = $avg_expprice ? int( ($avg_expprice - $avg_winprice) / $avg_expprice * 100 ) : "NA";
-	    $winrate =  int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000); # на 1000 потому что маленькие значения
+	    $profit = $avg_expprice0 ? int( ($avg_expprice0 - $avg_winprice) / $avg_expprice0 * 100 ) : "NA";
+	    $winrate = int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000); # на 1000 потому что маленькие значения
 	    $will_print_line = 1;
+
+	}elsif( $url{ $do }{ $pa }{ cb } > $N ){
+	    $avg_expprice0 = "NA";
+	    $avg_winprice = "NA";
+	    $profit = "NA";
+	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + $smf_expprice3 * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
+	    $winrate = int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000); # на 1000 потому что маленькие значения
+	    $will_print_line = 1;
+
 	}else{
-	    ( $avg_expprice, $avg_winprice, $profit, $winrate ) = ("NA", "NA", "NA", "NA");
+	    ( $avg_expprice3, $avg_expprice0, $avg_winprice, $profit, $winrate ) = ("NA", "NA", "NA", "NA", "NA");
 	}
  
 	
@@ -157,20 +176,20 @@ sub flush{
 	}
 
 	next if not $will_print_line;
-	p $do, $pa, $avg_expprice, $avg_winprice, $profit, $male_smf_perc, $female_smf_perc, $buyers_smf_perc, $flag, $male_part, $winrate; # , $desc;
+	p $do, $pa, $avg_expprice0, $avg_winprice, $profit, $male_smf_perc, $female_smf_perc, $buyers_smf_perc, $flag, $male_part, $winrate, $avg_expprice3; # , $desc;
  
     }
  }
 
- $dom_expprice = $dom_winprice = $dom_cnt_exp = $dom_cnt_bids = 0;
+ $dom_expprice0 = $dom_exppr3 = $dom_winprice = $dom_cnt_exp = $dom_cnt_bids = 0;
  undef %url;
 }
 ' <( zcat "$url_traits_30days_f" ) <( zcat "$dom_traits_30days_f")
 
 
 # out:
-#>  1    2         3               4          5       6       7         8      9     10               11
-#> dom  path  avg_expprice, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%  winrate_x1000
+#>  1    2         3               4          5       6       7         8      9     10               11	      12
+#> dom  path  avg_expprice0, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%  winrate_x1000 avg_expprice3
 
 
 ) 2>>"$0.log" 
