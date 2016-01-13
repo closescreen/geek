@@ -15,12 +15,13 @@ chk "$tn0_hour_file" "tn0 file" "-s" "exsts and noempty" nop || exit 2
 
 awk -F* -v"OFS=*" '$7>0 {print $10,$11,$7,$9}' | # берем только где expprice>0
  # dom path exppr expid
- addf -k=4 -dict=<(zcat "$tn0_hour_file") -repl | # expid заменяется на winprice/или 0: dom path exppr winpr
+ addf -k=4 -dict=<(zcat "$tn0_hour_file") -repl | # expid заменяется на tn0.winprice||0: dom path exppr3 winpr
+ awk -F* -v"OFS=*" '{print $1,$2,$3,$4, ($4 ? $3 : 0) }' | # dom path exppr3 winpr exppr0  (exppr0 - это exppr3, при ненулевом winpr, т.е. только для показов)
  LANG=POSIX sort -t\* -T. -S 333M --compress-program=gzip -k1,1 -k2,2 |
- summator -fu="cnt,+sum,tcnt,+sum"
+ summator -fu="cnt,+sum,tcnt,+sum,sum"
  
-#>       1   2      3        4             5       6
-#> out: dom path bids(cnt) sum(exppr) exp(cnt)  sum(winpr)
+#>       1   2      3        4             5       6            7
+#> out: dom path bids(cnt) sum(exppr3) exp(cnt)  sum(winpr) sum(exppr0) 
 
 
 
