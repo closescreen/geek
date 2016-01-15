@@ -44,7 +44,10 @@ GetOptions(
     'format=s' => \$format, # варианты форматированного вывода при включенном --desc
 ) or die "Bad opt!";
 
-my %formats = ("target"=>sub{my $desc = $_[0]; $desc->{desc} }, );
+my %formats = (
+    "target"=>sub{my $desc = $_[0]; $desc->{desc} }, 
+    "key-value"=>sub{my $desc = $_[0]; join "|||",map {"$_=>$desc->{$_}"} keys %$desc},
+);
 if ($format){
     $formats{$format} or die "Bad format: m/b one of: ".(join " ", map {"\'$_\'"} keys(%formats));
 } 
@@ -368,7 +371,7 @@ $g->routes(
 	need {
 	    total=>sub{ "$res/$+{day}/$+{job}/$+{tn}/url_vars_30days.gz" },
 	},
-	bash { qb "zcat \"$_{total}\" | ./52_urlvars_diff" },
+	bash { qb "zcat \"$_{total}\" | ./52_urlvars_diff \"$_{job}\"" },
 	note { check_need=>1, timelog=>$timelog },
     },    
     {
@@ -381,8 +384,9 @@ $g->routes(
 	    }
 	},
 	bash { qb "
-	    LANG=POSIX sort -S333M --compress-program=gzip -t\\* -m <(zcat \"$_{total_ARRAY}[0]\" | perl -lne'print \$_.\"*P\"')  <(zcat \"$_{total_ARRAY}[1]\" | perl -lne'print \$_.\"*C\"') -k1,1 -k2,2 |
-	    ./52_urlvars_diff" },
+	    LANG=POSIX sort -S333M --compress-program=gzip -t\\* -m <(zcat \"$_{total_ARRAY}[0]\" |
+	     perl -lne'print \$_.\"*P\"')  <(zcat \"$_{total_ARRAY}[1]\" | perl -lne'print \$_.\"*C\"') -k1,1 -k2,2 |
+	    ./52_urlvars_diff \"$_{job}\"" },
 	note { check_need=>1, timelog=>$timelog },
     },
 
@@ -647,7 +651,7 @@ for my $job ( @jobs_to_do ){
 	$desc{time} = mytime();
 	if ( $job->{desc} ){
 	    $desc{desc} = $job->{desc};
-	    $desc{exists} = " ($file_exists)";
+	    $desc{exists} = "($file_exists)";
 	}else{
 	    $desc{desc} = "(without description)";
 	}
