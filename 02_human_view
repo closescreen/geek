@@ -20,8 +20,9 @@ while (<>){
  my %line_kv;
 # warn "Line: $_" if $deb;
  chomp;
- my ($first_rec, $second_rec, @other_records) = split /\*\*\*/, $_; # тремя звездочками в строке разделяются "записи"
-# warn "First rec: $first_rec" if $deb; 
+ my (@records) = split /\*\*\*/, $_; # тремя звездочками в строке разделяются "записи" d каждой строке файла
+# warn "First rec: $records[0]" if $deb; 
+ my $first_rec = $records[0];
  $first_rec or next;
  my @fields = split /\|\|\|/, $first_rec; # тремя палками разделяются поля
  for (@fields){
@@ -29,20 +30,19 @@ while (<>){
     $line_kv{ $k } = $v; 
  };
  
-# warn "Second rec: $second_rec" if $deb;
- if ($second_rec){ # в нем будет инфа о файле который не посчитался от которого зависит текущий файл
-    # в @other_records - будет инфа об остальных файлах, от которых он зависит
-    my @fields = split /\|\|\|/, $second_rec;
+ my $last_rec = $records[-1];
+ if ( @records>1 ){ # в нем будет инфа о файле который не посчитался, но первый на очереди, от которого зависит текущий файл
+    # в @records -  инфа о всех файлах, от которых он зависит
+    my @fields = split /\|\|\|/, $last_rec;
     #die Dumper \@fields;
-    warn "Second rec fields: @fields" if $deb;
-    my %kv = map { split /\=\>/, $_, -1 } @fields if $second_rec;
+    warn "Last rec fields: @fields" if $deb;
+    my %kv = map { split /\=\>/, $_, -1 } @fields if $last_rec;
     #die Dumper \%kv;
     if ( $kv{desc} ){ # имя файла которого не хватает для рассчета (его может не быть)
-	$line_kv{depend_on} = $kv{desc};
-	warn "$line_kv{desc} depend on $line_kv{depend_on}" if $deb;
-	$line_kv{depend_count} = scalar( @other_records )+1;	 # кол-во непосчитанных зависимостей (не считая того что в second_field)
-    }	
-    
+	$line_kv{next_file} = $kv{desc};
+	warn "$line_kv{desc} depend on $line_kv{next_file}" if $deb;
+	$line_kv{depend_count} = scalar( @records )-1;	 # кол-во непосчитанных зависимостей (не считая того что в first_field)
+    }
  }
  #warn Dumper \%line_kv;
  
@@ -62,7 +62,7 @@ while (<>){
 
 $\="\n";
 $,="\t";
-print "# Record_dt\tFile\tModify-time\tHow-long(hours)\tDepend-on";
+print "# Record_dt\tFile\tModify-time\tHow-long(hours)\tDependency";
 for my $type1 (sort keys %report){
     print "\n# Type: $type1:";
     for my $type2 (sort keys $report{$type1} ){
@@ -73,7 +73,7 @@ for my $type1 (sort keys %report){
 	    $long_human .= " (${long_d} days)" if $long_d;
 	    my $record_dt = $report{$type1}{$type2}{$desc}{when_human}||"NA"; # когда сдклана запись (свежесть) в читаемом формате
 	    my $modify = $report{$type1}{$type2}{$desc}{file_modify_human};
-	    my $depend = $report{$type1}{$type2}{$desc}{depend_on}; # от какого файла зависит (кого ждем)
+	    my $depend = $report{$type1}{$type2}{$desc}{next_file}; # от какого файла зависит (кого ждем - первого на очереди для оассчета) 
 	    my $depend_count = $report{$type1}{$type2}{$desc}{depend_count}||0; # кол-во непосчитанных зависимостей
 	    print $record_dt, $desc, $modify||"(-)", $long_human||"-", $depend?"(wait_for [$depend_count]: $depend)":"-";
 	}
