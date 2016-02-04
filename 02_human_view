@@ -1,0 +1,82 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+
+my $usage = q{
+ Usage: cat ./02_monit.txt | ./02_human_view [opts] 
+};
+
+my $deb;
+GetOptions(
+    "deb" => \$deb,
+) or die "Bad opt! $usage";
+
+
+my %report;
+while (<>){
+ my %line_kv;
+# warn "Line: $_" if $deb;
+ chomp;
+ my ($first_rec, $second_rec, @other_records) = split /\*\*\*/, $_; # тремя звездочками в строке разделяются "записи"
+# warn "First rec: $first_rec" if $deb; 
+ $first_rec or next;
+ my @fields = split /\|\|\|/, $first_rec; # тремя палками разделяются поля
+ for (@fields){
+    my ($k, $v) = split /\=\>/, $_, -1; # внутри поля - ключ=>значение
+    $line_kv{ $k } = $v; 
+ };
+ 
+# warn "Second rec: $second_rec" if $deb;
+ if ($second_rec){ # в нем будет инфа о файле который не посчитался от которого зависит текущий файл
+    # в @other_records - будет инфа об остальных файлах, от которых он зависит
+    my @fields = split /\|\|\|/, $second_rec;
+    #die Dumper \@fields;
+    warn "Second rec fields: @fields" if $deb;
+    my %kv = map { split /\=\>/, $_, -1 } @fields if $second_rec;
+    #die Dumper \%kv;
+    if ( $kv{desc} ){ # имя файла которого не хватает для рассчета (его может не быть)
+	$line_kv{depend_on} = $kv{desc};
+	warn "$line_kv{desc} depend on $line_kv{depend_on}" if $deb;
+	$line_kv{depend_count} = scalar( @other_records )+1;	 # кол-во непосчитанных зависимостей (не считая того что в second_field)
+    }	
+    
+ }
+ #warn Dumper \%line_kv;
+ 
+ my ($type1) = $line_kv{desc} =~ m|([^\/]+?$)| or warn "No find type1 in line: $line_kv{desc}"; # часть строки, которую используем как "тип1"
+ if ($type1=~/\d\d\d\d-\d\d-\d\dT\d\d/){
+    ($type1) = $line_kv{desc}=~m|../RESULT/.+?/.+?/(.+?)/\d\d\d\d-\d\d-\d\d.+?$|;
+    $type1 or warn( "type1!");
+    $type1 .= " (hours)";
+ }
+ 
+ my $type2 = $line_kv{desc} or next;
+ $type2=~s|../RESULT/.+?/\d\d\d\d-\d\d-\d\d/|| or warn "No find repl in line: $type2"; # часть строки, которую используем как "тип2"
+ 
+ $report{ $type1 }{ $type2 }{ $line_kv{desc} } = { %line_kv };
+ 
+}
+
+$\="\n";
+$,="\t";
+print "# Record_dt\tFile\tModify-time\tHow-long(hours)\tDepend-on";
+for my $type1 (sort keys %report){
+    print "\n# Type: $type1:";
+    for my $type2 (sort keys $report{$type1} ){
+	for my $desc (sort keys $report{$type1}{$type2}){
+	    my $long_h = $report{$type1}{$type2}{$desc}{how_long_hours}||0; # how long in hours
+	    my $long_d = int( $long_h / 24 ) if $long_h; # in int days
+	    my $long_human = "${long_h} hours" if $long_h;
+	    $long_human .= " (${long_d} days)" if $long_d;
+	    my $record_dt = $report{$type1}{$type2}{$desc}{when_human}||"NA"; # когда сдклана запись (свежесть) в читаемом формате
+	    my $modify = $report{$type1}{$type2}{$desc}{file_modify_human};
+	    my $depend = $report{$type1}{$type2}{$desc}{depend_on}; # от какого файла зависит (кого ждем)
+	    my $depend_count = $report{$type1}{$type2}{$desc}{depend_count}||0; # кол-во непосчитанных зависимостей
+	    print $record_dt, $desc, $modify||"(-)", $long_human||"-", $depend?"(wait_for [$depend_count]: $depend)":"-";
+	}
+    }	
+}
+
