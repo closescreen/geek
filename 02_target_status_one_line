@@ -1,0 +1,49 @@
+#!/usr/bin/env bash
+#>
+
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+# Usage: ./02_get_target_status ../RESULT/10/2016-01-11/google/3/urlvars_diff.gz
+
+target=${1:? TARGET !}
+
+file_mtime=""
+when_human=`date +"%Y-%m-%dT%H:%M"` # when_human - когда получена информация о файле, текущий момент
+
+if [[ -s "$target" ]]; then
+    # существующие файлы описываются так:
+    # дата(+час) из имени файла:
+    name_time_human=`perl -e'$f=shift(); ($t) = ( $f=~/(\d\d\d\d-\d\d-\d\dT\d\d)/ or $f=~/(\d\d\d\d-\d\d-\d\d)/ ); print $t' "$target"`
+    # секунды эпохи из имени файла:
+    name_sec=`perl -MDate::Calc -e'
+	$mt=shift(); ($y,$m,$d,$h)=$mt=~/(\d\d\d\d)-(\d\d)-(\d\d)T?(\d\d)?/;  
+	$epoch = Date::Calc::Mktime(0+$y,0+$m,0+$d, 0+$h,0,0);
+	print $epoch;
+	' "$name_time_human"`
+
+    
+    # время модификации файла (когда приготовился): 
+    file_modify_sec=`stat -c %Y "$target"`
+    file_modify_human=`stat -c %y "$target" | perl -lape'$_ = $1 if m/(\d\d\d\d-\d\d-\d\d \d\d:\d\d)/'`
+    
+    # сейчас секунды эпохи:
+    #current_sec=`date +%s`
+    
+#    secold=$(( $file_mtime ))
+    chk "$file_modify_sec" "Переменная Время модификации файла"  || exit 2
+    chk "$name_sec" "Переменная время модификации в human формате"  || exit 2
+    how_long_hours=$(( ($file_modify_sec - $name_sec) / 3600 ))
+    echo "when_human=>$when_human|||desc=>$target|||name_time_human=>$name_time_human|||name_sec=>$name_sec|||file_modify_sec=>$file_modify_sec|||file_modify_human=>$file_modify_human|||how_long_hours=>$how_long_hours"
+else    
+    # отсутствующие:
+    ./00_geek4 -want "$target" -norun -desc -format=key-value | perl -e'print "when_human=>'$when_human'|||" . join( "***", map {s/\n//g; $_} reverse <>)'
+fi    
+
+# OUT:
+# each line:
+#  records separated with ***
+#  fields separated with |||
+#  (last record is target, all before - it dependensys)

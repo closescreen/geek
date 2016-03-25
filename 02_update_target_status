@@ -1,0 +1,70 @@
+#!/usr/bin/env perl
+
+use strict;
+use warnings;
+use Data::Dumper;
+use Getopt::Long;
+
+my $usage = q{ Usage: };
+
+# Usage: 
+#  ./02_target_status_one_line "../RESULT/10/2016-01-11/google/3/urlvars_diff.gz" |  02_update_target_status -update ./00_monit.txt
+
+my $deb;
+my $dbfile;
+GetOptions(
+    "update=s" => \$dbfile,
+    "deb" => \$deb,
+) or die "Bad opt!";
+
+$dbfile or die "--update=FILE option must be defined!";
+die "$dbfile - executable!" if -x $dbfile;
+
+if ( -s "${dbfile}.LOCKED" ){
+    my @stat = stat("${dbfile}.LOCKED");
+    if ( time()-$stat[9] < 120 ){ # если файл LOCKED менее двух минут свежести, то не трогаем, выходим 
+	die "${dbfile}.LOCKED found. Exit.";
+    }	
+}
+  
+open LOCKED, ">", "${dbfile}.LOCKED" or die "Cant open ${dbfile}.LOCKED: $!";
+print LOCKED "PID=$$";
+close LOCKED;
+
+
+my %db;
+if (-s $dbfile){
+    open DB, $dbfile or die "Can't open $dbfile: $!";
+    my $lno = 0;
+    while (my $line = <DB>){
+     $lno++;
+     chomp $line;
+     my (@records) = split /\*\*\*/, $line;
+     my %fields = map { split /\=\>/, $_, 2 } split /\|\|\|/, $records[0];
+     #die Dumper \%fields;
+     $db{ $fields{desc} } = { LN=>$. , LINE=>$line };
+     last if $lno > 10000; # max lines to read
+    }
+    close DB;
+    #die Dumper \%db;
+}
+
+my $newval = join "", <STDIN>;
+chomp $newval;
+my (@newval_records) = split /\*\*\*/, $newval;
+my %newval_fields = map { split /\=\>/ } split /\|\|\|/, $newval_records[0];
+warn "New value fields:", Dumper \%newval_fields if $deb;
+my ($newkey) = $newval_fields{desc} or die "Not found key!";
+my $old = $db{ $newkey }||{};
+warn "KEY: $newkey,\n OLD REC: ",Dumper($old) if $deb;
+$db{ $newkey } = { LINE=>$newval, LN=>( $old->{LN}||2000 )};
+
+
+open DB, ">", $dbfile or die "Cant open $dbfile to write:$!";
+local $\="\n";
+for (sort { $db{$a}{LN}<=>$db{$b}{LN} } keys %db){
+    print DB $db{$_}{LINE}||"NA!";
+}
+close DB;    
+
+unlink "${dbfile}.LOCKED" or die "Can't delete ${dbfile}.LOCKED: $!";
