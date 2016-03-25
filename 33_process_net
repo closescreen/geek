@@ -91,7 +91,8 @@ sort -m -k1,1n \
 <(zcat $age_file | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"age"}' ) \
 <(zcat $ctr10_file | cut -d* -f1,5 | sort -T. -t\* -S333M -k1,1n | awk -v"OFS=*" '{print $0,"ctr"}') \
 <(zcat $auditory_file | awk -F* -v"OFS=*" '{print $0,"auditory"}' ) \
-<(zcat $buyers_file | awk -F"\t" -v"OFS=*" '$2==184549376 {print $1,$2,"buyer"}') | sort -t\* -n -k1,1 | # интересует только трейт 184549376 (11.0)
+<(zcat $buyers_file | awk -F"\t" -v"OFS=*" '$2==184549376 {print $1,$2,"buyer"}') \
+| sort -S 333M -t\* -T. --compress-program=gzip -n -k1,1 | # интересует только трейт 184549376 (11.0)
 perl -Mstrict -Mwarnings -MData::Dumper -e'
 # uid * value * type
 # 5*02*auditory

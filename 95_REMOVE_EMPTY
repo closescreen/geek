@@ -18,8 +18,13 @@ cd `dirname $0`
 
 [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
+#result/10:
 remove_ff=`find ../RESULT/10 -wholename "*/$job/[0-3]/*.gz" | only --sizele=20`
 
 [[ -n "$remove_ff" ]] && echo `date +"%F %H:%M"`" Remove empty (zisele=20) files: $remove_ff">&2 && rm $remove_ff
+
+# copy_traits:
+remove_ff2=`find ../RESULT/traits_copy -name "*.gz" | only --sizele=20`
+[[ -n "$remove_ff2" ]] && echo `date +"%F %H:%M"`" Remove empty (zisele=20) files: $remove_ff2">&2 && rm $remove_ff2
 
 )>>"$0.log" 2>&1

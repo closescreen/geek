@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> Обработка смерженного (часы в сутки) потока для google, tn0.
+#> Обработка смерженного (часы в сутки) потока для google, tn0, url.
 
 set -u
 set -e
@@ -7,20 +7,21 @@ set -o pipefail
 set +x
 
 #>> IN:
-#>>  1   2      3            
-#>> dom path  winprice
+#>>  1   2      3         4      
+#>> dom path  expprice winprice
 
-summator -fu="cnt,+sum" 
+summator -fu="+cnt,sum,sum" 
 
 #>> OUT: 
-#>>  1   2     3            4 
-#>> dom path cnt_exp   sum_winprice 
+#>>  1   2     3          4          5
+#>> dom path cnt_exp  sum_exppr sum_winprice 
 
 #>> | field        | description |
 #>> | -----        | ----------- |
 #>> | dom          |
 #>> | path         |
 #>> | cnt_exp      | количество показов |
+#>> | sum_exppr    | сумма expprice | # <--- это поле предполагается не использовать, будем брать exppr из tn3
 #>> | sum_winprice | сумма winprice |
 
 

@@ -43,7 +43,7 @@ while(<STDIN>){
     if ( $action eq 'INSERT' ){
 	push @cats_to_insert, $cat_href;
     }elsif ($action eq 'DELETE'){
-	push @cats_to_delete, $cat_href;
+	push @cats_to_delete, $cat_id;
     }else{
 	die "Unknown action $action";
     }

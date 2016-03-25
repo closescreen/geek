@@ -16,24 +16,27 @@ cd `dirname $0`
 
 
 lo="6" # запуск только при loadaverage не больше lo или при "force"
+mem=3 # need free mem
 
-loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">"$lo" && exit
+loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))>$lo">&2 && exit
 echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
 
+# обновление 02_monit-human-view:
+./02_human_view 02_monit.txt > 02_monit_human_view.txt
 
 #----------------------- ежечасные -----------------------
 for pars in  "net 0" "net 1" "ssp 0" "ssp 1" "ssp 3" "google 0" "google 1" "google 3"  
 do
-    loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">"$lo" && exit
+    loadaverage -1m -gt "$lo" && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))>$lo">&2 && exit
+    freemem -lt="$mem" -ed=g && echo "Low free memory. ( < $mem g)">&2 && exit
 
-    hh=`hours -d=today -n=-2 -shift=-1`
+    hh=`hours -d=today -n=-3`
 
     cmd="nice ./10_HOURS_BY_HOURS $pars '$hh'"
 
     fork -pf=../pids/hours.pids -dela=10 -ed=s --single "$cmd" -wait
 
 done
-
 
 
 )>>"$0.log" 2>&1

@@ -65,21 +65,21 @@ _{
  #>>
  #>> | field | description |
  #>> | ----- | ----------- |
- #>> | uid   |
- #>> | sec   |
- #>> | sid   |
- #>> | sz    |
- #>> | pz    |
- #>> | bt    |
- #>> | exposureprice |
- #>> | secondprice |
- #>> | expprice/(secondprice) |
- #>> | ad      |
- #>> | network |
- #>> | domain  |
- #>> | path    |
- #>> | sestart | секунды начала сессии   |
- #>> | isview  | просмотр засчитан (1/0) |
+ #>> |1 uid   |
+ #>> |2 sec   |
+ #>> |3 sid   |
+ #>> |4 sz    |
+ #>> |5 pz    |
+ #>> |6 bt    |
+ #>> |7 exposureprice |
+ #>> |8 secondprice |
+ #>> |9 expprice/(secondprice) |
+ #>> |10 ad      |
+ #>> |11 network |
+ #>> |12 domain  |
+ #>> |13 path    |
+ #>> |14 sestart | секунды начала сессии   |
+ #>> |14 isview  | просмотр засчитан (1/0) |
 
  $prev_exp_sec{ $F[DOM] } = $F[SECOND]; # храним время предыдущего просмотра любого реферера на домене
 } -prev=>"uid=0";

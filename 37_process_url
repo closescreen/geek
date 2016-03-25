@@ -3,7 +3,7 @@
 #> Решил не делать - а все брать из url_total.
 
 
-#> net_sites / 0 / url_total ----> url_views
+#> net / 0 / url_total ----> url_views
 set -u
 set +x
 set -o pipefail
@@ -14,7 +14,7 @@ job=${2:?job!}
 typenum=${3:?typenum!}
 #N=${4:?N!}
 
-# format net_sites tn0 total 
+# format net tn0 total 
 # IN:
 #  1    2     3    4        5             6         
 # dom  path  net  cnt  sum_expprice  sum_secondprice

@@ -7,7 +7,7 @@ set -o pipefail
 cd `dirname $0`
 
 merge_days=30 # Отладка. потом поставить =30 ( за сколько дней хотим мержить uidsz.gz )
-job=${1:?Job!} # google | ssp_sites | net_sites
+job=${1:?Job!} # google | ssp | net
 days=${2:-""} # можно указать "$day1 $day2 ..."
 deb=${3:-""} # можно указать "deb"
 report_deep=`conf 00_conf.txt report_deep`
@@ -19,18 +19,18 @@ uids_base_dir="../RESULT/10"
 
 processor=$(
  href -dict="
-    net_sites => './33_process_net_sites',
+    net => './33_process_net',
     google => './33_process_google',
-    ssp_sites => './33_process_ssp_sites',
+    ssp => './33_process_ssp',
  " -val="$job"
 ) 
 [[ -z "$processor" ]] && exit 1
 
 typenum=$(
  href -dict="
-     net_sites => 0,
+     net => 0,
      google => 3,
-     ssp_sites => 3,
+     ssp => 3,
  " -val="$job"
 )
 [[ -z "$typenum" ]] && exit 0
@@ -64,10 +64,11 @@ ff=`echo "$ff" |
 only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr10gr.gz"'`
 chk "$ff" "uidsz files with ctr10gr.gz " || exit 2
 
-# ... и ctr11gr.gz
-ff=`echo "$ff" | 
-only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr11gr.gz"'`
-chk "$ff" "uidsz files with ctr11gr.gz " || exit 2
+# их теперь нет:
+## ... и ctr11gr.gz
+#ff=`echo "$ff" | 
+#only --having='m|(\d\d\d\d-\d\d-\d\d)|; $_="../RESULT/traits_copy/$1/ctr11gr.gz"'`
+#chk "$ff" "uidsz files with ctr11gr.gz " || exit 2
 
 # ... и auditory.gz
 ff=`echo "$ff" | 

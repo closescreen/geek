@@ -1,11 +1,5 @@
 #!/usr/bin/env bash
 
-# разкомментить:
-echo "Disabled. Columns!">&2 && exit 1
-
-# Заменить этим скриптом старый. 
-# Этот учитывает разный набор вх полей и  исправлен логический баг 
-
 # сравнивает два urlvars и делать дифф по каждой колонке
 # или делает начальный дифф, где все будет INSERT
 
@@ -36,6 +30,7 @@ echo "Disabled. Columns!">&2 && exit 1
 set -u
 job=${1:? JOB! } # у разных job разный набор полей
 
+#                           0   1    2     3      4     5     6      7     8    9     10     [11]      [12]                            
 labels=$(href -dict="net=>'dom path exppr winpr profit male female buyers flag mfdiv version'" \
 	         -default="dom path exppr winpr profit male female buyers flag mfdiv winrate exppr3 version" -value="$job" )
 
@@ -53,36 +48,48 @@ lae -lb="$labels" '
 # buyers - покупателей
 # flag - флаг наличия данных по трейтам
 # mfdiv - отношение, упрощенно, m/(m+f)
-# exppr3 - средний exppr по всем бидам
+# winrate - (для google,ssp)
+# exppr3 - средний exppr по всем бидам (google,ssp)
 # version = "P" | "C" (prev/current)
+
+# Note: %LI - хранит имена полей и их индексы. (dom=>0,path=>1, ... winrate=>undef или 10)
 
 my %categs = (
  # Соответствие индексов колонок номерам категорий.
  # ( первая занята url_cat-ами )
  # не ставить "=>"!, использовать запятые
  # В левой части имена должны быть из списка, указанного в опции -lb=... (см. выше)
- BUYERS , 1000, 
- MALE , 1001,
- MFDIV , 1002,
- PROFIT , 1003,
- EXPPR, 1004,
- WINPR, 1005,
- FEMALE, 1006,
+ $LI{buyers}, 1000,  
+ $LI{male} , 1001,
+ $LI{mfdiv} , 1002,
+ $LI{profit} , 1003,
+ $LI{exppr}, 1004,
+ $LI{winpr}, 1005,
+ $LI{female}, 1006,
 );
+
+$categs{ $LI{exppr3} } = 1007 if $LI{exppr3}; # Для net - это поле отсутствует
+$categs{ $LI{winrate} } = 1008 if defined $LI{winrate}; # Для net - это поле отсутствует
+ 
 
 my %lines;
 _{
  flush() if (Path ne prevPath or Dom ne prevDom) and prevDom; 
  #> если поле Version пустое, то считается "C"-current. Для случаев когда дифф делается по одному файлу, для начальной загрузки.
- $lines{ $F[VERSION]||"C" }=[@F]; 
+ $lines{ $F[ $LI{version} ]||"C" }=[@F]; 
 } -prev=>"dom,path";
 flush();
 
 sub flush{
 # warn "flush called ".Dumper(\%lines);
+ 
  if ( exists $lines{C} ){
     my @curr = @{$lines{C}};
-    my $url= join "", @curr[DOM,PATH];
+    for (keys %categs){
+	$curr[$_]="NA" if not defined $curr[$_];
+    }
+    
+    my $url= join "", @curr[ $LI{dom} , $LI{path} ];
 
     if ( not exists $lines{P} ){
 	# если в текущем - есть url, а в предыдущем - нет:
@@ -94,7 +101,11 @@ sub flush{
     }else{
 	# если есть и в текущем и в предыдущем (но могут значения в полях отличаться):
 	my @prev = @{$lines{P}};
+	for (keys %categs){
+	    $prev[$_]="NA" if not defined $prev[$_];
+	}
 	for my $ind ( keys %categs){
+	    #no warnings qw(uninitialized); # набор полей разный, некоторые отсутствуют
 	    if ( $curr[$ind] ne $prev[$ind] ){
 		# предыдущий и текущий не равны:
 		if ( $curr[$ind] eq "NA" ){
@@ -109,8 +120,12 @@ sub flush{
     }
  }elsif( exists $lines{P} ){
     my @prev = @{$lines{P}}; 
-    my $url = join "", @prev[DOM,PATH];
+    for (keys %categs){
+	$prev[$_]="NA" if not defined $prev[$_];
+    }    
+    my $url = join "", @prev[ $LI{dom} , $LI{path} ];
     for my $ind ( keys %categs){
+	next if $prev[$ind] eq "NA";
 	print "$url*$categs{$ind}*$prev[$ind]*DELETE";
     }    
  }

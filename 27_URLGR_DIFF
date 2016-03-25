@@ -17,7 +17,7 @@ deep=`conf 00_conf.txt report_deep` # "<--- считать этот отчет �
 
 typenum=$(
  href -dict="
-     net_sites => '0',
+     net => '0',
      google => '3',
  " -val="$job"
 )

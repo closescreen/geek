@@ -34,15 +34,15 @@ while(<STDIN>) {
     my $cat = {categoryId=>$input->{cat_id}, weight=>$group_id};
 
     if (! defined $tail[0] or $tail[0] eq 'insert') {
-#    print STDERR "$url_id\t",Dumper($cat),"\n";
+#    	print STDERR "$url_id\t",Dumper($cat),"\n";
 	$rc->SetUrlCategories($url_id, [$cat]);
 	$rc->SetUrlCategoryPersistent($url_id, $input->{cat_id}, 1);
-#    print STDERR Dumper($rc->GetUrlCategories($url_id));
+#    	print STDERR Dumper($rc->GetUrlCategories($url_id));
 #	$stat{$group_id}++;
     }
     elsif (defined $tail[0] and $tail[0] eq 'delete') {
 	$rc->DelUrlCategories($url_id, [$input->{cat_id}]);
-#    print STDERR Dumper($rc->GetUrlCategories($url_id));
+#    	print STDERR Dumper($rc->GetUrlCategories($url_id));
     }
 }
 #map {print STDERR $_.' '.$stat{$_}."\n"} sort keys %stat;

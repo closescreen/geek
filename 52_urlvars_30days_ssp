@@ -116,7 +116,7 @@ sub flush{
     for my $pa ( grep {$_} sort keys %{ $url{$do} } ){
 	my $will_print_line;
 	my $smf_expprice3 = $dom_cnt_exp ? int( $dom_expprice3 / $dom_cnt_bids / 100 ) + 1 : "NA";
-	my $smf_expprice0 = $dom_cnt_exp ? int( $dom_expprice0 / $dom_cnt_exp ) + 1 : "NA";
+	my $smf_expprice0 = $dom_cnt_exp ? int( $dom_expprice0 / $dom_cnt_exp / 100 ) + 1 : "NA";
 	my $smf_winprice = $dom_cnt_exp ? int( $dom_winprice / $dom_cnt_exp ) + 1 : "NA"; 
 
 	my ( $avg_expprice3, $avg_expprice0, $avg_winprice, $profit, $winrate );
@@ -181,15 +181,15 @@ sub flush{
     }
  }
 
- $dom_expprice0 = $dom_exppr3 = $dom_winprice = $dom_cnt_exp = $dom_cnt_bids = 0;
+ $dom_expprice0 = $dom_expprice3 = $dom_winprice = $dom_cnt_exp = $dom_cnt_bids = 0;
  undef %url;
 }
 ' <( zcat "$url_traits_30days_f" ) <( zcat "$dom_traits_30days_f")
 
 
 # out:
-#>  1    2         3               4          5       6       7         8      9     10               11	      12
-#> dom  path  avg_expprice0, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%  winrate_x1000 avg_expprice3
+#>  1    2         3               4          5       6       7         8      9     10               11	        12
+#> dom  path  avg_expprice0, $avg_winprice, $profit, $male, $female, $buyerss  flag  int(m/(m/f))%  winrate_x1000   avg_expprice3
 
 
 ) 2>>"$0.log" 

@@ -26,4 +26,4 @@ zcat "$src" | awk -F* -v"OFS=*" '$11>0 && $12 {print $12,$11}' | LANG=POSIX sort
 #>>
 #>> sorted: 1,1  2,2n
 
-# NOTE: для net_sites, ssp_sites(?) связать таблицы можно по sid+sz а не по домену => можно вместо dom*net сохранять sid*sz*net
+# NOTE: для net, ssp(?) связать таблицы можно по sid+sz а не по домену => можно вместо dom*net сохранять sid*sz*net

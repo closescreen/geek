@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
-#> For: net_sites / tn0 / total.gz ----( 35_process )------> dom_net.gz
+#> For: net / tn0 / total.gz ----( 35_process )------> dom_net.gz
 (
 set -u
 set +x
 set -o pipefail
 cd `dirname $0`
 
-job="net_sites"
+job="net"
 typenum="0"
 #N=`froms 19_URLS30DAYS -var=N -strict`
 days=${1:-""} # можно указать "$day1 $day2 ..."

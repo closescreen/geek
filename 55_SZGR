@@ -14,9 +14,9 @@ deb=${3:-""}
 
 typenum=$(
  href -dict="
-    net_sites => 0,
+    net => 0,
     google => 3,
-    ssp_sites => 3,
+    ssp => 3,
     " -val="$job"
 )
 

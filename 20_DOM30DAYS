@@ -14,7 +14,7 @@ deb=${3:-""} # можно указать "deb"
 
 typenum=$(
  href -dict="
-     net_sites => '0',
+     net => '0',
  " -default="3" -val="$job"
 )
 

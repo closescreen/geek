@@ -12,7 +12,8 @@ set +x
 
 awk -F* -vOFS=* '$12 || $13 {print $3, $12, $13, $10, $11 }' | # sid id wm dom path
  lae -M=Dom -lb="sid id wm +d2l dom path" '_{
-    return if not $F[ID]=~m/^\d+$/;
+    return if not $F[ID]=~m/^\d+$/;           # если id - не число, то пропускаем
+    return if (not $F[DOM] and not $F[PATH]); # если пустой домен и путь, то пропускаем
     $F[D2L] = $F[DOM] ? Dom::d2l( $F[DOM] ) : "";
     $F[WM]||="NA";
     p @F;

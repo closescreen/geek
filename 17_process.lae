@@ -3,14 +3,14 @@
 
 #>IN:
 #> google:
-#>  1   2     3   4  5       6        7   8   9     10      11
-#> uid second sz pz  bt exposureprice ad dom path sestart isview
+#>  1   2     3   4  5       6        7   8     9   10    11     12
+#> uid second sz pz  bt exposureprice ad expid dom path sestart isview
 #> OR
-#> net_sites:
+#> net:
 #> uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
 #> OR:
-#> ssp_sites:
-#> uid second sid sz pz bt exposureprice ad dom path sestart isview
+#> ssp:
+#> uid second sid sz pz bt exposureprice ad expid dom path sestart isview
 
 #>> sorted by UID,SECOND:
 
@@ -32,10 +32,6 @@ my %ads_domains = map {$_,1} cat shift();
 _{
 
  # кука по времени просматривает разные урлы (разные домены) и sestart для каждого домена - свой 
- # 25443534*1411888002*54731*1*68*-1*0*prosto-ma-ma.ru*/*1411888002*1
- # 25443534*1411888005*54474*3*29*-1*0*taruzina.ru*/blog/43343322378/nechto-chelovecheskoe..*1411888005*1
- # 25443534*1411888006*23983*3*29*-1*0*gatchina24.ru*/gtn-pravda/gtn-pravda_10592.html*1411887999*0
- # 25443534*1411888010*54731*3*36*-1*0*prosto-ma-ma.ru*/*1411888002*0
 
  return if not $F[ISVIEW]; # <--считаются только засчитанные нами просмотры, используемые для сессий. Нельзя здесь считать кол-во бидов и прочее.
  return if $ads_domains{ $F[DOM] };

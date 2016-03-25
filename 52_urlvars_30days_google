@@ -118,7 +118,7 @@ sub flush{
     for my $pa ( grep {$_} sort keys %{ $url{$do} } ){
 	my $will_print_line;
 	my $smf_expprice3 = $dom_cnt_exp ? int( $dom_expprice3 / $dom_cnt_bids / 100 ) + 1 : "NA";
-	my $smf_expprice0 = $dom_cnt_exp ? int( $dom_expprice0 / $dom_cnt_exp ) + 1 : "NA";
+	my $smf_expprice0 = $dom_cnt_exp ? int( $dom_expprice0 / $dom_cnt_exp / 100 ) + 1 : "NA";
 	my $smf_winprice = $dom_cnt_exp ? int( $dom_winprice / $dom_cnt_exp  ) + 1 : "NA"; 
 	
 	my ( $avg_expprice3, $avg_expprice0, $avg_winprice, $profit, $winrate );

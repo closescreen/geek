@@ -24,7 +24,7 @@ processor=./19_process
 
 [[ -n "$deb" ]] && set -x
 
-typenum=`href -dict="net_sites => '0'" -default="3" -val="$job"`
+typenum=`href -dict="net => '0'" -default="3" -val="$job"`
 
 # возможные имена уже существующих файлов: (urls5days.gz urls6days.gz .. urls30days.gz)
 # и тогда не пересчитывать, если хотяб один уже есть.

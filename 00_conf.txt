@@ -2,6 +2,7 @@ source_deep => "30days", # глубина перечета источников 
 report_deep => "17days", # глубина пересчета самих отчетов 
 maxf => 1, # обрабатывать пачками по maxf файлов
 google_sid => 187537, # google sid
+mail_sid => 211720, # mail ssp sid
 usergroups => sub{ join "|", grep { $_%2==0 } 1..256 }, 
 
 

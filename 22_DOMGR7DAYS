@@ -22,7 +22,7 @@ fi
 
 typenum=$(
  href -dict="
-     net_sites => '0',
+     net => '0',
  " -default="3" -val="$job"
 )
 

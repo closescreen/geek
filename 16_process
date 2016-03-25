@@ -2,14 +2,14 @@
 #> Сочетания pz+bt по sz.
 
 #>> in (у google):
-#>>  1   2          3  4  5       6        7   8   9     10      11
-#>> uid second     sz pz  bt exposureprice ad dom path sestart isview
+#>>  1   2          3  4  5       6        7   8     9   10    11      12
+#>> uid second     sz pz  bt exposureprice ad expid dom path sestart isview
 
-#>> или такой (у ssp_sites)
-#>>  1   2      3  4  5   6        7       8   9   10     11     12
-#>> uid second sid sz pz  bt exposureprice ad dom path sestart isview
+#>> или такой (у ssp)
+#>>  1   2      3  4  5   6        7       8    9   10   11    12      13
+#>> uid second sid sz pz  bt exposureprice ad expid dom path sestart isview
 
-#>> или такой (у net_sites)
+#>> или такой (у net)
 #>>  1   2     3   4  5   6        7       8   9   10    11      12
 #>> uid second sid sz pz  bt exposureprice ad dom path sestart isview
 
@@ -54,7 +54,7 @@ if ( my $sid_ind = $LI{ sid } ){
 #>>
 #>> | field |
 #>> | ----- |
-#>> | [sid] | для net_sites, ssp_sites - это поле есть, для google - нет
+#>> | [sid] | для net, ssp - это поле есть, для google - нет
 #>> | sz    |
 #>> | pz    |
 #>> | bt    |

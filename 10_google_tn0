@@ -1,38 +1,39 @@
 #!/usr/bin/env bash
-#> сбор из hl typenum==0 (показы) , sid for google, ssp_sites
+#> сбор из hl typenum==0 (показы) , sid for google, ssp
 
 #>> отбрасываются нулевые sz,uid
 #>> OUT: 
 #>>  sz,ad,exposureprice,winprice
 #>>  сортировка по sz, ad.
-
+set -u
 set +x
 
-resf=${1:? resfile!}
-teef=`dirname $resf`"/url_"`basename $resf` # .../yyyy-mm-ddThh.gz --> .../url_yyyy-mm-ddThh.gz
+hour_file=${1:? file!}
+
+url_hour_file=`dirname $hour_file`"/url_"`basename $hour_file` # .../yyyy-mm-ddThh.gz --> .../url_yyyy-mm-ddThh.gz
 
 sids=${2:?sids!} #like a: 123|234|3254
 
-ads_f="adservice_domains.txt"
+ads_file="adservice_domains.txt"
 
-job_history_log -c=./history.conf "$1" "sz,ad,exposureprice,winprice,uid!=0,typenum=0,sid=$sids,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),ref" \
- -fn -cut="sid,statusnum,typenum,uid,usergroup" | # sz,ad,expprice,winpr,ref
+
+
+job_history_log -c=./history.conf "$hour_file" "sz,ad,exposureprice,winprice,uid!=0,typenum=0,sid=$sids,statusnum=0,usergroup=$(conf 00_conf.txt usergroups),expid" \
+ -fn -cut="sid,statusnum,typenum,uid,usergroup" | # sz,ad,expprice,winpr,expid
  tee-open -to "
-  # ---------------------------------------------------------------------------------------------------------
-  lae -lb=\"sz ad exppr winpr ref\" -M=Dom '
-   my %ads = map {\$_,1} cat shift;
-   my (\$dom,\$path);
-   _{ 
-     (\$dom,\$path) = map {\$_||\"\"} Dom::split_ref(Ref);
-     return if \$ads{\$dom} or !\$dom;
-     p \$dom, \$path, Exppr, Winpr;
-    };
-   ' \"$ads_f\" | LANG=POSIX sort -t\\* -T. -k1,1 | viatmp -gz \"$teef\"
-
-  # --------- все, что описано в tee-open - идет в $teef, на следующие пайпы tee-open никак не влияет: -------
-  " |
+ # ---- формирование url_YYYY-MM-DDTHH.gz (\$url_hour_file)
+ # IN:
+ #  1   2    3      4     5
+ # sz, ad, exppr, winpr, expid
+ awk -F* -vOFS=* '{print \$5,\$4}' | # выключил sort -t\\* -T. -k1,1n | # сортировка по expid ( не обязательна)
+ viatmp -gz \"$url_hour_file\" 
+ # OUT: 
+ #   1     2
+ # expid, winpr
+ # <<-------- конец $url_hour_file  -------
+ 
+ " | # это идет в файл $hour_file:
  awk -F* -vOFS=* '$1 {print $1,$2,$3,$4}' | # (sz!=0) sz,ad,exppr,winpr
  sort -T. -t\* -n -k1,1 -k2,2 --compress-program=gzip
  
-# tee-open -to "awk -F* -vOFS=* '{print \$5,\$3,\$4}' | LANG=POSIX sort -t\\* -T. --compress-program=gzip -k1,1 | viatmp -gz \"$teef\" " | # ref,expprice,winpr --> $teef 
 

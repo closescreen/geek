@@ -21,7 +21,7 @@ deb=${5:-""} # млжно указать deb
 
 # некоторые комбинации job+typenum не обрабатываются:
 silent_exit=$( href -dict="
-	net_sites => { 3=>'exit'},
+	net => { 3=>'exit'},
     " -val="$job" -val="$typenum"
 )
 [[ -n "$silent_exit" ]] && exit 0
@@ -35,15 +35,19 @@ postfilter="./12_postf_${job}_tn${typenum}${suffix}"
 
 #>: prefilter определяет скрипт, который может обработать отдельные потоки файлов до merge: 
 prefilter="./12_pref_${job}_tn${typenum}${suffix}"
-[[ -x "$prefilter" ]] || prefilter="cat"
+if [[ -x "$prefilter" ]]; then
+ prefilter="$prefilter %file"
+else
+ prefilter="cat"
+fi 
 
 # Набор ключей для mergef тоже зависит от job и typenum и variant:
 varopt="base" # когда не указан $variant
 [[ -n "$variant" ]] && varopt="$variant"
 mkeys=$( href -v="$job" -v="$typenum" -v="$varopt" -dict='
  "google" => 		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} },
- "ssp_sites" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} },
- "net_sites" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}},
+ "ssp" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2", toolbar=>"1,1n 2,2n 3,3 4,4 5,5 6,6"} },
+ "net" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}},
 ' )
 [[ -z "$mkeys" ]] && exit 1
 #chk "$mkeys" "Ключи для mergef по $job и $typenum и $variant" || exit 1
@@ -69,15 +73,23 @@ total_prefix=""
 
 hour_prefix=""
 [[ -n "$variant" ]] && hour_prefix=$(href -v="$job" -v="$typenum" -v="$varopt" -dict='
-    google    =>  {0 => { url => "url_", base=>"" }},
-    ssp_sites =>  {0 => { url => "url_", base=>"" }},
-    net_sites =>  {0 => { url => "" ,    base=>"" }}, # net_sites тотал по урлам берут из обычных часовых файлов
+    google    	=>  {0 => { url => "url_", base=>"" }},
+    ssp 	=>  {0 => { url => "url_", base=>"" }},
+    net 	=>  {0 => { url => "" ,    base=>"" }}, # net тотал по урлам берут из обычных часовых файлов
 ' )
 
-find "$find_path" -type f -wholename "*/$job/$typenum/${hour_prefix}[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
- only --without="${total_prefix}total.gz" |
- only -sizegt=20 |
- LANG=POSIX mergef -tt="${total_prefix}total.gz" -reverse -allow-empty -least=24 -having='m/T03/' --incomplete='22: %t_%n_hours.%e' \
+# для /3/url_yyyy-mm-dd.gz  нужно проверять наличие соседних /0/url_yyyy-mm-dd.gz:
+and_having=$( href -v="$typenum" -v="$varopt" -dict="
+ 3 => { url => \" only --having=\'s|/3/|/0/|\' \" }
+" -defa=" cat ")
+
+
+ff=`find "$find_path" -type f -wholename "*/$job/$typenum/${hour_prefix}[0-9][0-9][0-9][0-9]-[0-9][0-9]-[0-9][0-9]T[0-9][0-9].gz" |
+ only --without="${total_prefix}total.gz" | only -sizegt=20`
+
+[[ -n "$and_having" ]] && ff=`echo $ff | $and_having`
+
+echo "$ff" | LANG=POSIX mergef  -tt="${total_prefix}total.gz" -reverse -allow-empty -least=24 -having='m/T03/' --incomplete='22: %t_%n_hours.%e' \
     -m -k="$mkeys" -prefilter="$prefilter" -postfilter="$postfilter" \
     -on_another="silent_skip" -timelog=00_all.time.log
 

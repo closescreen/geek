@@ -12,7 +12,7 @@ logs=$(find . -name "*.log")
 [[ -z "$logs" ]] && echo "Not found any logs.">&2 && exit 1
 
 for log in $logs; do
-    [[ "$(cat aa.txt | wc -l)" -lt $N ]] && continue
+    [[ "$(cat "$log" | wc -l)" -lt $N ]] && continue
     cat "$log" | tail -n$N | viatmp $log    
 done
 

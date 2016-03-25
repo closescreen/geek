@@ -6,6 +6,7 @@ set +x
 set -o pipefail
 cd `dirname $0`
 
+
 # usage: ./21_process %s %f $server $remote_project $remote_script
 local_src=${1:?Src!}
 local_resf=${2:?Resf!}
@@ -17,24 +18,35 @@ day=`fn2days "$local_resf"`
 rem_result="$rem_project/RESULT/10/$job/$day"
 USER=d.belyaev
 
+if [[ "$server" != "$(hostname -f)" ]]; then
 
-if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) 
-then
-    scp -p "$local_src" "${USER}@${server}:$rem_result/"
-fi    
+    if ( ssh "${USER}@${server}" "mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]]" ) ; then
+	scp -p "$local_src" "${USER}@${server}:$rem_result/"
+    fi    
 
-if ( ssh "${USER}@${server}" "[[ -s $rem_result/dom_gr.txt && -s $rem_result/quant.txt ]] || $rem_project/bin/0.sh $rem_result/$(basename $local_src)" )
-then
-    scp "${USER}@${server}:$rem_result/*.txt" "$(dirname $local_resf)"
-fi    
+    if ( ssh "${USER}@${server}" "[[ -s $rem_result/dom_gr.txt && -s $rem_result/quant.txt ]] || $rem_project/bin/0.sh $rem_result/$(basename $local_src)" ) ; then
+	scp "${USER}@${server}:$rem_result/*.txt" "$(dirname $local_resf)"
+    fi    
 
-# clear old data on $server:
-ssh "${USER}@${server}" "$rem_project/bin/90_clear"
+    # clear old data on $server:
+    ssh "${USER}@${server}" "$rem_project/bin/90_clear"
 
 else
 
-if ( mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]] )
-then
+    if ( mkdir -p $rem_result && [[ ! -s $rem_result/$( basename $local_src ) ]] ) ; then
+	cp -p "$local_src" "$rem_result/"
+    fi    
 
+    if ( [[ -s $rem_result/dom_gr.txt && -s $rem_result/quant.txt ]] || $rem_project/bin/0.sh $rem_result/$(basename $local_src) ) ; then
+	for f in `find "$rem_result" -name "*.txt"`; do
+	    cp "$f" "$(dirname $local_resf)"
+	done    
+	#cp "$rem_result/*.txt" "$(dirname $local_resf)"
+    fi    
+
+    # clear old data on $server:
+    $rem_project/bin/90_clear
+
+fi
 
 

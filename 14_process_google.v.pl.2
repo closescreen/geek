@@ -1,12 +1,12 @@
 #!/usr/bin/env bash
 #> версия чистого перла N2
 #> Making table "bids" (tn3).
-#>> For google, ssp_sites.
+#>> For google.
 #>> in (from tn3 total.gz):
-#>>  1   2     3   4  5       6        7   8   9     10      11
-#>> uid second sz pz  bt exposureprice ad dom path sestart isview
+#>>  1   2     3   4  5       6        7    8    9   10    11     12
+#>> uid second sz pz  bt exposureprice ad expid dom path sestart isview
 
-cut -d* -f3,7,8 |
+cut -d* -f3,7,9 |
 perl -w -F'\*' -lane'
 # now input:
 # sz,ad,dom

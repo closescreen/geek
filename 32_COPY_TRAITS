@@ -97,7 +97,7 @@ for day in $days; do
     fi    
 
     # ctr10 (Kristina's groups):
-    remote_kris_file_10="$remote_kris_dir/traits$day.gz"
+    remote_kris_file_10="$remote_kris_dir/results/traits$day.gz"
     local_kris_file_10="$local_dir/$day/ctr10gr.gz"
     
     if ! filled "$local_kris_file_10"; then
@@ -108,19 +108,20 @@ for day in $days; do
 	    chk "$local_kris_file_10" "Copyed file" "-s" "was copyed" nop || exit 2
 	fi
     fi
-    
+
+#   inactiveUsers$day.gz больше нет    
     # ctr11 (Kristina's 11-th group):
-    remote_kris_file_11="$remote_kris_dir/inactiveUsers$day.gz"
-    local_kris_file_11="$local_dir/$day/ctr11gr.gz"
+#    remote_kris_file_11="$remote_kris_dir/inactiveUsers$day.gz"
+#    local_kris_file_11="$local_dir/$day/ctr11gr.gz"
     
-    if ! filled "$local_kris_file_11"; then
-	if [[ $( ssh "$remote_host" "[[ -s $remote_kris_file_11 ]]" && echo OK ) ]];then
-	    mkdir -p $(dirname "$local_kris_file_11")
-	    scp "$remote_host":"$remote_kris_file_11" "$local_kris_file_11.TMP" 
-	    mv "$local_kris_file_11.TMP" "$local_kris_file_11"
-	    chk "$local_kris_file_11" "Copyed file" "-s" "was copyed" nop || exit 2
-	fi
-    fi
+#    if ! filled "$local_kris_file_11"; then
+#	if [[ $( ssh "$remote_host" "[[ -s $remote_kris_file_11 ]]" && echo OK ) ]];then
+#	    mkdir -p $(dirname "$local_kris_file_11")
+#	    scp "$remote_host":"$remote_kris_file_11" "$local_kris_file_11.TMP" 
+#	    mv "$local_kris_file_11.TMP" "$local_kris_file_11"
+#	    chk "$local_kris_file_11" "Copyed file" "-s" "was copyed" nop || exit 2
+#	fi
+#    fi
 
     # аудитории Ильи:
     # Файл один (без указания за какое число), поэтому за все дни пересчета копируется если еще не скопирован текущий файл

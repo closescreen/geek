@@ -31,7 +31,7 @@ chk "$safe_deep_day" "safe_deep_day" || exit 1
 
 
 #-----часовые данные ----
-jobs="google ssp_sites net_sites"
+jobs="google ssp net"
 typenums="0 1 3"
 
 for job in $jobs; do

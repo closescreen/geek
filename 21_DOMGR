@@ -29,7 +29,7 @@ else
 fi
 
       
-server="dm1.adriver.x"
+server="bbid1.adriver.x"
 remote_project="/usr/local/rle/var/share3/TIKETS/1460_1421" #"/usr/local/rle/var/share/d.belyaev/1460_1421"
 remote_script="1.sh"
 maxf=`conf 00_conf.txt maxf`

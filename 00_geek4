@@ -44,14 +44,6 @@ GetOptions(
     'format=s' => \$format, # варианты форматированного вывода при включенном --desc
 ) or die "Bad opt!";
 
-my %formats = (
-    "target"=>sub{my $desc = $_[0]; $desc->{desc} }, 
-    "key-value"=>sub{my $desc = $_[0]; join "|||",map {"$_=>$desc->{$_}"} keys %$desc},
-);
-if ($format){
-    $formats{$format} or die "Bad format: m/b one of: ".(join " ", map {"\'$_\'"} keys(%formats));
-} 
-
 if ( $command ){
  # command=file - означает: 
  @wanted = ($command); # попросить файл, указанный в опции --command
@@ -78,6 +70,23 @@ my %sm = $g->named_groups(
     job => '\w+',
     tn => '\d+', # typenum
 );
+
+my %formats = (
+    "target"=>sub{my $desc = $_[0]; $desc->{desc} }, 
+    "key-value"=>sub{
+	my $desc = $_[0]; 
+	#warn $desc->{desc}, $sm{hour};
+	#$desc->{desc}=~/$sm{hour}/ or $desc->{desc}=~/$sm{day}/;
+	#my $nametime = $+{hour} || $+{day} || "";
+	#$desc->{nametime}=$nametime;
+	join "|||",map {s/\n//g; $_} map {"$_=>$desc->{$_}"} keys %$desc;
+    },
+);
+
+if ($format){
+    $formats{$format} or die "Bad format: m/b one of: ".(join " ", map {"\'$_\'"} keys(%formats));
+} 
+
 
 my $res = "../RESULT/10";
 my $traits_copy = "../RESULT/traits_copy";
@@ -141,7 +150,7 @@ $g->routes(
     },
     {
 	target "$res/$sm{day}/sz_vars_conv_DEL781.gz",
-	any { # хотябы один свежий файл sz_vars, иначе нет смысла запускать удаление
+	need { 
 	    szvars => sub{ "$res/$+{day}/ssp/3/sz_vars_30days.gz" , "$res/$+{day}/google/3/sz_vars_30days.gz", "$res/$+{day}/net/0/sz_vars_30days.gz" },
 	},
 	bash {qb "zcat `find ../RESULT/10 -name sz_vars_30days.gz | sort` | ./53_sz_vars_conv_DEL781 -conf=53_sz_vars_decl.conf"},
@@ -205,12 +214,22 @@ $g->routes(
 	    },
 	bash {
 	    my %fields_from_total = (ssp=>"1,10,11", google=>"1,9,10",); # у total.gz ssp\google разные поля
+
 	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | # uid*dom*path
+		awk -F* '\$1 && \$2' | # -- without empty main fields
 	        uniq |
 		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
 		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u -S333M --compress-program=gzip
 		# out: uid * dom * path
-		" }, 
+		" 
+# 	    OLD:
+#	    qb "nice zcat @{$_{total_ff_ARRAY}} | cut -d* -f".$fields_from_total{ $_{job} }." | # uid*dom*path
+#	        uniq |
+#		grepf -fn <(zcat \"$_{urls30days}\" | awk -F* '\$3>10' ) -fe='\"\$F1\$F2\"' -e='\"\$F2\$F3\"' |
+#		LANG=POSIX sort -T. -t\\* -k1,1n -k2,2 -k3,3 -u -S333M --compress-program=gzip
+#		# out: uid * dom * path
+#		" 
+		}, 
 	note { check_need=>1, timelog=>$timelog, },	
     },    
 
@@ -661,7 +680,7 @@ for my $job ( @jobs_to_do ){
 	    my ($t) = $job->{target}=~m|../RESULT/10/\d\d\d\d-\d\d-\d\d/(.+)|;
 	    $t||="NOT FOUND";
 	    $t=~s/\d\d\d\d-\d\d-\d\dT\d\d/\\d\\d\\d\\d-\\d\\d-\\d\\dT\\d\\d/; # в файлах часов замена имени
-	    my $gr = "grep -P \"$t\" 00_all.time* | grep -v ')'";
+	    my $gr = "grep -P \"$t\" $timelog | grep -v ')'";
 	    #warn "GREP: $gr";
 	    open my $grep, "$gr |" or die "can't open pipe!";
 	    my @t;
@@ -673,10 +692,6 @@ for my $job ( @jobs_to_do ){
 	    }
 	    my $min=min(@t); my $max=max(@t); my $avg=(($min||0) + ($max||0) )/2; 
 	    
-	    #die $min if $min;
-	    #$rv=~s/^\s+|\s+$//g;
-	    #die $rv if $rv;
-	    #push @desc, $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
 	    $desc{avg} = $max ? "min:$min, avg:$avg, max:$max" : "(unknown)";
 	    if ($avg){
 		$avg_total{avg} +=$avg;

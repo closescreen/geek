@@ -17,10 +17,10 @@ cd `dirname $0`
 
 [[ -z "$force" ]] && [[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
 
-older="45days" # удалять старее чем
+older="55days" # удалять старее чем
 
 #-----часовые данные ----
-jobs="google ssp_sites net_sites"
+jobs="google ssp net"
 typenums="0 1 3"
 
 

@@ -19,13 +19,26 @@ my %decl = %{$conf{DECL}} or die "declarations!";
 
 local $\="\n";
 
+my $f = "site2category_all_handmade.txt";
+open HM, $f or die "cant open file $f: $!";
+my %hm;
+while(<HM>){
+ chomp;
+ my ($cat, $dom, $sz, $sid) = split;
+ $hm{ "$sid:$sz" } = $cat if $cat==781;
+}
+close HM;
+
 #> На входе поток колонок со значениями (sz_vars), разделитель *.
 while(<>){
  chomp;
  my @fields = split /\*/, $_, -1;
  my @out;
  my ($sid,$sz) = split /\:/, $fields[0];
- my $id = ( $sid << 32 ) | ($sz||-1);
+
+ next if $hm{"$sid:$sz"}; # пропуск категории 781
+
+ my $id = ( $sid << 32 ) | ($sz||0xFFFFFFFF);
  push @out, $id;
  for my $fnumber (2 .. scalar(@fields)){
     my $fdecl = $decl{ $fnumber } or next; # на выходе будут только поля, для которых есть определения в conf

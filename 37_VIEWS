@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#> net_sites tn0 total.gz ----(37_process)-------> views.gz 
+#> net tn0 total.gz ----(37_process)-------> views.gz 
 
 (
 
@@ -10,7 +10,7 @@ cd `dirname $0`
 
 job=${1:?"job!"}
 
-processor=`href -dict="net_sites=>1" -val="$job"`
+processor=`href -dict="net=>1" -val="$job"`
 [[ -n "$processor" ]] || exit 1
 
 typenum="0"

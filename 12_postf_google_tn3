@@ -6,7 +6,7 @@
 #>> На входе поток за сутки (т.е период начало и конец которого можно считать разрывом сессии), лучше с 04-00 по 04-00.
 #>> отсортрованный по КУКЕ и ВРЕМЕНИ. 
 
-lae -lb="uid second sz pz bt exposureprice ad dom path +sestart +isview" '
+lae -lb="uid second sz pz bt exposureprice ad expid dom path +sestart +isview" '
 my %sestart; 
 my %last_view; 
 my %prev_exp_sec;
@@ -51,17 +51,18 @@ _{
  #>>
  #>> | field | description |
  #>> | ----- | ----------- |
- #>> | uid   |
- #>> | sec   |
- #>> | sz    |
- #>> | pz    |
- #>> | bt    |
- #>> | exposure_price |изза ad не используется|
- #>> | ad      |
- #>> | domain  |
- #>> | path    |
- #>> | sestart | секунды начала сессии   |
- #>> | isview  | просмотр засчитан (1/0) |
+ #>> |1 uid   |
+ #>> |2 sec   |
+ #>> |3 sz    |
+ #>> |4 pz    |
+ #>> |5 bt    |
+ #>> |6 exposure_price |изза ad не используется|
+ #>> |7 ad      |
+ #>  |8 expid
+ #>> |9 domain  |
+ #>> |10 path    |
+ #>> |11 sestart | секунды начала сессии   |
+ #>> |12 isview  | просмотр засчитан (1/0) |
 
  p @F;
 

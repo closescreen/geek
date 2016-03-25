@@ -30,3 +30,10 @@
 203731		Soloway-SSP
 204243		Bidswitch
 208413		SmartyAds
+209968		AdProfy SSP
+209969		Spicy SSP
+211062		fidelitySSP
+211343		Fidelity Media SSP
+211344		Advark SSP
+211490		Madnetex SSP
+211720		Mail SSP

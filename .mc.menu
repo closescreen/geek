@@ -1,17 +1,21 @@
 shell_patterns=0
 + ! t t
+@	Find target in ./00_geek
+	pattern=%{Enter target pattern}
+	grep -H -m10 -n --color=auto -A20 -P "target.*$pattern" 00_geek4
+
 @	Who is work now
 	for file in `find ../RESULT -name "*.FLAG" | sort`; do 
 	    (
 	    if netflag --check -file=$file -print="STARTED"    ; then
-		echo " $file"
+		echo " $file: $(cat $file)"
 	    else
 		echo "  ( not work )( $file )"
 	    fi
 	    ) | grep -v 'not work'
 	done
 
-@	Report
+@	Report by days
 	perl -Mstrict -e'
 	my %h;
 	$\="\n";
@@ -32,25 +36,35 @@ shell_patterns=0
 	    ($day,$job,$tn,$file) = @fi[-4,-3,-2,-1];
 	    $file.="(merge)";
 	 }    
-	 $h{ $cday }{ $job }{ $file } ++;
+	 $h{ $cday }{ $day }{ $job }{ $tn }{ $file } ++;
 	} 
 	
 	END{
 	    for my $cday ( sort keys %h  ){
-		my $j_hr = $h{$cday};
-		for my $job (sort keys %$j_hr){
-		    my $f_hr = $j_hr->{$job};
-		    for my $file ( sort keys %$f_hr ){
-			my $cnt = $f_hr->{$file};
-			print "$cday $job $file $cnt";
+		print "$cday:";
+		my $day_hr = $h{ $cday };
+		for my $day (sort keys %$day_hr){
+		    print "\t$day:";
+		    my $j_hr = $day_hr->{ $day };
+		    for my $job (sort keys %$j_hr){
+			my $tn_hr = $j_hr->{$job};
+			for my $tn ( sort keys %$tn_hr ){
+			    my $f_hr = $tn_hr->{$tn};
+			    for my $file ( sort keys %$f_hr ){
+				my $cnt = $f_hr->{$file};
+				print "\t\t$job $tn $file $cnt";
+				
+			    }	    
+			}    
 		    }
 		}
-		print "-----------------";
 	    }
 	    
 	}
-	' 00_all.time.log
+	' 00_all.time.log | less
 
+@	Report max time
+	file=%t; test -n "$file" || file=00_all.time.log; cat $file | perl -lane'$F[3]=~s/m//; print join " ", @F[3,0] if $F[3]+=0' | sort -nr | less
 	
 @	01_STOP_ALL
 	./01_STOP_ALL		
@@ -64,6 +78,6 @@ shell_patterns=0
 
 
 @	*_new file copy
-	file=%t; cp $file ${file}_NEW	
+	file=%f; cp $file ${file}_NEW	
 
 
