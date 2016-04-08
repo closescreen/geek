@@ -222,13 +222,17 @@ _{
  my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
  my ( $ctr, $avg_winprice, $avg_exp_div_win );
- if ( my $exposures = $vars_sid_sz->{exposures} ){
-    if ( $F[BIDS]>=1000 && $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $vars_sid_sz->{all_exposures} );
+ if ( my $exposures = $vars_sid_sz->{all_exposures} ){
+    if ( $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
     }else{ 
 	$ctr = "NA";
-	# DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sid_sz->{clicks}, exposures:$exposures ";
     }	
+ }else{
+    $ctr = "NA";
+ }
+
+ if ( my $exposures = $vars_sid_sz->{exposures} ){
     if ( $exposures>=50 ){
 	$avg_winprice = sprintf( "%.4f", ( $vars_sid_sz->{ winprice }||0 ) / $exposures);
 	$avg_exp_div_win = sprintf( "%.4f", $vars_sid_sz->{ exp_div_win } / $exposures );
@@ -237,8 +241,6 @@ _{
 	$avg_exp_div_win = "NA";
     }	
  }else{
-    $ctr = "NA";
-    # DEBUG INFO TO FIELD: $ctr.=" bids:$F[BIDS], clicks:$vars_sid_sz->{clicks}, exposures:$exposures ";
     $avg_winprice = "NA";
     $avg_exp_div_win = "NA";
  }
@@ -368,7 +370,7 @@ _{
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SID,SZ,BT,CNT]
    } # ... а на выходе скрипта - сортируем :
- ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
+ ' "$bt_list" | sort -T. -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
  # format: sid sz bt cnt
 ) <(
  #dom_gr.txt:
