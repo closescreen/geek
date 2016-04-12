@@ -9,6 +9,7 @@ set -o pipefail
 
 #> Этот скрипт только для net.
 
+
 bids_fn=${1:?src_file!} 
 job=${2:?job!}
 typenum=${3:?typenum!}
@@ -221,10 +222,10 @@ _{
  
  my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
- my ( $ctr, $avg_winprice, $avg_exp_div_win );
- if ( my $exposures = $vars_sid_sz->{all_exposures} ){
-    if ( $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
+ my ( $ctr, $avg_winprice, $avg_expprice_net, $avg_exp_div_win );
+ if ( my $all_exposures = $vars_sid_sz->{all_exposures} ){
+    if ( $vars_sid_sz->{clicks} && $all_exposures>=100 or $all_exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $all_exposures );
     }else{ 
 	$ctr = "NA";
     }	
@@ -234,13 +235,16 @@ _{
 
  if ( my $exposures = $vars_sid_sz->{exposures} ){
     if ( $exposures>=50 ){
+	$avg_expprice_net = sprintf( "%.4f", ($vars_sid_sz->{ expprice }||0) / $exposures); # <--средний expprice по сетевым показам
 	$avg_winprice = sprintf( "%.4f", ( $vars_sid_sz->{ winprice }||0 ) / $exposures);
 	$avg_exp_div_win = sprintf( "%.4f", $vars_sid_sz->{ exp_div_win } / $exposures );
     }else{
+	$avg_expprice_net = "NA";
 	$avg_winprice = "NA";
 	$avg_exp_div_win = "NA";
     }	
  }else{
+    $avg_expprice_net = "NA";
     $avg_winprice = "NA";
     $avg_exp_div_win = "NA";
  }
@@ -287,8 +291,8 @@ _{
  #          1            2        3         4       5             6           7            8               9              10         11       
  p0 "$F[SID]:$F[SZ]", $F[DOM], $dom_gr,   $ctr,    "NA",     $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win,    "NA",     "NA",       
  
- #  12          13..16       17..62                 63..64    65..104
- $pzbt_count, @in_nets, @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids;
+ #  12          13..16       17..62                 63..64    65..104    105   106          107        
+ $pzbt_count, @in_nets, @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids,   "NA",  "NA",  $avg_expprice_net;
 
      
     
@@ -316,7 +320,9 @@ _{
  #>> | 62 buyers           | 1 поле трейт покупателей (вместо  30-го поля auditory) (%)		|
  #>> | 63..64 pz bids      | процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
  #>> | 65..104 bt bids     | 40 полей процент бидов по bt / к бидам по sz в (%)                    |
- 
+ #>> | 105		   | "NA" (средний exposure price по бидам)
+ #>> | 106                 | "NA" (средний exposure price по первым в сессии по бидам)
+ #>> | 107                 | средний expprice по сетевым показам
 };
 
 ' "$nets" "$pz_list" "$bt_list" <(

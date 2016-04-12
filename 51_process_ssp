@@ -33,6 +33,9 @@ chk "$tn0_total_ff" "30 файлов показов (не хватает: $not_f
 tn1_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/1/total.gz" | only -all -s`
 chk "$tn1_total_ff" "30 файлов кликов (не хватает $?)" || exit 3
 
+tn3_total_ff=`echo "$days" | files "../RESULT/10/%F/$job/3/total.gz" | only -all -s`
+chk "$tn3_total_ff" "30 файлов tn3/total (не хватает $?)" || exit 3
+
 sessions_ff=`echo "$days" | files "../RESULT/10/%F/$job/$typenum/sessions.gz" | only -all -s`
 chk "$sessions_ff" "30 файлов sessions.gz (не хватает $?)" || exit 3
 
@@ -126,6 +129,16 @@ while(<FILE>){
  my ($sid, $sz, $clicks) = split /\*/, $_, -1;
  $vars{ $sid }{ $sz }{ clicks } = $clicks;
 }
+
+# tn3/totals:
+open FILE, shift or die $!;
+while(<FILE>){
+ chomp;
+ my ($sid, $sz, $avg_exppr_all, $avg_exppr_first_in_sess) = split /\*/, $_, -1; # 1)средний exppr по всем бидам и 2)ср. winpr по бидам первым в сессии
+ $vars{ $sid }{ $sz }{ avg_exppr3_all } = $avg_exppr_all;
+ $vars{ $sid }{ $sz }{ avg_exppr3_finsess } = $avg_exppr_first_in_sess;
+}
+
 
 # sessions:
 my %sessions;
@@ -224,8 +237,9 @@ _{
  
  my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
- my ( $ctr, $avg_winprice, $avg_exp_div_win );
- if ( my $exposures = $vars_sid_sz->{exposures} ){
+ my ( $ctr, $avg_winprice, $avg_exp_div_win, $expprice, $exposures, $avg_exppr0 );
+ $expprice = $vars_sid_sz->{expprice}||0; 
+ if ( $exposures = $vars_sid_sz->{exposures} ){
     if ( $F[BIDS]>=1000 && $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
 	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
     }else{ 
@@ -234,15 +248,20 @@ _{
     if ( $exposures>=50 ){
 	$avg_winprice = sprintf( "%.4f", ( $vars_sid_sz->{ winprice }||0 ) / $exposures);
 	$avg_exp_div_win = sprintf( "%.4f", $vars_sid_sz->{ exp_div_win } / $exposures );
+	$avg_exppr0 = sprintf( "%.4f", $expprice / $exposures );
     }else{
 	$avg_winprice = "NA";
 	$avg_exp_div_win = "NA";
+	$avg_exppr0 = "NA";
     }	
  }else{
     $ctr = "NA";
     $avg_winprice = "NA";
     $avg_exp_div_win = "NA";
+    $avg_exppr0 = "NA";
  }
+
+
  
  my $winbids =  $F[BIDS]>=200 ?
     sprintf("%.2f", ($vars_sid_sz->{exposures}||0) / $F[BIDS] * 100 ) :
@@ -293,10 +312,13 @@ _{
 
  my $dom_gr = $dom_gr{ $F[DOM] }||"NA";
 
+ my $avg_exppr3_all = $vars_sid_sz->{avg_exppr3_all} || "NA";
+ my $avg_exppr3_finsess = $vars_sid_sz->{avg_exppr3_finsess} || "NA";
+
  #          1            2        3       4      5          6           7            8                 9            10             11             12          
  p0 "$F[SID]:$F[SZ]", $F[DOM], $dom_gr, $ctr, $winbids, $avg_session, $all_uids, $avg_winprice, $avg_exp_div_win, $posibids, $win_posi_bids, $pzbt_count, 
- # 13:16           17..62                  63,64    65..104
- @in_nets,     @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids;
+ # 13:16           17..62                  63,64    65..104       105                 106             107
+ @in_nets,     @{$traits_sid_sz}[1..46], @pz_bids, @bt_bids, $avg_exppr3_all, $avg_exppr3_finsess, $avg_exppr0;
 
  #>> OUT:
  #>> | field               | description  |
@@ -321,6 +343,9 @@ _{
  #>> | 62 buyers           | 1 поле трейт покупателей (вместо  30-го поля auditory) (%)		|
  #>> | 63..64 pz bids      | 2 поля: процент бидов по pz / к бидам по sz в (%), список pz - в 00_conf.txt  |
  #>> | 65..104 bt bids     | 40 полей: процент бидов по bt / к бидам по sz в (%)                           |
+ #>> | 105 avg_exppr3_all  | средний exposure price по tn3 |
+ #>> | 106 avg_exppr3_finsess | средний exposure price по первым в сессии по tn3 |
+ #>> | 107 avg_exppr0      | средний exposure price по показам | 
  
 };
 
@@ -333,6 +358,18 @@ mergef -ff="$tn0_total_ff" -m -prefilt="cut -d* -f1,2,4,5,6,7" -k=1,1n -k=2,2n -
 mergef -ff="$tn1_total_ff" -m -prefilt="cut -d* -f1,2,4" -k=1,1n -k=2,2n -stdout | summator -fu="sum"
 # Format: sid sz clicks
 ) <(
+# tn3/totals - за 30 дней, source format: 2-sec, 3-sid, 4-sz, 7-exposure_price, 12-sestart
+# -prefilter: 
+# из tn3/total берем: [sid], [sz], [все_exppr], [exppr_первые_в_сессии_иначе_0]
+# сортируем по sz , суммируем по sid+.sz:  [sum(все_exppr)] [кол.во_строк_все_exppr] [сумма_exppr_пвс] [кол.во строк ненулевых exppr_пвс]
+# -postfilter:
+# получам средние по sid+[sz]:  [avg_exppr3_all]  [avg_exppr_fins||"NA"]
+mergef -ff="$tn3_total_ff" \
+ -prefilt='awk -F* -vOFS=* "\$8 {fins = (\$2==\$12 ? \$7 : 0); print \$3,\$4,\$7,fins}" |
+  sort -T. -t\* -k1,1n -k2,2n | summator -fu="sum,+cnt,sum,+tcnt" -max=100000 | summator -fu="sum,+cnt,sum,+tcnt"' \
+  -m -k=1,1n -k=2,2n -stdout | awk -F* -vOFS=* "{print \$1, \$2, \$3/\$4, \$6 ? \$5/\$6 : \"NA\" }"
+  # Format: [sid] [sz] [avg_exppr_all] [avg_exppr_1st_in_session||"NA"]
+) <(
 # SESSIONS за 30 дней, ключ (dom), суммы по (sess_count,views):
 mergef -ff="$sessions_ff" -m -k=1,1 -stdout | summator -fu="sum,sum"
 # Format: dom, sess_counts, views
@@ -343,7 +380,7 @@ mergef -ff="$pzbt_ff" -m -k=1,1n -k=2,2n -stdout | awk -F* '{print $1"*"$2"*"$3"
 ) <(
 # sz_traits_30days.gz:
 zcat "$traits_fn"
- # format: 
+ # format sz_traits_30days.gz:: 
  # sid * sz * all * male * fem * age1 * age2 * age3 * ctr1 * ctr2 * ctr3 * ... ctr11 * auditory01 * aud02 * aud03 * ... auditory30 * trash
  #  1     2    3      4     5     6      7       8     9       10     18         19        20         21      48           49          50
 ) <(
@@ -377,7 +414,7 @@ zcat "$traits_fn"
     return unless grep {$_==$F[BT]} @bt; 
     p @F[SID,SZ,BT,CNT]
    } # восстанавливать сортирку sortom:
- ' "$bt_list" | sort -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
+ ' "$bt_list" | sort -T. -t\* -n -k1,1 -k2,2 -k3,3 | summator -fu="sum"
  # format: sid sz bt cnt
 ) <(
  #dom_gr.txt:

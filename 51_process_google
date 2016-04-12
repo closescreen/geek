@@ -360,7 +360,7 @@ mergef -ff="$tn1_total_ff" -m -k=1,1n -k=2,2n -stdout | cut -d* -f1,3 | summator
 # получам средние по 1.[sz]:  2.[avg_exppr3_all]  3.[avg_exppr_fins||"NA"]
 mergef -ff="$tn3_total_ff" \
  -prefilt='awk -F* -vOFS=* "\$7 {fins = (\$2==\$11 ? \$6 : 0); print \$3,\$6,fins}" |
-  sort -T. -t\* -k1,1n | summator -fu="sum,+cnt,sum,+tcnt"' \
+  sort -T. -t\* -k1,1n | summator -fu="sum,+cnt,sum,+tcnt" -max=100000 | summator -fu="sum,+cnt,sum,+tcnt"' \
   -m -k=1,1n -stdout | awk -F* -vOFS=* "{print \$1, \$2/\$3, \$5 ? \$4/\$5 : \"NA\" }"
   # Format: [sz]  [avg_exppr_all]  [avg_exppr_1st_in_session||"NA"]
 ) <(
