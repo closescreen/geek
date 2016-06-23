@@ -46,7 +46,9 @@ while (<>){
  }
  #warn Dumper \%line_kv;
  
- my ($type1) = $line_kv{desc} =~ m|([^\/]+?$)| or warn "No find type1 in line: $line_kv{desc}"; # часть строки, которую используем как "тип1"
+ my ($type1) = ($line_kv{desc}||"") =~ m|([^\/]+?$)| or warn "No find type1 in line: $line_kv{desc}"; # часть строки, которую используем как "тип1"
+ next if !$type1; # бывают битые строки из-за переносов
+ #warn "type1=$type1 (desc=$line_kv{desc})";
  if ($type1=~/\d\d\d\d-\d\d-\d\dT\d\d/){
     ($type1) = $line_kv{desc}=~m|../RESULT/.+?/.+?/(.+?)/\d\d\d\d-\d\d-\d\d.+?$|;
     $type1 or warn( "type1!");
@@ -59,6 +61,7 @@ while (<>){
  $report{ $type1 }{ $type2 }{ $line_kv{desc} } = { %line_kv };
  
 }
+#die Dumper \%report;
 
 $\="\n";
 $,="\t";
