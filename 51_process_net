@@ -111,16 +111,15 @@ open FILE, shift or die $!;
 while(<FILE>){
  chomp;
  my ($sid, $sz, $is_net, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
- if ( $is_net ){ # is_net=1 или 0
-    # только для сетевых показов - "выигранных бидов"
+
+ if ( $vars{ $sid }{ $sz }{ expprice > 0 } ){ # показы с ценами
     $vars{ $sid }{ $sz }{ exposures } = $exposures;
     $vars{ $sid }{ $sz }{ winprice } = $winprice;
     $vars{ $sid }{ $sz }{ expprice } = $expprice;
     $vars{ $sid }{ $sz }{ exp_div_win } = $exp_div_win;
  }
- # для всех показов (сетевых и не сетевых):
- $vars{ $sid }{ $sz }{ all_exposures } += $exposures; # для ctr - нужны все показы    
 }
+
 
 # clicks:
 open FILE, shift or die $!;
@@ -223,9 +222,9 @@ _{
  my $vars_sid_sz = $vars{ $F[SID] }{ $F[SZ] }||{};
  
  my ( $ctr, $avg_winprice, $avg_expprice_net, $avg_exp_div_win );
- if ( my $all_exposures = $vars_sid_sz->{all_exposures} ){
-    if ( $vars_sid_sz->{clicks} && $all_exposures>=100 or $all_exposures>=1000 ){
-	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $all_exposures );
+ if ( my $exposures = $vars_sid_sz->{exposures} ){
+    if ( $vars_sid_sz->{clicks} && $exposures>=100 or $exposures>=1000 ){
+	$ctr = sprintf( "%.6f", ($vars_sid_sz->{clicks}||0) / $exposures );
     }else{ 
 	$ctr = "NA";
     }	
