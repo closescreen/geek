@@ -112,12 +112,12 @@ while(<FILE>){
  chomp;
  my ($sid, $sz, $is_net, $exposures, $expprice, $winprice, $exp_div_win) = split /\*/, $_, -1; 
 
- if ( $vars{ $sid }{ $sz }{ expprice > 0 } ){ # показы с ценами
+# if ( $expprice > 0 ){ # показы с ценами - не, тут суммы
     $vars{ $sid }{ $sz }{ exposures } = $exposures;
     $vars{ $sid }{ $sz }{ winprice } = $winprice;
     $vars{ $sid }{ $sz }{ expprice } = $expprice;
     $vars{ $sid }{ $sz }{ exp_div_win } = $exp_div_win;
- }
+# }
 }
 
 

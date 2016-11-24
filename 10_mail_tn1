@@ -1,0 +1,19 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==1 (клики) , sid for mail
+
+#>> отбрасываются нулевые sz, uid.
+#>> поля: sz,ad
+#>> сортировка: по sz,ad
+set -o pipefail
+set -u
+
+f=${1:? file!}
+
+sids=${2:?sids!} #like a: 123|234|3254
+
+deb=${3:-""} # третий параметр можно указать: "-d"
+[[ -n "$deb" ]] && set -x
+
+job_history_log  -c=./history.conf "$f" "sz,ad,uid!=0,typenum=1,sid=$sids,statusnum=0,usergroup=$(conf 00_conf.txt usergroups)" \
+  -cut="sid,statusnum,typenum,uid,usergroup"  | # -true="sz" -выключил,собирем нулевые сз
+ sort -T. -t\* -n -k1,1 -k2,2 -S 333M

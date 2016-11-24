@@ -1,0 +1,72 @@
+#!/usr/bin/env bash
+#> Обработчик смерженного (часы в сутки) потока для google tn3.
+
+#>> Добавляем колонку про сессии: СЕКУНДЫ начала сессии КУКИ на ДОМЕНЕ, 
+#>> и колонку "признак засчитываемого просмотра страницы" - незасчитываются повторные просмотры одной и тойже страницы с интервалом менее 10 сук.
+#>> На входе поток за сутки (т.е период начало и конец которого можно считать разрывом сессии), лучше с 04-00 по 04-00.
+#>> отсортрованный по КУКЕ и ВРЕМЕНИ. 
+
+lae -lb="uid second sz pz bt exposureprice ad expid dom path +sestart +isview" '
+my %sestart; 
+my %last_view; 
+my %prev_exp_sec;
+_{
+
+    
+    if ( prevUid and $F[UID]!=prevUid ){
+	# uid was changed:
+	undef %sestart;
+	undef %last_view; 
+	undef %prev_exp_sec;
+    }
+
+    
+    if ( $prev_exp_sec{ $F[DOM] } and ( $F[SECOND] - $prev_exp_sec{ $F[DOM] } )>1800 ){
+	# session timed out:
+	$sestart{ $F[DOM] } = 0;
+	$prev_exp_sec{ $F[DOM] } = 0; 
+    }	
+    
+ 
+    # Если нет секунды начала на данном домене, значит началом сессии считаем текущую секунду:
+    set_sestart( $sestart{ $F[DOM] } ||= $F[SECOND] );
+ 
+    # Просмотром считаем просмотр, если данный непустой referer не просматривался менее 10 сек назад:
+    my $ref = join("",@F[DOM,PATH]);
+    if ( $ref and ( 
+		not exists $last_view{ $ref } 
+		or ($F[SECOND] - $last_view{ $ref }) > 10 
+    )){
+	set_isview(1);
+    }else{
+	set_isview(0);
+    }
+ 
+    # Запоминаем, что и когда просматривала кука в последний раз:
+    if ( $ref ){
+	$last_view{ $ref } = $F[SECOND]
+    }
+
+ #>> OUT:
+ #>>
+ #>> | field | description |
+ #>> | ----- | ----------- |
+ #>> |1 uid   |
+ #>> |2 sec   |
+ #>> |3 sz    |
+ #>> |4 pz    |
+ #>> |5 bt    |
+ #>> |6 exposure_price |изза ad не используется|
+ #>> |7 ad      |
+ #>  |8 expid
+ #>> |9 domain  |
+ #>> |10 path    |
+ #>> |11 sestart | секунды начала сессии   |
+ #>> |12 isview  | просмотр засчитан (1/0) |
+
+ p @F;
+
+ $prev_exp_sec{ $F[DOM] } = $F[SECOND]; # храним время предыдущего просмотра любого реферера на домене
+} -prev=>"uid=0";
+
+'

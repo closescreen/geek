@@ -24,12 +24,13 @@ dom_traits_30days_f=${3:? dom_traits_30days file!}
 #awk -F* '$3>10' | # остаются только урлы с показами>N, для net cnt - это кол-во показов
 
 LANG=POSIX mergef  -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
-summator -fu="sum,sum,sum,sum,sum" | # после мержа 30 дней суммы по dom+path
+summator -fu="sum,sum,sum,sum,sum" -max-infl=100000 | # после мержа 30 дней суммы по dom+path
+summator -fu="sum,sum,sum,sum,sum" | # повторные суммы из-за предыдущего -max-infl
 lae -lb="dom path cntbids exppricetn3 cntexp secondpricetn0 exppricetn0" '
 # на входе будут строки с суммами по ключу dom + path 
 
 my $N = 10;
-my $limit1 = 1_200_000; # после превышения кол-ва урлов в домене будет сброс
+my $limit1 = 1_000_000; # после превышения кол-ва урлов в домене будет сброс
 
 # переданные параметры:
 my ( $url_traits_f, $dom_traits_f ) = @ARGV;
@@ -138,7 +139,7 @@ sub flush{
 	    $avg_expprice0 = "NA";
 	    $avg_winprice = "NA";
 	    $profit = "NA";
-	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + $smf_expprice3 * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
+	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + ($smf_expprice3 eq "NA" ? 0 :$smf_expprice3) * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
 	    $winrate = int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000); # на 1000 потому что маленькие значения
 	    $will_print_line = 1;
 

@@ -46,6 +46,7 @@ varopt="base" # когда не указан $variant
 [[ -n "$variant" ]] && varopt="$variant"
 mkeys=$( href -v="$job" -v="$typenum" -v="$varopt" -dict='
  "google" => 		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} },
+ "mail" => 		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2"} }, 
  "ssp" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}, 3 => {base=>"1,1n 2,2n", url=>"1,1 2,2", toolbar=>"1,1n 2,2n 3,3 4,4 5,5 6,6"} },
  "net" =>		{ 0 => {base=>"1,1n 2,2n", url=>"1,1 2,2"}, 1 => {base=>"1,1n 2,2n"}},
 ' )
@@ -74,6 +75,7 @@ total_prefix=""
 hour_prefix=""
 [[ -n "$variant" ]] && hour_prefix=$(href -v="$job" -v="$typenum" -v="$varopt" -dict='
     google    	=>  {0 => { url => "url_", base=>"" }},
+    mail    	=>  {0 => { url => "url_", base=>"" }},    
     ssp 	=>  {0 => { url => "url_", base=>"" }},
     net 	=>  {0 => { url => "" ,    base=>"" }}, # net тотал по урлам берут из обычных часовых файлов
 ' )

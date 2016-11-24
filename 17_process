@@ -1,1 +1,88 @@
-17_process.lae
+#!/usr/bin/env bash
+#> urls.
+
+#>IN:
+#> google:
+#>  1   2     3   4  5       6        7   8     9   10    11     12
+#> uid second sz pz  bt exposureprice ad expid dom path sestart isview
+#> OR
+#> net:
+#> uid second sid sz pz bt exposureprice secondprice divexpsecond ad network dom path sestart isview
+#> OR:
+#> ssp:
+#> uid second sid sz pz bt exposureprice ad expid dom path sestart isview
+
+#>> sorted by UID,SECOND:
+
+lb=${1:?labels!}
+
+fields_numbers=`perl -e'
+ @F=split /\s+/, shift; 
+ %L = map { $F[$_],$_+1 } (0..$#F); 
+ print join ",", @L{qw| uid dom path sestart isview |}' "$lb"`
+
+ads_domains_f="adservice_domains.txt"
+
+cut -d* -f$fields_numbers |
+lae -lb="uid dom path sestart isview" '
+my %sessions;
+my %urls;
+my %ads_domains = map {$_,1} cat shift(); 
+
+_{
+
+ # кука по времени просматривает разные урлы (разные домены) и sestart для каждого домена - свой 
+
+ return if not $F[ISVIEW]; # <--считаются только засчитанные нами просмотры, используемые для сессий. Нельзя здесь считать кол-во бидов и прочее.
+ return if $ads_domains{ $F[DOM] };
+ 
+ #> when uid was changed:
+ increment_counters() if Uid!=prevUid and prevUid;
+ 
+ $urls{ $F[DOM] }{ $F[SESTART] }{ path }{ $F[PATH] }+=1;
+ $urls{ $F[DOM] }{ $F[SESTART] }{ last } = $F[PATH];
+
+
+} -prev=>"uid=0,sestart=0,dom,path";
+
+increment_counters();
+
+sub increment_counters{
+ #> sessions counters:
+ for my $dom ( keys %urls ){
+    for my $sestart ( keys %{ $urls{$dom} } ){
+	for my $path ( keys %{ $urls{$dom}{$sestart}{path} } ){
+	    $sessions{ $dom }{ $path }{cnt}++; # кол-во сессий
+	}
+	#> sessions_end counter:
+	$sessions{ $dom }{ $urls{$dom}{$sestart}{last} }{ ends }++;
+    }
+ }
+    
+ undef %urls;
+}
+
+for my $dom ( sort keys %sessions ){
+    for my $path (sort keys %{$sessions{$dom}}){
+	## Не считаем другие счетчики здесь, тут только засчитанные просмотры
+	p0 $dom, $path, $sessions{$dom}{$path}{cnt}, $sessions{$dom}{$path}{ends};
+    }	
+}
+
+' "$ads_domains_f" | LANG=POSIX sort -T. --compress-program=gzip -t\* -k1,1 -k2,2
+
+# убрал -S 333M что-то памяти не хватает
+
+#>>OUT:
+#>> dom, ref, sessions_count, sessions_ends
+#>>  
+#>> | field          | description |
+#>> | -------------- | ----------- |
+#>> | dom  	     |
+#>> | path 	     |
+#>> | sessions_count | количество сессий, где dom+url участвовал |
+#>> | sessions_ends  | количество сессий, где он был последним.  |
+
+
+
+

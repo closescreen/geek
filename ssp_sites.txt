@@ -37,3 +37,9 @@
 211344		Advark SSP
 211490		Madnetex SSP
 211720		Mail SSP
+212641		Rare SSP
+212642		Clickganic SSP
+213908		Avito SSP
+214326		relap.io
+214991		Sape SSP
+215128		Videonow

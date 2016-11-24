@@ -1,0 +1,40 @@
+#!/usr/bin/env bash
+#> urlsfemale.gz/urlsmale.gz для k.frolenkov соцдема
+#(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+N=1 # количество процессов
+
+if [[ ${1:-""} == "start" ]];then shift && nice fork -pf="$0.pids" -n="$N" -dela=3 -ed=s "$0 $@" # --wait
+elif [[ ${1:-""}  == "stop" ]];then shift && fork -pf="$0.pids" -kila
+else 
+# --------- begin of script body ----
+
+day=2016-10-31
+for d in ../RESULT/10/$day/net/0 ../RESULT/10/$day/ssp/3 ../RESULT/10/$day/google/3; do
+
+ urlvars="$d/url_vars_30days.gz"
+ [[ ! -s "$urlvars" ]] && continue
+
+ urlsfem="$d/urlsfem.gz"
+ if [[ ! -s "$urlsfem" ]]; then
+  zcat "$urlvars" |
+   awk -F* '$6!="NA"&&$7!="NA"&&$6!=0&&$7!=0&&$6+$7>50&&int($7/($6+$7)*10)== 9 &&$1!~/^[0-9]/{print $1$2}' | # отобрали женские урлы
+   viatmp -gz "$urlsfem"
+ fi  
+
+ urlsmal="$d/urlsmal.gz"
+ if [[ ! -s "$urlsmal" ]]; then
+  zcat "$urlvars" |
+   awk -F* '$6!="NA"&&$7!="NA"&&$6!=0&&$7!=0&&$6+$7>50&&int($7/($6+$7)*10)== 0 &&$1!~/^[0-9]/{print $1$2}' | # мужские урлы
+   viatmp -gz "$urlsmal"
+ fi  
+
+done 
+# --------- end of script bidy ------ 
+fi
+
+#)>>"$0.log" 2>&1

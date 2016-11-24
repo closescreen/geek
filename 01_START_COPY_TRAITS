@@ -1,10 +1,8 @@
 #!/usr/bin/env bash
 
-export PATH=$PATH:/usr/local/rle/var/bike
+export PATH=$PATH:/usr/local/rle/var/share3/TIKETS/bike
 export PERL5LIB=/home/d.belyaev/perl5/lib/perl5
 export PATH=$PATH:/usr/local/rle/bin
-export SCALA_HOME=$HOME/scala-2.11.2
-export PATH=$SCALA_HOME/bin:$PATH
 
 (
 set -u

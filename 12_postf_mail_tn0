@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+#> Обработка смерженного (часы в сутки) потока для google, tn0.
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN:
+#>>  1   2        3          4           
+#>> sz  ad  exposureprice winprice
+
+awk -F* -v"OFS=*" '{ print $0, ( $4 ? ($3/$4) : "NA" ) } 
+# теперь стало 5 полей: sz, ad, exposureprice, winprice, expprice/winprice' |
+summator -fu="cnt,+sum,sum,sum" 
+
+#>> OUT: 
+#>>  1   2     3            4                 5
+#>> sz  ad  cnt_exp  sum_exposureprice  sum_winprice 
+
+#>>
+#>> | field | description |
+#>> | ----- | ----------- |
+#>> | sz    |
+#>> | ad    |
+#>> | cnt_exp | количество показов |
+#>> | sum_exposureprice | сумма exposureprice |
+#>> | sum_winprice | сумма winprice |
+#>> | sum_expprice/winprice | сумма expprice/winprice |
+
+

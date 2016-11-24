@@ -1,0 +1,152 @@
+#!/usr/bin/env bash
+#> Запуск всех скриптов.
+
+export PATH=$PATH:/usr/local/rle/var/share3/TIKETS/bike:/usr/local/rle/bin
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5:/usr/local/rle/lib/perl5/
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+# запуск только при низком loadaverage или при "force"
+lo="6"
+proc=7 # count of parallel processes at time
+monit_file="./00_monit.txt"
+
+# при обнаружении нехватки памяти - киляем один последний процесс
+if freemem -lt 1 -ed g; then
+ echo "Very low free memory!!! Attempt to kill 1 last process.">&2
+ fork -pf=../pids/common.pids -n=$proc -decrease
+ sleep 1h # попробуем потормозить часок
+ exit
+fi 
+
+
+#--- usage: exit_if_loadaverage_gt 5 ----
+exit_if_loadaverage_gt () {
+ n=${1:?"loadaverage!"}
+ loadaverage -1m -gt $n && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
+}
+
+exit_if_loadaverage_gt $lo
+echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
+
+./93_LOGS_TAIL 
+
+# ------------- считаем на даты - понедельники ---------------------:
+# кластеризация:
+days=$(hours -d=today -shift=2days -n=-10days -days) # -n-сколько дней назад от -d+shift 
+
+days=`perl -M"Date::Calc qw(Day_of_Week_Abbreviation Day_of_Week)" -e'$,=" "; print grep {Day_of_Week_Abbreviation(Day_of_Week(split /\-/, $_)) eq "Mon" } @ARGV' $days`
+target_dates=$days
+
+
+for job in `conf 00_conf.txt jobs`; do
+    ./96_REMOVE_OLD_ALL;
+    ./95_REMOVE_EMPTY $job;
+    ./95_REMOVE_OLD_HOURS $job;
+    ./95_REMOVE_OLD_urls30days $job;
+done
+
+for target_date in $target_dates; do
+
+    jobs_start_time=`date +%s`
+
+    for job in `conf 00_conf.txt jobs`; do
+	# не запускать, когда с памятью совсем плохо.
+	# Это общее ограничение. Скрипты же требовательные к памяти ограничиваются в заданиях geek)
+	wantmem=5 # Gigabytes
+	freemem -lt $wantmem -ed g && echo "Low free memory < $wantmem G">&2 && continue
+
+	tn=`href -dict="net=>0, google=>3, ssp=>3" -val=$job`
+
+	# --
+#	Илья сказал , не требуется:
+#	target=../RESULT/10/$target_date/$job/$tn/clust_sz_1.txt 
+#	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+#	cmd="nice ./00_geek4  --want=$target"
+#       exit_if_loadaverage_gt $lo
+#	fork -pf=../pids/common.pids -dela=1 -n=$proc "$cmd" -wait
+
+	#--посчитать:
+	# (включаю, когда нужно только посчитать а не сетить)
+	#exit_if_loadaverage_gt $lo
+	#target=../RESULT/10/$target_date/$job/$tn/sz_vars_30days.gz
+	#echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	#cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4 --want=$target"
+	#fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+
+	#--посчитать и засетить:
+	exit_if_loadaverage_gt $lo
+	target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv.sent
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4 --want=$target"
+	fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	
+	#----
+	# diff явно указываю, потому, что urlvars_diff.sent может не найдя _diff.gz попросить _diff_INIT.gz
+	exit_if_loadaverage_gt $lo
+	target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.gz 
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt	
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log	
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4  --want=$target"
+	fork -pf=../pids/common.pids -dela=60 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt	
+	
+	#---- ВРЕМЕННО ДО ПРОВЕРКИ sent ОТКЛЮЧЕНО
+	exit_if_loadaverage_gt $lo
+	target=../RESULT/10/$target_date/$job/$tn/urlvars_diff.sent
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt	
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4  --want=$target"
+	fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+
+	
+	#---- удаление 781 катег из базы периодическое
+	exit_if_loadaverage_gt $lo
+	target=../RESULT/10/$target_date/$job/$tn/sz_vars_conv_DEL781.sent
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4  --want=$target"
+	fork -pf=../pids/common.pids -dela=30 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+
+
+#	Сбор топов по toolbar.
+#	Пока не стал включать, когда надо - можно запустить руками. Может и не надо раз в неделю.
+#	# ===== только для ssp/3 ====
+#	if [[ "$job" == "ssp" ]]; then
+#	    if [[ "$tn" == "3" ]]; then
+#		# ==== toolbar ====
+#		exit_if_loadaverage_gt $lo
+#		target=../RESULT/10/$target_date/$job/$tn/toolbar_top_7days.gz
+#		./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+#		cmd="nice ./00_geek4  --want=$target"
+#		fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+#		./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+#	    fi	
+#	fi
+
+    done
+    
+    jobs_stop_time=`date +%s`
+
+    jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
+    if [[ $jobs_time -gt $(( $proc*300 )) ]]; then
+	# время выполнения заняло больше 5ти минут, значит - было что считать, значит новую дату считать не будем
+	break
+    fi
+
+
+
+done    
+
+
+)>>"$0.log" 2>&1

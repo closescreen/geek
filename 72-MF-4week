@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+#>
+#(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+#N=3 # количество процессов
+
+#if [[ ${1:-""} == "start" ]];then shift && nice fork -pf="$0.pids" -n="$N" -dela=3 -ed=s "$0 $@"  --wait # enable -wait or redirect out to log
+#elif [[ ${1:-""}  == "stop" ]];then shift && fork -pf="$0.pids" -kila
+#else 
+# --------- begin of script body ----
+
+# команда, которой я собирал за куки , кот были во всех 4-х файлах при этом не меньше 10 на мужских и не были на женских и наоборот
+mergef -ff="$ff" -k=1,1 -stdout | summator -fu=+cnt,min,min | 
+ awk -F* -vOFS=* '$2>=4 && ($3>=10 && $4==0)||($4>=10 && $3==0) {print $1,$3,$4}' | 
+ viatmp -gz ../RESULT/10/2016-10-31/mal_fem_4week_10sites.gz
+
+# команда, которой я засылал в трейты:
+zcat /home/d.belyaev/1460/RESULT/10/2016-10-31/mal_fem_4week_10sites.gz | 
+ awk -F* '$2{print $1}' | 
+ ../traittools/bin/send_traits --trait=2.65 --storage-time=2592000 -c ./ttclient.conf
+
+# --------- end of script bidy ------ 
+#fi
+
+#)>>"$0.log" 2>&1

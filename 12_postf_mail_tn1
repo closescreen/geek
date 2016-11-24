@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+
+#> Обработчик смерженного (часы в сутки) потока для google tn1. 
+
+set -u
+set -e
+set -o pipefail
+set +x
+
+#>> IN
+#>>  1   2  
+#>> sz  ad
+
+summator -la=0 -fu=+cnt
+
+#>>OUT: 
+#>>  1  2      3
+#>> sz ad  cnt_clicks
+
+#>> | field | description |
+#>> | ----- | ----------- |
+#>> | sz    |
+#>> | ad    |
+#>> | cnt_clicks | количество кликов  |

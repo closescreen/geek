@@ -22,29 +22,25 @@ url_traits_30days_f=${2:? url_traits_30days file!}
 dom_traits_30days_f=${3:? dom_traits_30days file!}
 
 LANG=POSIX mergef -m -ff="$url_total_ff" -k=1,1 -k=2,2 -stdout |
-summator -fu="sum,sum,sum,sum,sum" -max-inflate=100000 | # после мержа 30 дней суммы по dom+path
-summator -fu="sum,sum,sum,sum,sum" | # предыдущий summator сделает flush>100000, появятся двойные строки по dom+path
+summator -fu="sum,sum,sum,sum,sum" | # после мержа 30 дней суммы по dom+path
 lae -lb="dom path cntbids exppricetn3 cntexp secondpricetn0 exppricetn0" '
 # на входе будут строки с суммами по ключу dom + path 
 
-my $limit1 = 1_000_000; # после превышения кол-ва урлов в домене будет сброс
+my $limit1 = 1_200_000; # после превышения кол-ва урлов в домене будет сброс
 my $N = 10;
 
 # переданные параметры:
 my ( $url_traits_f, $dom_traits_f ) = @ARGV;
 
 # трейты по урлам:
-my $max=2_000_000; # охранник памяти
 my %url_traits; # will like $dom->{$path}{all=>$x0, male=>$x1, fem=>$x2, buyers=>$x3 }
 $url_traits_f or die "url_traits file!";
 open TRAITS, "$url_traits_f" or die "cant open $url_traits_f: $!";
 for my $l (<TRAITS>){
  chomp $l;
  my ( $dom, $path, $all_uids, $male, $female, $buyers ) = split /\*/,$l, -1; 
- next if scalar(keys %{ $url_traits{ $dom }||{} }) > $max; # ограничение для памяти 
  $url_traits{ $dom }{ $path } = { a=>$all_uids, m=>$male, f=>$female, b=>$buyers };
  #die Dumper $l, $dom, $path, $all_uids, $male, $female, $buyers;
-
 }
 
 # трейты по доменам:
@@ -143,7 +139,7 @@ sub flush{
 	    $avg_expprice0 = "NA";
 	    $avg_winprice = "NA";
 	    $profit = "NA";
-	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + ($smf_expprice3 eq "NA" ? 0 : $smf_expprice3) * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
+	    $avg_expprice3 = int( ($url{ $do }{ $pa }{ xp3 }/100 + $smf_expprice3 * $N)/($url{ $do }{ $pa }{ cb } + $N) ) + 1; # по бидам
 	    $winrate = int(( $url{ $do }{ $pa }{ cx } + $dom_winrate * $N ) / ( $url{ $do }{ $pa }{ cb } + $N ) * 1000); # на 1000 потому что маленькие значения
 	    $will_print_line = 1;
 

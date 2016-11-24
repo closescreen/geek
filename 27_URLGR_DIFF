@@ -19,6 +19,7 @@ typenum=$(
  href -dict="
      net => '0',
      google => '3',
+     mail => '3',
  " -val="$job"
 )
 

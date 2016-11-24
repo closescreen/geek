@@ -21,6 +21,7 @@ processor=$(
  href -dict="
     net => './33_process_net',
     google => './33_process_google',
+    mail => './33_process_mail',
     ssp => './33_process_ssp',
  " -val="$job"
 ) 
@@ -30,6 +31,7 @@ typenum=$(
  href -dict="
      net => 0,
      google => 3,
+     mail => 3,
      ssp => 3,
  " -val="$job"
 )

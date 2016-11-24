@@ -95,9 +95,9 @@ sub flush{
 	# если в текущем - есть url, а в предыдущем - нет:
 	for my $ind ( keys %categs){
 	    if ( $curr[$ind] ne "NA" ){
-		print "$url*$categs{$ind}*$curr[$ind]*INSERT";
-	    }	
-	}    
+		print "$url*$categs{$ind}*$curr[$ind]*INSERT*PNE";
+	    }
+	}
     }else{
 	# если есть и в текущем и в предыдущем (но могут значения в полях отличаться):
 	my @prev = @{$lines{P}};
@@ -110,10 +110,10 @@ sub flush{
 		# предыдущий и текущий не равны:
 		if ( $curr[$ind] eq "NA" ){
 		    # текущий есть NA (удаление):
-		    print "$url*$categs{$ind}*$curr[$ind]*DELETE";
+		    print "$url*$categs{$ind}*$curr[$ind]*DELETE*$prev[$ind]";
 		}else{
 		    # текущий - не NA (вставка/замена):
-		    print "$url*$categs{$ind}*$curr[$ind]*INSERT"; 
+		    print "$url*$categs{$ind}*$curr[$ind]*INSERT*$prev[$ind]"; 
 		}
 	    }
 	}
@@ -126,10 +126,10 @@ sub flush{
     my $url = join "", @prev[ $LI{dom} , $LI{path} ];
     for my $ind ( keys %categs){
 	next if $prev[$ind] eq "NA";
-	print "$url*$categs{$ind}*$prev[$ind]*DELETE";
-    }    
+	print "$url*$categs{$ind}*$prev[$ind]*DELETE*CNE";
+    }
  }
- %lines = (); 
+ %lines = ();
 }
 '
 

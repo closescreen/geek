@@ -18,6 +18,7 @@ typenum=$(
     href -dict="
 	net => 0,
 	google => 3,
+	mail => 3,
 	ssp => 3,
     " -value="$job"
 )
@@ -27,6 +28,7 @@ scriptname=$(
     href -dict="
 	net => './14_process_net',
 	google => './14_process_google',
+	mail => './14_process_mail',
 	ssp => './14_process_ssp',
     " -val="$job"
 )

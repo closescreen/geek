@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+#> urlsfemale.gz/urlsmale.gz для k.frolenkov соцдема
+#(
+set -u
+set -x
+set -o pipefail
+cd `dirname $0`
+
+N=1 # количество процессов
+
+if [[ ${1:-""} == "start" ]];then shift && nice fork -pf="$0.pids" -n="$N" -dela=3 -ed=s "$0 $@" # --wait
+elif [[ ${1:-""}  == "stop" ]];then shift && fork -pf="$0.pids" -kila
+else 
+# --------- begin of script body ----
+
+ND=7 # number of days for visits
+
+day=${1:-""}
+if [[ -z "$day" ]]; then
+    day=`find ../RESULT/10/ -wholename "*/google/3/url_vars_30days.gz" | sort | tail -n1 | fn2days` # google самый большой, он позже всех, обычно.
+    [[ -z "$day" ]] && echo "Not found day where google/3/url_vars_30days.gz">&2 && exit 1
+fi    
+
+days=`hours -d="$day" -n=-${ND}days -days`
+
+for jobtn in "net/0" "ssp/3" "google/3"; do
+
+ domfield=`href -dict='"net/0"=>12, "ssp/3"=>10, "google/3"=>9' -val="$jobtn"` # - domain field number
+ pathfield=`href -dict='"net/0"=>13, "ssp/3"=>11, "google/3"=>10' -val="$jobtn"` # -ref field number ref -> в смысле path, надо бы переименовать
+
+ d="../RESULT/10/$day/$jobtn"
+
+ for x in "mal" "fem" ; do
+
+  urls="$d/urls$x.gz" # = $d/urlsmal.gz / $d/urlsfem.gz
+  total="$d/total.gz"
+  [[ ! -s "$total" ]] && continue
+
+  Ntotals=`echo "$days" | files "../RESULT/10/%F/$jobtn/total.gz" | only -all -sizegt=20`
+  [[ -z "$Ntotals" ]] && echo "Not all totals for $jobtn and $days">&2 && continue
+ 
+
+  uid_url="$d/$x-uid-url-$ND-days.gz" # - посещения куками уникальных урлов
+  if [[ -s "$urls" && ! -s "$uid_url" ]]; then
+   LANG=POSIX mergef -ff="$Ntotals" -pref="cut -d* -f1,${domfield},${pathfield} | uniq " -m -k=1,1 -stdout | # uid * dom * ref from totals
+    awk -F* -vOFS=* '$2!~/^[0-9]/{print $1,$2$3}' | uniq | # uid * domref
+    grepf -k=2 -fn=<(zcat "$urls") | # filter uid*domref by domref
+    uniq |
+    LANG=POSIX sort -T. -t\* -S 333M -k1,1n -k2,2 -u | # -- уникальные комбинации uid*ref
+    viatmp -gz "$uid_url"
+  fi  
+
+  visits="$d/$x-visits-$ND-days.gz" # (mal|fem)-visits-7-days.gz,  количества посещений uid * cnt - уникальных урлов за N days
+  if [[ -s "$uid_url" && ! -s "$visits" ]]; then
+    zcat "$uid_url" | # uid * url
+    cut -d* -f1 | # only uid
+    uniq -c | awk -vOFS=* '{print $2,$1}' | 
+    viatmp -gz "$visits"
+   
+    fline=`zcat "$visits" | head -n1`
+    [[ -z "$fline" ]] && echo "can't create $visits">&2 && rm "$visits"
+  fi
+
+ done # - mal,fem
+
+done # -job/tn
+
+
+r="../RESULT/10"
+
+male="mal-visits-$ND-days.gz"
+allmale="$r/$day/net/0/$male $r/$day/ssp/3/$male $r/$day/google/3/$male"
+mergef -ff="$allmale" -k=1,1n -stdout | summator -fu="sum" | cut -d* -f2,1 | sort -T. -t\* -k1,1 | viatmp -gz "$r/$day/$male" 
+# сортировака не numeric для join
+
+fem="fem-visits-$ND-days.gz"
+allfem="$r/$day/net/0/$fem $r/$day/ssp/3/$fem $r/$day/google/3/$fem"
+mergef -ff="$allfem" -k=1,1n -stdout | summator -fu="sum" | cut -d* -f2,1 | sort -T. -t\* -k1,1 | viatmp -gz "$r/$day/$fem"
+
+# объединяем кука * malsites * femsites:
+join -t* <(zcat "$r/$day/$male") <(zcat "$r/$day/$fem") -a1 -a2 -o"0 1.2 2.2" -e 0 | viatmp -gz "$r/$day/uid-mal-fem.gz"
+
+
+
+# --------- end of script bidy ------ 
+fi
+
+#)>>"$0.log" 2>&1

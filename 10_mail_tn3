@@ -1,0 +1,33 @@
+#!/usr/bin/env bash
+#> сбор из hl typenum==3 (bids), sids for mail
+
+#>> отбрасываются нулевые sz,uid.
+#>> поля: uid, second, sz, pz, bt, exposureprice, ad, ref
+#>> "ref" сплитится на два поля: "dom" и "path"
+#>> сортировка: uid, second.
+
+#set -x
+set -u
+
+f=${1:? file!}
+
+sids=${2:?sids!} #like a: 123|234|3254
+
+job_history_log -c=./history.conf "$f" "uid!=0,second,sz,pz,bt,exposureprice,ad,typenum=3,sid=$sids,usergroup=$(conf 00_conf.txt usergroups),expid,ref" \
+ -fn -cut="sid,typenum,usergroup"  | # -true="sz" - выключил, собираем и нулевые sz
+ #  1   2   3  4 5   6    7   8     9
+ # uid sec sz pz bt exppr ad expid ref
+ ./10_url_clean -url_field=9 | # <--преобразование ref
+ perl -MDom -Mstrict -w -F'\*' -lane'
+# IN: uid,second,sz,pz,bt,exposureprice,ad,expid,ref
+#      0    1     2  3  4       5       6    7    8 
+
+@F[ 8,9 ] = $F[8] ? map {$_||""} Dom::split_ref( $F[8] ) : ("",""); # справа добавляется еще одна колонка
+
+print join("*",map {defined($_)?$_:""} @F);
+' | sort -T. -t\* -n -k1,1 -k2,2 -S333M --compress-program=gzip
+
+
+#>> out:
+#>>  1      2     3   4     5        6           7    8      9     10
+#>> uid, second, sz,  pz,  bt,  exposureprice,  ad, expid,  dom,  path

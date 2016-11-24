@@ -1,0 +1,1 @@
+/usr/local/rle/var/share3/IKA/etc/site2category_all_handmade.txt

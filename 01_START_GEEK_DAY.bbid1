@@ -1,0 +1,103 @@
+#!/usr/bin/env bash
+#> Запуск всех скриптов.
+
+export PATH=$PATH:/usr/local/rle/var/share3/TIKETS/bike:/usr/local/rle/bin
+export PERL5LIB=/home/d.belyaev/perl5/lib/perl5:/usr/local/rle/lib/perl5/
+
+(
+set -u
+set +x
+set -o pipefail
+cd `dirname $0`
+
+[[ -s 01_STOP_ALL.stop ]] && echo "01_STOP_ALL.stop found! Remove it and try again.">&2 && exit 1
+
+
+lo="6" # запуск только при loadaverage не больше lo или при "force"
+proc=7 # count of parallel processes at time
+
+# при обнаружении нехватки памяти - киляем один последний процесс
+freemem -lt 1 -ed g && echo "Very low free memory!!! Attempt to kill 1 last process.">&2 && fork -pf=../pids/common.pids -n=$proc -decrease && exit
+
+
+#--- usage: exit_if_loadaverage_gt 5 ----
+exit_if_loadaverage_gt () {
+ n=${1:?"loadaverage!"}
+ loadaverage -1m -gt $n && echo "$(date +"%F %H:%M") loadaverage too big ($(loadaverage -1m))">&2 && exit
+}
+
+exit_if_loadaverage_gt $lo
+echo "Started at $(date +"%F %H:%M")" >&2 # debug for view log
+
+
+
+./93_LOGS_TAIL 
+
+#--------------------- ежедневные -------------------------
+days=$(hours -d=today -n=-4days -days) # <--- стараемся успеть за N дня
+target_dates=$days
+
+for job in `conf 00_conf.txt jobs`; do
+    ./96_REMOVE_OLD_ALL;
+    ./95_REMOVE_EMPTY $job;
+    ./95_REMOVE_OLD_HOURS $job;
+    ./95_REMOVE_OLD_urls30days $job;
+done
+
+for target_date in $target_dates; do
+    jobs_start_time=`date +%s`
+
+    for job in `conf 00_conf.txt jobs`; do
+	tn=`href -dict="net=>0, google=>3, ssp=>3" -val=$job`
+
+	# не запускать, когда с памятью совсем плохо.
+	# Это общее ограничение. Скрипты же требовательные к памяти ограничиваются в заданиях geek)
+	wantmem=5 # Gigabytes
+	freemem -lt $wantmem -ed g && echo "Low free memory < $wantmem G">&2 && continue
+
+	# ===== 
+	if [[ "$job" == "ssp" ]]; then
+	    if [[ "$tn" == "3" ]]; then
+		# ==== toolbar ====
+		exit_if_loadaverage_gt $lo
+		echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+		target=../RESULT/10/$target_date/$job/$tn/toolbar_trait.sent-v # варианты суффикса: "-v" - засылать многословно, "-v-n" - не засылать, многословно
+		./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+		cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4  --want=$target"
+		fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+		./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	    fi	
+	fi
+
+
+	# ----
+	exit_if_loadaverage_gt $lo
+	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.gz
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4 --want=$target"
+	fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+
+	#----- 
+	exit_if_loadaverage_gt $lo	
+	target=../RESULT/10/$target_date/$job/$tn/url_cat_diff.sent
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+	echo "$(date +"%F %H:%M") * target:$target * $(./00_geek4 -want $target -desc -norun -avg | tail -n1)">>./00_need_time.log
+	cmd="freemem -gt=$wantmem && loadaverage -1min -lt=$lo && nice ./00_geek4 --want=$target"
+	fork -pf=../pids/common.pids -dela=10 -ed=s -n=$proc "$cmd" -wait
+	./02_target_status_one_line "$target" | ./02_update_target_status -upd=./02_monit.txt
+
+
+    done
+    jobs_stop_time=`date +%s`
+    jobs_time=$(( $jobs_stop_time - $jobs_start_time ))
+    if [[ $jobs_time -gt $(( $proc*300 )) ]]; then
+	# время выполнения заняло больше 2-х минут, значит - было что считать, значит новую дату считать не будем
+	echo "time $(($jobs_stop_time - $jobs_start_time)), break">&2
+	break
+    fi
+done    
+
+
+)>>"$0.log" 2>&1

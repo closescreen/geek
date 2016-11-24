@@ -18,6 +18,7 @@ typenum=$(
  href -dict="
      net => '0',
      google => 3,
+     mail => 3,
      ssp => 3,
  "  -val="$job"
 )
@@ -36,6 +37,7 @@ process_cmd=$(
     net => 'zcat %s | cut -d* -f1,3,4 | uniq | sort -T. -S333M -t\* -n -k1,1 -k2,2 -k3,3 -u ', # у net format: uid,sec,sid,sz,... (sz - 4-е поле)
     ssp => 'zcat %s | cut -d* -f1,3,4 | uniq | sort -T. -S333M -t\* -n -k1,1 -k2,2 -k3,3 -u ', # у ssp: uid,sec,sid,sz,...
     google =>    'zcat %s | cut -d* -f1,3 | uniq | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ', # у google format: uid,sec,sz,...(sz - 3-е поле)
+    mail =>      'zcat %s | cut -d* -f1,3 | uniq | sort -T. -S333M -t\* -n -k1,1 -k2,2 -u ', # mail как google
  "   -val="$job" 
 )
 

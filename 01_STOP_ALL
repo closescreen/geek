@@ -6,7 +6,7 @@ set -u
 set -x
 set -o pipefail
 cd `dirname $0`
-export PATH=$PATH:/home/d.belyaev/grep/bike
+export PATH=$PATH:/usr/local/rle/var/share3/TIKETS/bike
 
 echo "Stopped by $USER at $(date)" >> 01_STOP_ALL.stop
 

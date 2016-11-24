@@ -21,7 +21,7 @@ cd `dirname $0`
 older="45days" # удалять старее чем
 
 #-----часовые данные ----
-jobs="google ssp net"
+jobs=`conf 00_conf.txt jobs`
 typenums="0 1 3"
 
 for job in $job; do

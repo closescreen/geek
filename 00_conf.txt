@@ -1,9 +1,43 @@
-source_deep => "30days", # глубина перечета источников для отчетов если будет меньше 30 то urls30days и подобные не смогут делать пересчет
-report_deep => "17days", # глубина пересчета самих отчетов 
-maxf => 1, # обрабатывать пачками по maxf файлов
-google_sid => 187537, # google sid
-mail_sid => 211720, # mail ssp sid
-usergroups => sub{ join "|", grep { $_%2==0 } 1..256 }, 
+#!/usr/bin/env perl
+use Sys::Hostname;
+my $host = hostname;
+
+my %host_depend = (
+ # настройки, зависимые от имени хоста:
+ jobs => {
+    bbid1 => ["net", "google", "ssp"],
+    dm12 => ["mail"],
+ },
+ hours_jobtn => {
+    bbid1 => ["net+0","net+1","ssp+0","ssp+1","ssp+3","google+0","google+1","google+3"],
+    dm12 =>["mail+0","mail+1","mail+3"],
+    #bbid1 => { net=>["0","1"], ssp=>["0","1","3"], google=>["0","1","3"],
+    #dm12 => { mail=>["0","1","3"],
+ },    
+ # ...
+);
+
+my %conf = (
+ # общие настройки:
+ source_deep => "30days", # глубина перечета источников для отчетов если будет меньше 30 то urls30days и подобные не смогут делать пересчет
+ report_deep => "17days", # глубина пересчета самих отчетов 
+ maxf => 1, # обрабатывать пачками по maxf файлов
+ google_sid => 187537, # google sid
+ mail_sid => 211720, # mail ssp sid
+ usergroups => sub{ join "|", grep { $_%2==0 } 1..256 }, 
+);
+
+for my $k (keys %host_depend){
+    if ( my $v = $host_depend{$k}{$host} ){
+	if ($conf{$k}){
+	    warn "redefined key: $k oldval: $conf{$k} with new: $v";
+	}
+	$conf{$k} = $v;
+    }
+}
+
+return %conf;
+
 
 
 
