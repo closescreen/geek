@@ -3,7 +3,7 @@
 use strict;
 use warnings;
 use Data::Dumper;
-use lib '/usr/local/rle/var/bike';
+use lib '/usr/local/rle/var/share3/TIKETS/bike';
 use Geek qw/ :all /;
 use Getopt::Long;
 use Date::Calc qw(Today_and_Now Delta_DHMS);
@@ -141,19 +141,19 @@ $g->routes(
     },
 
     {
-	target "$res/$sm{day}/sz_vars_conv_DEL781.sent", # удаление 781 категории  
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv_DEL781.sent", # удаление 781 категории  
 	need {
-	    conv => sub{ "$res/$+{day}/sz_vars_conv_DEL781.gz" },
+	    conv => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_vars_conv_DEL781.gz" },
 	},
 	bash {qb "[[ -n \"$_{conv}\" ]] && nice zcat \"$_{conv}\" | ./set_sz_vars_to_del_from_bidder.pl"},
 	note {check_need=>1, timelog=>$timelog },
     },
     {
-	target "$res/$sm{day}/sz_vars_conv_DEL781.gz",
+	target "$res/$sm{day}/$sm{job}/$sm{tn}/sz_vars_conv_DEL781.gz",
 	need { 
-	    szvars => sub{ "$res/$+{day}/ssp/3/sz_vars_30days.gz" , "$res/$+{day}/google/3/sz_vars_30days.gz", "$res/$+{day}/net/0/sz_vars_30days.gz" },
+	    szvars => sub{ "$res/$+{day}/$+{job}/$+{tn}/sz_vars_30days.gz" },
 	},
-	bash {qb "zcat `find ../RESULT/10 -name sz_vars_30days.gz | sort` | ./53_sz_vars_conv_DEL781 -conf=53_sz_vars_decl.conf"},
+	bash {qb "zcat `find ../RESULT/10 -wholename \"*$_{job}/$_{tn}/sz_vars_30days.gz\" | sort` | ./53_sz_vars_conv_DEL781 -conf=53_sz_vars_decl.conf"},
 	note {check_need=>1, timelog=>$timelog },
     },
 
@@ -241,10 +241,18 @@ $g->routes(
 	    # но тошда нужно передавать в скрипт решение и там принимать. Гемор.
 	    
 	    uidsz => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz") }, 
-	    predicted_add => sub { "$traits_copy/$+{day}/predicted_add.gz" },
-	    predicted => sub { "$traits_copy/$+{day}/predict_gr_v2.gz" },
-	    auditory => sub { "$traits_copy/$+{day}/auditory.gz" },
-	    ctr10gr => sub { "$traits_copy/$+{day}/ctr10gr.gz" },
+	    predicted_add => sub {
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 )); 
+		"$traits_copy/$+{day}/predicted_add.gz" },
+	    predicted => sub { 
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predict_gr_v2.gz", 1 ));
+		"$traits_copy/$+{day}/predict_gr_v2.gz" },
+	    auditory => sub {
+		 #warn( ExistsFilesMinimum(14, "$traits_copy/%F/auditory.gz", 1 ));
+		"$traits_copy/$+{day}/auditory.gz" },
+	    ctr10gr => sub { 
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/ctr10gr.gz", 1 ));
+		"$traits_copy/$+{day}/ctr10gr.gz" },
 	    #ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" }, # <-- их больше нет
 	    },
 	bash {qb "nice ./33_SZ_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
@@ -263,12 +271,17 @@ $g->routes(
     { 	target "$res/$sm{day}/$sm{job}/$sm{tn}/url_traits_30days.gz",
 	need {
 	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
-	    predicted_add => sub{ "$traits_copy/$+{day}/predicted_add.gz" },
-	    buyers => sub{ "$traits_copy/$+{day}/filtered_traits.txt.gz" },
+	    predicted_add => sub{ 
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 ));
+		"$traits_copy/$+{day}/predicted_add.gz" },
+	    buyers => sub{
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/filtered_traits.txt.gz", 1 ));
+		"$traits_copy/$+{day}/filtered_traits.txt.gz" },
 	    },
 	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
 	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 10"  },
     },
+    
     {	target "$traits_copy/$sm{day}/filtered_traits.txt.gz",
 	bash {qb "exit"}
     
@@ -421,7 +434,7 @@ $g->routes(
 	    dom_traits_30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/dom_traits_30days.gz" },
 	},
 	bash { qb "nice ./52_urlvars_30days_$_{job} \"$_{url_total}\" \"$_{url_traits_30days}\" \"$_{dom_traits_30days}\"" },
-	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 15" },
+	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 20" },
     },
 
 
@@ -443,7 +456,7 @@ $g->routes(
 
     {
 	target "$res/$sm{day}/$sm{job}/$sm{tn}/(?<prefix>[a-z]*)_?$sm{hour}.gz", # может быть префикс типа "url" за которым следует "_"
-	bash { qb " ./10_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
+	bash { qb " ./10_HOURS_BY_HOURS \"$_{job}\" \"$_{tn}\" \"$_{day}\" \"$+{prefix}\" " },
 	note { viatmp => 0, flag=>0 },    
     },
 
