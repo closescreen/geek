@@ -242,17 +242,25 @@ $g->routes(
 	    
 	    uidsz => sub{ Files(30, "$res/%F/$+{job}/$+{tn}/uidsz.gz") }, 
 	    predicted_add => sub {
-		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 )); 
-		"$traits_copy/$+{day}/predicted_add.gz" },
+		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 ));
+		ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 ); # <-- любой файл за 14 дней
+		#"$traits_copy/$+{day}/predicted_add.gz" 
+		},
 	    predicted => sub { 
 		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predict_gr_v2.gz", 1 ));
-		"$traits_copy/$+{day}/predict_gr_v2.gz" },
+		ExistsFilesMinimum(14, "$traits_copy/%F/predict_gr_v2.gz", 1 )
+		#"$traits_copy/$+{day}/predict_gr_v2.gz" 
+		},
 	    auditory => sub {
 		 #warn( ExistsFilesMinimum(14, "$traits_copy/%F/auditory.gz", 1 ));
-		"$traits_copy/$+{day}/auditory.gz" },
+		 ExistsFilesMinimum(14, "$traits_copy/%F/auditory.gz", 1 )
+		#"$traits_copy/$+{day}/auditory.gz" 
+		},
 	    ctr10gr => sub { 
 		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/ctr10gr.gz", 1 ));
-		"$traits_copy/$+{day}/ctr10gr.gz" },
+		ExistsFilesMinimum(14, "$traits_copy/%F/ctr10gr.gz", 1 )
+		#"$traits_copy/$+{day}/ctr10gr.gz" 
+		},
 	    #ctr11gr => sub { "$traits_copy/$+{day}/ctr11gr.gz" }, # <-- их больше нет
 	    },
 	bash {qb "nice ./33_SZ_TRAITS_30DAYS \"$_{job}\" \"$_{day}\" \"$deb\" "},
@@ -273,10 +281,14 @@ $g->routes(
 	    uidurl30days => sub{ "$res/$+{day}/$+{job}/$+{tn}/uidurl30days.gz" },
 	    predicted_add => sub{ 
 		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 ));
-		"$traits_copy/$+{day}/predicted_add.gz" },
+		ExistsFilesMinimum(14, "$traits_copy/%F/predicted_add.gz", 1 )
+		#"$traits_copy/$+{day}/predicted_add.gz" 
+		},
 	    buyers => sub{
 		#warn( ExistsFilesMinimum(14, "$traits_copy/%F/filtered_traits.txt.gz", 1 ));
-		"$traits_copy/$+{day}/filtered_traits.txt.gz" },
+		ExistsFilesMinimum(14, "$traits_copy/%F/filtered_traits.txt.gz", 1 )
+		#"$traits_copy/$+{day}/filtered_traits.txt.gz" 
+		},
 	    },
 	bash {qb "nice ./34_url_traits \"$_{day}\" \"$_{job}\" \"$_{tn}\" \"$_{uidurl30days}\" \"$_{predicted_add}\" \"$_{buyers}\" \"$_{TARGET}\" "},
 	note { check_need=>1, timelog=>$timelog, runtime_need=>"freemem -gt 10"  },
